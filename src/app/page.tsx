@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
-import { motion } from "framer-motion";
-import { CreditCard, Key, Wifi, Zap } from "lucide-react";
+import { useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { ArrowRight, ShieldCheck, Zap } from "lucide-react";
 import TrustCard from "@/components/vehicles/TrustCard";
 
-/* ── Data ────────────────────────────────────────────────── */
+/*  Data  */
 
 const VEHICLES = [
   {
@@ -27,170 +28,222 @@ const VEHICLES = [
   },
 ];
 
-const HERO_WORDS = ["Aterriza.", "Conduce.", "Cero Burocracia."];
+/*  BlurText  */
 
-/* ── Motion variants ─────────────────────────────────────── */
+function BlurText({ text, className }: { text: string; className?: string }) {
+  const words = text.split(" ");
+  return (
+    <h1 className={className}>
+      {words.map((word, i) => (
+        <motion.span
+          key={i}
+          initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+          animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.8,
+            delay: i * 0.1,
+            ease: [0.22, 1, 0.36, 1] as const,
+          }}
+          className="inline-block mr-[0.25em]"
+        >
+          {word}
+        </motion.span>
+      ))}
+    </h1>
+  );
+}
+
+/*  Variants  */
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
 
-const staggerContainer = {
+const stagger = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.12 } },
 };
 
-/* ── Component ───────────────────────────────────────────── */
+/*  Home  */
 
 export default function Home() {
+  const containerRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"],
+  });
+
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.85]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
+  const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
+  const contentY = useTransform(scrollYProgress, [0, 1], ["20%", "0%"]);
+
   return (
-    <main className="flex flex-col w-full overflow-hidden">
+    <main ref={containerRef} className="relative w-full bg-brand-dark min-h-[200vh]">
 
-      {/* ─── SECTION 1 · Hero Cinético ───────────────────── */}
-      <section className="relative min-h-[85vh] flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-brand-bg to-brand-bg px-4 sm:px-6">
+      {/* 1. STICKY CINEMATIC HERO */}
+      <div className="sticky top-0 h-screen w-full overflow-hidden flex flex-col items-center justify-center">
         <motion.div
-          className="text-center max-w-4xl mx-auto flex flex-col items-center"
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
+          style={{ scale: heroScale, opacity: heroOpacity, y: heroY }}
+          className="absolute inset-0 z-0"
         >
-          {/* Badge pill */}
-          <motion.span
-            variants={fadeUp}
-            className="inline-block bg-blue-50 text-brand-primary text-sm font-semibold px-4 py-1.5 rounded-brand-pill border border-blue-100 mb-8"
+          <div className="absolute inset-0 bg-black/50 z-10" />
+          <img
+            src="https://images.unsplash.com/photo-1617814076367-b759c7d7e738?q=80&w=2000&auto=format&fit=crop"
+            className="w-full h-full object-cover object-center"
+            alt="Premium car Nexus"
+          />
+        </motion.div>
+
+        <div className="relative z-20 flex flex-col items-center text-center px-4 w-full max-w-5xl">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, ease: "easeOut" as const }}
+            className="px-4 py-1.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-md mb-8 text-white text-sm tracking-widest uppercase font-medium"
           >
-            Lanzamiento en Casablanca · Terminal 2
-          </motion.span>
+            Nexus Casablanca
+          </motion.div>
 
-          {/* Giant headline — word by word */}
-          <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-brand-dark mb-6 flex flex-wrap justify-center gap-x-4 md:gap-x-6">
-            {HERO_WORDS.map((word) => (
-              <motion.span key={word} variants={fadeUp} className="inline-block">
-                {word}
-              </motion.span>
-            ))}
-          </h1>
+          <BlurText
+            text="Tu coche premium. Sin filas. Sin friccion."
+            className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-[1.1] mb-6"
+          />
 
-          {/* Subtitle */}
           <motion.p
-            variants={fadeUp}
-            className="text-lg md:text-xl text-brand-muted max-w-2xl mx-auto mb-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8, duration: 1 }}
+            className="text-lg md:text-2xl text-slate-300 max-w-2xl font-light mb-10"
           >
-            Tu vehículo premium te espera encendido en el Aeropuerto Mohammed V.
-            Reserva en 2 minutos, paga 10€ hoy.
+            Aterriza y arranca. Asegura tu reserva con solo 10 euros hoy.
           </motion.p>
 
-          {/* Magnetic CTA */}
           <motion.button
-            variants={fadeUp}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1, duration: 0.7, ease: "easeOut" as const }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              document
-                .getElementById("fleet")
-                ?.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="bg-brand-primary text-white text-lg font-semibold px-8 py-4 rounded-brand-pill shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_0_60px_-15px_rgba(37,99,235,0.7)] transition-shadow flex items-center gap-3 mx-auto min-h-[48px]"
+            onClick={() =>
+              document.getElementById("fleet")?.scrollIntoView({ behavior: "smooth" })
+            }
+            className="flex items-center gap-3 bg-white text-brand-dark font-bold text-base px-8 py-4 rounded-brand-pill shadow-2xl min-h-[48px] transition-shadow hover:shadow-white/20"
           >
-            <Zap className="w-5 h-5" />
-            Reservar ahora
+            Ver flota disponible
+            <ArrowRight className="w-4 h-4" />
           </motion.button>
-        </motion.div>
-      </section>
-
-      {/* ─── SECTION 2 · Bento Box — Trust Signals ───────── */}
-      <section className="max-w-7xl mx-auto w-full px-6 py-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-          {/* Card 1 — Destacada (span 2 cols on md) */}
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            className="bg-brand-dark text-white rounded-3xl p-8 flex flex-col gap-4 md:col-span-2"
-          >
-            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-              <CreditCard className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold">Solo 10€ para asegurar tu viaje.</h3>
-            <p className="text-slate-300 text-sm leading-relaxed max-w-lg">
-              Sin cargos ocultos. Congelamos tu coche con una mini-fianza, el
-              resto lo pagas cómodamente al llegar.
-            </p>
-          </motion.div>
-
-          {/* Card 2 — Conectividad */}
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            className="bg-emerald-50 text-brand-dark rounded-3xl p-8 flex flex-col gap-4"
-          >
-            <div className="w-12 h-12 rounded-xl bg-brand-success/10 flex items-center justify-center">
-              <Wifi className="w-6 h-6 text-brand-success" />
-            </div>
-            <h3 className="text-xl font-bold">Conectado desde el minuto 1</h3>
-            <p className="text-brand-muted text-sm leading-relaxed">
-              Incluimos SIM de 5GB y Tag Jawaz para peajes.
-            </p>
-          </motion.div>
-
-          {/* Card 3 — Digital check-in */}
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            className="bg-white border border-slate-200 text-brand-dark rounded-3xl p-8 flex flex-col gap-4 md:col-span-3 lg:col-span-1"
-          >
-            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-              <Key className="w-6 h-6 text-brand-primary" />
-            </div>
-            <h3 className="text-xl font-bold">Check-in 100% Digital</h3>
-            <p className="text-brand-muted text-sm leading-relaxed">
-              Sube tu pasaporte hoy, recoge tus llaves al instante al aterrizar.
-            </p>
-          </motion.div>
         </div>
-      </section>
-
-      {/* ─── SECTION 3 · Escaparate — Fleet Grid ─────────── */}
-      <section id="fleet" className="max-w-7xl mx-auto w-full px-6 pb-24">
-        <motion.h2
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          className="text-3xl font-bold mb-10 text-center text-brand-dark"
-        >
-          Nuestra Flota Premium
-        </motion.h2>
 
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+          className="absolute bottom-10 z-20 flex flex-col items-center gap-2 text-white/40"
         >
-          {VEHICLES.map((v) => (
-            <motion.div key={v.model} variants={fadeUp}>
-              <TrustCard
-                model={v.model}
-                totalPrice={v.totalPrice}
-                imageUrl={v.imageUrl}
-              />
-            </motion.div>
-          ))}
+          <span className="text-xs uppercase tracking-widest">Descubre Nexus</span>
+          <div className="w-px h-12 bg-white/20 overflow-hidden relative">
+            <motion.div
+              animate={{ y: ["-100%", "100%"] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: "linear" as const }}
+              className="absolute top-0 w-full h-1/2 bg-white"
+            />
+          </div>
         </motion.div>
-      </section>
+      </div>
+
+      {/* 2. CONTENT SLAB  slides over hero */}
+      <motion.div
+        style={{ y: contentY }}
+        className="relative z-30 bg-brand-bg rounded-t-[3rem] shadow-[0_-20px_60px_rgba(0,0,0,0.35)] w-full py-24 px-6 md:px-12"
+      >
+        <div className="max-w-7xl mx-auto">
+
+          <motion.h2
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            className="text-4xl md:text-6xl font-bold text-brand-dark tracking-tight mb-16 text-center"
+          >
+            La redefinicion del alquiler.
+          </motion.h2>
+
+          {/* Asymmetric Bento */}
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+            className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-24"
+          >
+            <motion.div
+              variants={fadeUp}
+              whileHover={{ scale: 0.985, transition: { duration: 0.3 } }}
+              className="md:col-span-8 bg-brand-dark rounded-3xl p-10 flex flex-col justify-end min-h-[400px] relative overflow-hidden group cursor-default"
+            >
+              <div className="absolute inset-0 bg-gradient-to-tr from-brand-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <Zap className="w-12 h-12 text-brand-primary mb-6 relative z-10" />
+              <h3 className="text-3xl text-white font-bold mb-4 relative z-10">
+                Solo 10 euros para asegurar.
+              </h3>
+              <p className="text-slate-400 text-lg max-w-md relative z-10">
+                Bloqueamos el vehiculo para ti con una micro-transaccion. El balance
+                restante lo pagas transparentemente en el aeropuerto.
+              </p>
+            </motion.div>
+
+            <motion.div
+              variants={fadeUp}
+              whileHover={{ scale: 0.985, transition: { duration: 0.3 } }}
+              className="md:col-span-4 bg-brand-surface border border-slate-200 shadow-xl rounded-3xl p-10 flex flex-col min-h-[400px] cursor-default"
+            >
+              <ShieldCheck className="w-12 h-12 text-brand-success mb-6" />
+              <h3 className="text-2xl text-brand-dark font-bold mb-4">
+                Check-in 100% Digital
+              </h3>
+              <p className="text-brand-muted text-lg">
+                Verifica tu pasaporte desde casa. Cero burocracia en el mostrador al aterrizar.
+              </p>
+            </motion.div>
+          </motion.div>
+
+          {/* Fleet */}
+          <motion.h2
+            id="fleet"
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+            className="text-3xl font-bold mb-10 text-center text-brand-dark"
+          >
+            Nuestra Flota Premium
+          </motion.h2>
+
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+          >
+            {VEHICLES.map((v) => (
+              <motion.div key={v.model} variants={fadeUp}>
+                <TrustCard
+                  model={v.model}
+                  totalPrice={v.totalPrice}
+                  imageUrl={v.imageUrl}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </motion.div>
     </main>
   );
 }
