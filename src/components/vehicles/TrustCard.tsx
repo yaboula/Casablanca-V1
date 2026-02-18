@@ -1,10 +1,15 @@
-import { Briefcase, Car, Check, Lock, Settings2 } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Briefcase, Check, Loader2, Lock, Settings2 } from "lucide-react";
 
 interface TrustCardProps {
   model: string;
   transmission?: string;
   luggage?: string;
   totalPrice: string;
+  imageUrl?: string;
 }
 
 export default function TrustCard({
@@ -12,15 +17,28 @@ export default function TrustCard({
   transmission = "Automático",
   luggage = "2 Maletas",
   totalPrice,
+  imageUrl = "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?q=80&w=800&auto=format&fit=crop",
 }: TrustCardProps) {
+  const [isBooking, setIsBooking] = useState(false);
+
+  function handleBook() {
+    setIsBooking(true);
+    setTimeout(() => setIsBooking(false), 2000);
+  }
+
   return (
-    <article className="flex flex-col bg-brand-surface rounded-brand-card shadow-card overflow-hidden border border-slate-100 hover:shadow-lg transition-shadow duration-300">
+    <motion.article
+      className="flex flex-col bg-brand-surface rounded-brand-card shadow-card overflow-hidden border border-slate-100"
+      whileHover={{ y: -8, transition: { duration: 0.2, ease: "easeOut" } }}
+    >
       {/* Image area */}
-      <div className="relative w-full h-48 bg-slate-50 flex items-center justify-center p-4">
-        <div className="w-full h-full bg-slate-200 rounded-lg flex flex-col items-center justify-center text-brand-muted">
-          <Car className="w-12 h-12 mb-2" />
-          <span className="text-xs font-medium">{model}</span>
-        </div>
+      <div className="relative w-full h-48 overflow-hidden">
+        <img
+          src={imageUrl}
+          alt={model}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
       </div>
 
       {/* Info section */}
@@ -42,14 +60,12 @@ export default function TrustCard({
 
         {/* Superpowers / Trust builders */}
         <ul className="flex flex-col gap-2">
-          {["SIM 5GB Incluida", "Tag Jawaz (Peajes)", "Seguro Todo Riesgo"].map(
-            (feature) => (
-              <li key={feature} className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-brand-success flex-shrink-0" />
-                <span className="text-sm text-brand-muted">{feature}</span>
-              </li>
-            )
-          )}
+          {["SIM 5GB Incluida", "Tag Jawaz (Peajes)", "Seguro Todo Riesgo"].map((feature) => (
+            <li key={feature} className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-brand-success flex-shrink-0" />
+              <span className="text-sm text-brand-muted">{feature}</span>
+            </li>
+          ))}
         </ul>
 
         {/* CTA footer */}
@@ -57,15 +73,32 @@ export default function TrustCard({
           <span className="text-lg font-bold text-brand-dark whitespace-nowrap">
             {totalPrice} / total
           </span>
-          <button
+
+          <motion.button
+            layout
             type="button"
-            className="bg-brand-primary hover:bg-brand-primary-hover text-white px-5 py-2.5 rounded-brand-pill font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 min-h-[48px] whitespace-nowrap"
+            onClick={handleBook}
+            disabled={isBooking}
+            className={`text-white px-5 py-2.5 rounded-brand-pill font-semibold text-sm shadow-sm flex items-center gap-2 min-h-[48px] whitespace-nowrap transition-colors ${
+              isBooking
+                ? "bg-brand-success cursor-not-allowed"
+                : "bg-brand-primary hover:bg-brand-primary-hover"
+            }`}
           >
-            Reservar con 10€
-            <Lock className="w-3.5 h-3.5" />
-          </button>
+            {isBooking ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Asegurando...
+              </>
+            ) : (
+              <>
+                Reservar con 10€
+                <Lock className="w-3.5 h-3.5" />
+              </>
+            )}
+          </motion.button>
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 }
