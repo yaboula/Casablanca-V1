@@ -64,7 +64,7 @@ export default function Home() {
             variants={fadeUp}
             className="inline-block bg-blue-50 text-brand-primary text-sm font-semibold px-4 py-1.5 rounded-brand-pill border border-blue-100 mb-8"
           >
-            🚀 Lanzamiento en Casablanca — Terminal 2
+            Lanzamiento en Casablanca · Terminal 2
           </motion.span>
 
           {/* Giant headline — word by word */}
