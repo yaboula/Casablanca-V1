@@ -3,7 +3,7 @@ import "./globals.css";
 import Header from "@/components/layout/Header";
 
 export const metadata: Metadata = {
-  title: "Casablanca — Alquiler de Coches",
+  title: "Nexus — Alquiler de Coches en Casablanca",
   description: "Reserva tu coche al llegar al Aeropuerto Mohammed V. Rápido, seguro y sin sorpresas.",
 };
 
