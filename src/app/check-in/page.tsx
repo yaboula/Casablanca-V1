@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import {
   Camera,
@@ -28,6 +29,7 @@ const slideVariants: Variants = {
 };
 
 export default function CheckInPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
   const [isComplete, setIsComplete] = useState(false);
@@ -42,8 +44,7 @@ export default function CheckInPage() {
   }
 
   function handleLicenseAction() {
-    console.log("Documentos subidos — iniciando verificación.");
-    setIsComplete(true);
+    router.push("/waiting-room");
   }
 
   return (
