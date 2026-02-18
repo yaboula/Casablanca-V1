@@ -31,7 +31,7 @@ export default function TrustCard({
   return (
     <motion.article
       className="flex flex-col bg-brand-surface rounded-brand-card shadow-card overflow-hidden border border-slate-100"
-      whileHover={{ y: -8, transition: { duration: 0.2, ease: "easeOut" } }}
+      whileHover={{ y: -10, transition: { duration: 0.25, ease: "easeOut" } }}
     >
       {/* Image area */}
       <div className="relative w-full h-48 overflow-hidden">
