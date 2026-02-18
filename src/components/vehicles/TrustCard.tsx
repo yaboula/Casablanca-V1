@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Briefcase, Check, Loader2, Lock, Settings2 } from "lucide-react";
 
@@ -20,10 +21,11 @@ export default function TrustCard({
   imageUrl = "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?q=80&w=800&auto=format&fit=crop",
 }: TrustCardProps) {
   const [isBooking, setIsBooking] = useState(false);
+  const router = useRouter();
 
   function handleBook() {
     setIsBooking(true);
-    setTimeout(() => setIsBooking(false), 2000);
+    setTimeout(() => router.push("/check-in"), 1500);
   }
 
   return (
