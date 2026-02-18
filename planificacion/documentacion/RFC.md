@@ -1,8 +1,8 @@
 # RFC: Arquitectura Técnica - MVP V1.0 (Alquiler Premium Casablanca)
 
-**Estado:** Aprobado | **Fecha:** 18 Febrero 2026 | **Enfoque:** Single App & Operativa "Mago de Oz"
+**Estado:** Aprobado | **Fecha:** 18 Febrero 2026 | **Enfoque:** Next.js Web App Responsiva & Operativa "Mago de Oz"
 
-Este documento define la arquitectura técnica para soportar el pivote estratégico hacia una única aplicación móvil (React Native) para clientes y operarios, centralizando la lógica de negocio y validación manual.
+Este documento define la arquitectura técnica para una única plataforma web (Next.js App Router) accesible desde cualquier navegador. Los clientes reservan desde la web pública; el operario gestiona entregas desde la ruta protegida `/staff` en el mismo dominio, sin necesidad de instalar ninguna aplicación nativa.
 
 ---
 
@@ -15,7 +15,8 @@ Al usar una única app con base en roles, centralizamos la autenticación y vinc
     * `email` (VARCHAR, Unique)
     * `password_hash` (VARCHAR)
     * `full_name` (VARCHAR)
-    * `phone_number` (VARCHAR) - *Crítico para el soporte y coordinación en ruta vía WhatsApp*.    *   `fcm_token` (VARCHAR, Nullable) - *Token de Firebase Cloud Messaging para notificaciones Push en la App*.    * `role` (ENUM: `'USER'`, `'OPERATOR'`, `'ADMIN'`) - *Soporta la arquitectura de aplicación única*.
+    * `phone_number` (VARCHAR) - *Crítico para el soporte y coordinación en ruta vía WhatsApp*.
+    * `role` (ENUM: `'USER'`, `'OPERATOR'`, `'ADMIN'`) - *Soporta la arquitectura de roles en la web única*.
 
 * **`Vehicle` (Flota)**
     * `id` (UUID, Primary Key)
@@ -50,7 +51,7 @@ Al usar una única app con base en roles, centralizamos la autenticación y vinc
 
 ### 2. Contratos de la API (REST Endpoints)
 
-Estos contratos guiarán el desarrollo de tu equipo Frontend (React Native). Todos los endpoints protegidos requerirán un token JWT en la cabecera `Authorization: Bearer <token>`.
+Estos contratos guiarán el desarrollo del Frontend (Next.js Web App). Todos los endpoints protegidos requerirán un token JWT en la cabecera `Authorization: Bearer <token>`.
 
 **Módulo: Auth**
 

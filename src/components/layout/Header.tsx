@@ -3,7 +3,7 @@ import { User } from "lucide-react";
 export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full bg-brand-bg/80 backdrop-blur-md border-b border-slate-200/50">
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="mx-auto max-w-7xl flex items-center justify-between px-6 py-4">
         {/* Logo */}
         <span className="text-xl font-bold text-brand-dark tracking-tight">
           Casablanca<span className="text-brand-primary">.</span>

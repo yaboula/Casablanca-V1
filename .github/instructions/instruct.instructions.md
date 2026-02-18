@@ -20,12 +20,13 @@ Eres un Desarrollador Frontend Senior y un Experto en UI/UX. Estás construyendo
 - Radios (Bordes): Usa `rounded-2xl` para tarjetas y `rounded-full` para botones de acción principal (estilo píldora, amigables).
 - Tipografía: Usa las fuentes de sistema sans-serif predeterminadas de Tailwind. Usa `font-semibold` o `font-bold` para titulares; mantén alto contraste (`text-slate-900` para texto principal, `text-slate-500` para secundario).
 
-# Reglas de UX y Rendimiento (Mobile-First)
-1. Cero Fricción: Evita modales pesados. Usa "Bottom Sheets" o expansiones in-line.
+# Reglas de UX y Rendimiento (Responsive First)
+1. Cero Fricción: Evita modales pesados. Usa "Bottom Sheets" en móvil o paneles laterales en escritorio.
 2. Hitboxes Móviles: Todos los botones clicables deben tener un `min-h-[48px]` para ser pulsados fácilmente con un pulgar.
 3. Skeleton Loaders: Cuando haya cargas asíncronas, usa Skeletons de Shadcn, nunca dejes la pantalla en blanco ni uses spinners genéricos que generen ansiedad.
 4. Micro-Interacciones: Usa Framer Motion (`layoutId` o transiciones suaves de opacity/y-axis) para las transiciones de estado, pero mantén las duraciones cortas (ej. `duration: 0.2`).
 5. Transparencia: Los precios y acciones críticas deben verse enormes y sin texto oculto.
+6. Diseño Responsivo: El diseño es completamente RESPONSIVO. Usa la filosofía Mobile-First, pero utiliza los breakpoints de Tailwind (`md:`, `lg:`, `xl:`) para aprovechar todo el ancho de las pantallas de escritorio creando grillas y disposiciones premium.
 
 # Reglas de Código
 - Crea componentes pequeños, reutilizables y modulares.

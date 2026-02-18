@@ -14,16 +14,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className="bg-slate-100 text-brand-dark antialiased flex justify-center min-h-screen">
-        <div
-          id="app-container"
-          className="relative w-full max-w-md min-h-screen bg-brand-bg shadow-2xl overflow-x-hidden flex flex-col"
-        >
-          <Header />
-          <main className="flex-1 flex flex-col">
-            {children}
-          </main>
-        </div>
+      <body className="bg-brand-bg text-brand-dark antialiased min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex flex-col">
+          {children}
+        </main>
       </body>
     </html>
   );
