@@ -65,3 +65,24 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* ── Aurora background animation keyframes ───────────────────── */
+@keyframes aurora-drift-1 {
+  0%,
+  100% { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(12%, -18%) scale(1.12); }
+  66%  { transform: translate(-8%, 14%) scale(0.92); }
+}
+
+@keyframes aurora-drift-2 {
+  0%,
+  100% { transform: translate(0, 0) scale(1); }
+  40%  { transform: translate(-18%, 12%) scale(0.88); }
+  75%  { transform: translate(10%, -8%) scale(1.08); }
+}
+
+@keyframes aurora-drift-3 {
+  0%,
+  100% { transform: translate(-50%, -50%) scale(1); }
+  50%  { transform: translate(-42%, -58%) scale(1.18); }
+}
