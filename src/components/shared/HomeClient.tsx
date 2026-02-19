@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
-import { ArrowRight, Car, Clock, CreditCard, QrCode, ShieldCheck, Smartphone, Star, Zap } from "lucide-react";
-import React, { useCallback } from "react";
+import { ArrowRight, Car, Clock, MapPin, Plane, QrCode, Shield, Smartphone, Star, Wifi, Zap } from "lucide-react";
+import React, { useCallback, useEffect, useRef } from "react";
 import BookingPanel from "@/components/shared/BookingPanel";
 import CountUp from "@/components/ui/CountUp";
 import Marquee from "@/components/ui/Marquee";
@@ -64,6 +64,7 @@ const FLEET_CATEGORIES: Array<{
   fromPrice: number;
   imageUrl: string;
   badge: string | null;
+  includes: string[];
 }> = [
   {
     name: "Compacto",
@@ -72,6 +73,7 @@ const FLEET_CATEGORIES: Array<{
     imageUrl:
       "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?q=80&w=800&auto=format&fit=crop",
     badge: "Más económico",
+    includes: ["Seguro básico", "Km ilimitados"],
   },
   {
     name: "SUV",
@@ -80,6 +82,7 @@ const FLEET_CATEGORIES: Array<{
     imageUrl:
       "https://images.unsplash.com/photo-1519245659620-e859806a8d3b?q=80&w=800&auto=format&fit=crop",
     badge: "Más popular",
+    includes: ["Seguro total", "Tag Jawaz", "SIM 5G"],
   },
   {
     name: "Premium",
@@ -88,6 +91,7 @@ const FLEET_CATEGORIES: Array<{
     imageUrl:
       "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?q=80&w=800&auto=format&fit=crop",
     badge: null,
+    includes: ["Seguro total", "Tag Jawaz", "SIM 5G"],
   },
   {
     name: "Berlina",
@@ -96,31 +100,7 @@ const FLEET_CATEGORIES: Array<{
     imageUrl:
       "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=800&auto=format&fit=crop",
     badge: null,
-  },
-];
-
-const WHY_ITEMS: Array<{
-  Icon: React.ElementType;
-  title: string;
-  description: string;
-}> = [
-  {
-    Icon: Zap,
-    title: "3 minutos a bordo",
-    description:
-      "Nuestro proceso digitalizado elimina las colas del mostrador. Aterriza, escanea y conduce.",
-  },
-  {
-    Icon: ShieldCheck,
-    title: "Check-in 100% digital",
-    description:
-      "Verifica tu documentación antes de llegar. Al aterrizar, solo recoges las llaves.",
-  },
-  {
-    Icon: CreditCard,
-    title: "Solo 10€ para reservar",
-    description:
-      "Bloquea tu vehículo con una micro-transacción. El resto lo abonas al recoger el coche.",
+    includes: ["Seguro total", "Tag Jawaz", "SIM 5G", "Limpieza premium"],
   },
 ];
 
@@ -142,6 +122,24 @@ const TESTIMONIALS = [
     route: "CMN → Rabat",
     rating: 5,
     text: "El coche estaba limpio y perfecto. Equipo siempre disponible en el aeropuerto. Muy profesional.",
+  },
+  {
+    name: "Laura G.",
+    route: "CMN → Essaouira",
+    rating: 5,
+    text: "Primera vez alquilando en Marruecos y fue impecable. El check-in digital te ahorra todo el papeleo.",
+  },
+  {
+    name: "Youssef K.",
+    route: "CMN → Fez",
+    rating: 5,
+    text: "Reservé desde España con solo 10€. El coche me esperaba al salir del aeropuerto. Increíble servicio.",
+  },
+  {
+    name: "María T.",
+    route: "CMN → Agadir",
+    rating: 5,
+    text: "El SUV estaba nuevo y limpio. Tag Jawaz incluido para los peajes. No tuve que preocuparme de nada.",
   },
 ];
 
@@ -582,7 +580,7 @@ export default function HomeClient() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-80px" }}
-              className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12"
+              className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-14"
             >
               <div>
                 <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-semibold mb-3">
@@ -612,149 +610,174 @@ export default function HomeClient() {
                   key={cat.name}
                   href="/catalog"
                   variants={fadeUp}
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -6 }}
                   transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] as const }}
-                  className="group relative rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 hover:shadow-xl hover:shadow-slate-200/60 transition-shadow duration-300 cursor-pointer block"
+                  className="group relative rounded-2xl overflow-hidden border border-slate-100 bg-white hover:shadow-xl hover:shadow-blue-100/50 hover:border-blue-200 transition-all duration-300 cursor-pointer block"
                 >
                   {cat.badge && (
-                    <span className="absolute top-3 left-3 z-10 text-[10px] font-bold uppercase tracking-wider bg-brand-primary text-white px-2.5 py-1 rounded-full">
+                    <span className="absolute top-3 left-3 z-10 text-[10px] font-bold uppercase tracking-wider bg-brand-primary text-white px-2.5 py-1 rounded-full shadow-sm">
                       {cat.badge}
                     </span>
                   )}
-                  <div className="relative overflow-hidden h-44">
+                  <div className="relative overflow-hidden h-48 bg-slate-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={cat.imageUrl}
                       alt={cat.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
                   </div>
                   <div className="p-5">
-                    <p className="text-[11px] text-brand-muted font-medium uppercase tracking-wider mb-1">
+                    <p className="text-[10px] text-brand-muted font-medium uppercase tracking-widest mb-1">
                       {cat.example}
                     </p>
-                    <h3 className="text-xl font-bold text-brand-dark mb-3">{cat.name}</h3>
-                    <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-bold text-brand-dark mb-2">{cat.name}</h3>
+
+                    {/* Includes strip */}
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {cat.includes.map((inc) => (
+                        <span
+                          key={inc}
+                          className="text-[10px] font-medium text-brand-primary bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full"
+                        >
+                          {inc}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                       <div>
                         <span className="text-xs text-brand-muted">Desde </span>
-                        <span className="text-xl font-black text-brand-primary">{cat.fromPrice}€</span>
+                        <span className="text-2xl font-black text-brand-primary">{cat.fromPrice}€</span>
                         <span className="text-xs text-brand-muted">/día</span>
                       </div>
-                      <span className="text-brand-primary text-sm font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                        Ver <ArrowRight className="w-3.5 h-3.5" />
+                      <span className="w-9 h-9 rounded-full bg-brand-primary/10 flex items-center justify-center group-hover:bg-brand-primary group-hover:text-white text-brand-primary transition-colors duration-200">
+                        <ArrowRight className="w-4 h-4" />
                       </span>
                     </div>
                   </div>
                 </motion.a>
               ))}
             </motion.div>
-          </div>
-        </section>
 
-        {/* ==========================================================
-            6. WHY NEXUS
-        ========================================================== */}
-        <section id="why" className="bg-blue-50 border-y border-blue-100 py-24 px-6">
-          <div className="max-w-5xl mx-auto">
+            {/* Includes banner */}
             <motion.div
               variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-80px" }}
-              className="text-center mb-14"
-            >
-              <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-semibold mb-3">
-                Por qué NEXUS.
-              </p>
-              <h2 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight">
-                El alquiler, reinventado.
-              </h2>
-            </motion.div>
-
-            <motion.div
-              variants={stagger}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-40px" }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
-            >
-              {WHY_ITEMS.map((item) => (
-                <motion.div
-                  key={item.title}
-                  variants={fadeUp}
-                  className="bg-white rounded-2xl p-8 border border-slate-100 hover:border-blue-200 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6">
-                    <item.Icon className="w-5 h-5 text-brand-primary" />
-                  </div>
-                  <h3 className="text-lg font-bold text-brand-dark mb-3">{item.title}</h3>
-                  <p className="text-brand-muted text-sm leading-relaxed">{item.description}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ==========================================================
-            7. TESTIMONIALS
-        ========================================================== */}
-        <section className="bg-white py-24 px-6">
-          <div className="max-w-5xl mx-auto">
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-80px" }}
-              className="text-center mb-14"
-            >
-              <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-semibold mb-3">
-                Clientes reales · Experiencias reales
-              </p>
-              <h2 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight">
-                Ellos ya condujeron.
-              </h2>
-            </motion.div>
-
-            <motion.div
-              variants={stagger}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
+              className="mt-8 flex flex-wrap items-center justify-center gap-6 text-brand-muted text-xs font-medium"
             >
-              {TESTIMONIALS.map((t) => (
-                <motion.div
-                  key={t.name}
-                  variants={fadeUp}
-                  className="rounded-2xl border border-slate-100 bg-slate-50 p-8 flex flex-col"
-                >
-                  <div className="flex gap-0.5 mb-5">
-                    {[...Array(t.rating)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <p className="text-brand-dark text-[15px] leading-relaxed font-medium flex-1 mb-6">
-                    &ldquo;{t.text}&rdquo;
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-sm flex-shrink-0">
-                      {t.name[0]}
-                    </div>
-                    <div>
-                      <p className="text-brand-dark font-semibold text-sm leading-none mb-0.5">
-                        {t.name}
-                      </p>
-                      <p className="text-brand-muted text-xs">{t.route}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+              <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-brand-primary" /> Seguro incluido</span>
+              <span className="flex items-center gap-1.5"><Wifi className="w-3.5 h-3.5 text-brand-primary" /> SIM 5G disponible</span>
+              <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-brand-primary" /> Tag Jawaz peajes</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-brand-primary" /> Recogida 24/7</span>
             </motion.div>
           </div>
         </section>
 
+        {/* ==========================================================
+            6. TESTIMONIALS — Auto-scroll
+        ========================================================== */}
+        <TestimonialsCarousel />
+
       </div>
     </>
+  );
+}
+
+/* ── Testimonials carousel component ──────────────────────────── */
+function TestimonialsCarousel() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    let raf: number;
+    let scrollPos = 0;
+    const speed = 0.5; // px per frame
+
+    const tick = () => {
+      scrollPos += speed;
+      // When we've scrolled past the first set, reset seamlessly
+      if (scrollPos >= el.scrollWidth / 2) {
+        scrollPos = 0;
+      }
+      el.scrollLeft = scrollPos;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    // Pause on hover
+    const pause = () => cancelAnimationFrame(raf);
+    const resume = () => { raf = requestAnimationFrame(tick); };
+    el.addEventListener("mouseenter", pause);
+    el.addEventListener("mouseleave", resume);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("mouseenter", pause);
+      el.removeEventListener("mouseleave", resume);
+    };
+  }, []);
+
+  // Double testimonials for seamless loop
+  const doubled = [...TESTIMONIALS, ...TESTIMONIALS];
+
+  return (
+    <section className="bg-slate-50 border-y border-slate-100 py-24 px-6">
+      <div className="max-w-6xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
+          className="text-center mb-12"
+        >
+          <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-semibold mb-3">
+            Clientes reales · Experiencias reales
+          </p>
+          <h2 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight">
+            Ellos ya condujeron.
+          </h2>
+        </motion.div>
+      </div>
+
+      {/* Full-width scroller */}
+      <div
+        ref={scrollRef}
+        className="flex gap-5 overflow-x-hidden px-6 cursor-default"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {doubled.map((t, idx) => (
+          <div
+            key={`${t.name}-${idx}`}
+            className="flex-shrink-0 w-[340px] rounded-2xl border border-slate-100 bg-white p-7 flex flex-col"
+          >
+            <div className="flex gap-0.5 mb-4">
+              {[...Array(t.rating)].map((_, i) => (
+                <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              ))}
+            </div>
+            <p className="text-brand-dark text-[15px] leading-relaxed font-medium flex-1 mb-5">
+              &ldquo;{t.text}&rdquo;
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-sm flex-shrink-0">
+                {t.name[0]}
+              </div>
+              <div>
+                <p className="text-brand-dark font-semibold text-sm leading-none mb-0.5">
+                  {t.name}
+                </p>
+                <p className="text-brand-muted text-xs">{t.route}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
