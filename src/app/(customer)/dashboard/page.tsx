@@ -11,6 +11,7 @@ import {
   CreditCard,
   FileText,
   MapPin,
+  Headphones,
   MessageCircle,
   Phone,
   Plane,
@@ -301,8 +302,8 @@ export default function DashboardPage() {
           transition={{ delay: 0.2 }}
           className="mb-5"
         >
-          <h2 className="text-sm font-bold text-slate-900 mb-3">Acciones rápidas</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <h2 className="text-sm font-bold text-slate-900 mb-3">Contacto y acciones</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <QuickAction
               icon={QrCode}
               label="Smart Ticket"
@@ -329,8 +330,20 @@ export default function DashboardPage() {
             />
             <QuickAction
               icon={MessageCircle}
+              label="Chat en vivo"
+              description="Habla con nosotros"
+              href="#"
+              color="blue"
+              onClick={() => {
+                // Trigger ContactHub FAB click
+                const fab = document.getElementById("contact-hub-fab");
+                if (fab) fab.click();
+              }}
+            />
+            <QuickAction
+              icon={MessageCircle}
               label="WhatsApp"
-              description="Contactar operador"
+              description="Mensaje directo"
               href={`https://wa.me/${OPERATOR_WHATSAPP}?text=${encodeURIComponent(
                 "Hola, tengo una reserva y necesito ayuda"
               )}`}
@@ -339,11 +352,22 @@ export default function DashboardPage() {
             />
             <QuickAction
               icon={Phone}
-              label="Asistencia"
-              description="Soporte 24/7"
+              label="Llamar"
+              description="Habla con un agente"
               href={`tel:+${OPERATOR_WHATSAPP}`}
-              color="slate"
+              color="violet"
               external
+            />
+            <QuickAction
+              icon={Headphones}
+              label="Centro ayuda"
+              description="Soporte 24/7"
+              href="#"
+              color="amber"
+              onClick={() => {
+                const fab = document.getElementById("contact-hub-fab");
+                if (fab) fab.click();
+              }}
             />
           </div>
         </motion.div>
@@ -644,6 +668,8 @@ const COLOR_MAP: Record<string, { bg: string; icon: string; hover: string }> = {
   blue: { bg: "bg-blue-50", icon: "text-blue-600", hover: "hover:bg-blue-100" },
   emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", hover: "hover:bg-emerald-100" },
   green: { bg: "bg-green-50", icon: "text-green-600", hover: "hover:bg-green-100" },
+  violet: { bg: "bg-violet-50", icon: "text-violet-600", hover: "hover:bg-violet-100" },
+  amber: { bg: "bg-amber-50", icon: "text-amber-600", hover: "hover:bg-amber-100" },
   slate: { bg: "bg-slate-100", icon: "text-slate-600", hover: "hover:bg-slate-200" },
 };
 
@@ -655,6 +681,7 @@ function QuickAction({
   color,
   disabled = false,
   external = false,
+  onClick,
 }: {
   icon: React.ElementType;
   label: string;
@@ -663,6 +690,7 @@ function QuickAction({
   color: string;
   disabled?: boolean;
   external?: boolean;
+  onClick?: () => void;
 }) {
   const c = COLOR_MAP[color] ?? COLOR_MAP.slate;
 
@@ -675,6 +703,22 @@ function QuickAction({
         <p className="text-sm font-bold text-slate-900">{label}</p>
         <p className="text-[11px] text-slate-400 mt-0.5">{description}</p>
       </div>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        className={`block w-full text-left bg-white border border-slate-200 rounded-2xl p-4 shadow-sm ${c.hover}
+                    active:scale-[0.98] transition-all`}
+      >
+        <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center mb-2`}>
+          <Icon className={`w-5 h-5 ${c.icon}`} />
+        </div>
+        <p className="text-sm font-bold text-slate-900">{label}</p>
+        <p className="text-[11px] text-slate-400 mt-0.5">{description}</p>
+      </button>
     );
   }
 
