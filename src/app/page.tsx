@@ -105,67 +105,192 @@ const stagger = {
 };
 
 /* ==========================================================================
-   INTRO SPLASH — cinematic full-screen entrance
+   CAR SILHOUETTE — inline SVG, side profile facing right
+   ========================================================================== */
+function CarSilhouette() {
+  return (
+    <svg
+      width="320"
+      height="110"
+      viewBox="0 0 320 110"
+      fill="none"
+      aria-hidden
+    >
+      {/* Body lower */}
+      <path
+        d="M18 78 Q28 82 48 82 L272 82 Q290 82 298 74 L304 64 Q284 60 268 42 Q240 16 198 13 L122 13 Q80 16 52 42 Q36 60 18 64 Z"
+        fill="#1E293B"
+      />
+      {/* Cabin roof */}
+      <path
+        d="M122 13 L198 13 Q240 16 264 40 Q238 36 190 34 L130 34 Q82 36 56 40 Q80 16 122 13 Z"
+        fill="#263548"
+      />
+      {/* Windshield */}
+      <path
+        d="M132 34 L188 34 Q218 34 238 40 Q212 37 188 36 L132 36 Q108 37 82 40 Q102 34 132 34 Z"
+        fill="#7DD3FC"
+        opacity="0.35"
+      />
+      {/* Side windows */}
+      <rect x="104" y="36" width="52" height="22" rx="3" fill="#7DD3FC" opacity="0.25" />
+      <rect x="162" y="36" width="44" height="22" rx="3" fill="#7DD3FC" opacity="0.2" />
+      {/* Door lines */}
+      <line x1="158" y1="36" x2="158" y2="74" stroke="#334155" strokeWidth="1.5" />
+      <line x1="210" y1="38" x2="210" y2="74" stroke="#334155" strokeWidth="1.5" />
+      {/* Front wheel */}
+      <circle cx="238" cy="82" r="21" fill="#0F172A" />
+      <circle cx="238" cy="82" r="12" fill="#1E293B" />
+      <circle cx="238" cy="82" r="5" fill="#334155" />
+      {/* Rear wheel */}
+      <circle cx="82" cy="82" r="21" fill="#0F172A" />
+      <circle cx="82" cy="82" r="12" fill="#1E293B" />
+      <circle cx="82" cy="82" r="5" fill="#334155" />
+      {/* Ground shadow */}
+      <ellipse cx="160" cy="104" rx="130" ry="5" fill="#000" opacity="0.35" />
+      {/* Headlight glow */}
+      <ellipse cx="296" cy="67" rx="7" ry="5" fill="#BFDBFE" opacity="0.9" />
+      <ellipse cx="302" cy="67" rx="4" ry="3" fill="#FFFFFF" opacity="0.7" />
+      {/* Headlight beam */}
+      <path
+        d="M300 62 L320 55 L320 80 L300 72 Z"
+        fill="url(#beam)"
+        opacity="0.15"
+      />
+      <defs>
+        <linearGradient id="beam" x1="300" y1="67" x2="320" y2="67" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#93C5FD" />
+          <stop offset="100%" stopColor="#93C5FD" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* Tail light */}
+      <ellipse cx="24" cy="69" rx="6" ry="4" fill="#EF4444" opacity="0.8" />
+      <ellipse cx="18" cy="69" rx="3" ry="2.5" fill="#FCA5A5" opacity="0.6" />
+    </svg>
+  );
+}
+
+/* ==========================================================================
+   INTRO SPLASH — CSS-3D cinematic vehicle wipe entrance
    ========================================================================== */
 function IntroSplash({ onDone }: { onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 2000);
+    const t = setTimeout(onDone, 2500);
     return () => clearTimeout(t);
   }, [onDone]);
 
+  /* Car sweep easing (cubic-bezier) */
+  const carEase = [0.11, 0, 0.5, 0] as const;
+
   return (
     <motion.div
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-brand-dark overflow-hidden"
-      initial={{ y: 0 }}
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#080D1A] overflow-hidden"
+      initial={{ clipPath: "inset(0 0% 0 0%)" }}
       exit={{
-        y: "-100%",
-        transition: { duration: 0.85, ease: [0.76, 0, 0.24, 1] as const },
+        clipPath: "inset(0 0% 0 100%)",
+        transition: { duration: 0.9, ease: [0.76, 0, 0.24, 1] as const },
       }}
     >
-      {/* Dot grid  */}
+      {/* Dot grid */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none opacity-20"
+        className="absolute inset-0 pointer-events-none opacity-[0.18]"
         style={{
           backgroundImage: "radial-gradient(circle, #334155 1px, transparent 1px)",
           backgroundSize: "28px 28px",
         }}
       />
-      {/* Top-right blue radial */}
+      {/* Ambient radial — top right */}
       <div
         aria-hidden
-        className="absolute top-0 right-0 w-[600px] h-[600px] pointer-events-none"
+        className="absolute top-0 right-0 w-[700px] h-[700px] pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at top right, rgba(37,99,235,0.25) 0%, transparent 65%)",
+            "radial-gradient(ellipse at top right, rgba(37,99,235,0.2) 0%, transparent 65%)",
+        }}
+      />
+      {/* Ambient radial — bottom left */}
+      <div
+        aria-hidden
+        className="absolute bottom-0 left-0 w-[500px] h-[500px] pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.08) 0%, transparent 65%)",
         }}
       />
 
-      {/* Logo reveal */}
-      <div className="relative z-10 flex flex-col items-center gap-5">
+      {/* ── Speed lines ── */}
+      <div className="absolute inset-0 flex flex-col justify-center gap-3 pointer-events-none" aria-hidden>
+        {[
+          { top: "44%", delay: 0.55, w: "55%", opacity: 0.18 },
+          { top: "48%", delay: 0.5,  w: "70%", opacity: 0.28 },
+          { top: "52%", delay: 0.58, w: "60%", opacity: 0.18 },
+        ].map((line, i) => (
+          <motion.div
+            key={i}
+            className="absolute h-[1px] bg-gradient-to-r from-transparent via-brand-primary to-transparent"
+            style={{ top: line.top, left: 0, width: line.w, opacity: 0 }}
+            animate={{ opacity: [0, line.opacity, line.opacity, 0], scaleX: [0, 1, 1, 0.8] }}
+            transition={{
+              duration: 1.4,
+              delay: line.delay,
+              ease: "easeInOut" as const,
+              times: [0, 0.2, 0.7, 1],
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ── Car sweep ── */}
+      <div
+        aria-hidden
+        className="absolute inset-0 flex items-center pointer-events-none"
+        style={{ perspective: "1200px" }}
+      >
         <motion.div
-          className="overflow-hidden"
-          initial={{ opacity: 1 }}
+          style={{ willChange: "transform, filter" }}
+          initial={{ x: -480, scale: 0.28, rotateY: -14 }}
+          animate={{
+            x:       [-480, -120, 80, 920],
+            scale:   [0.28,  0.9, 2.4, 0.5],
+            rotateY: [-14,   -7,  0,   8],
+            filter:  [
+              "blur(0px) brightness(1)",
+              "blur(3px) brightness(1.1)",
+              "blur(14px) brightness(1.3)",
+              "blur(5px) brightness(0.9)",
+            ],
+          }}
+          transition={{
+            duration: 1.65,
+            delay: 0.55,
+            ease: carEase,
+            times: [0, 0.35, 0.65, 1],
+          }}
         >
+          <CarSilhouette />
+        </motion.div>
+      </div>
+
+      {/* ── Logo + tagline + bar ── */}
+      <div className="relative z-10 flex flex-col items-center gap-5">
+        <motion.div className="overflow-hidden">
           <motion.p
             className="text-5xl md:text-7xl font-black text-white tracking-tight"
             initial={{ y: "100%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] as const, delay: 0.15 }}
+            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] as const, delay: 0.12 }}
           >
             Casablanca<span className="text-brand-primary">.</span>
           </motion.p>
         </motion.div>
 
-        <motion.div
-          className="overflow-hidden"
-          initial={{ opacity: 1 }}
-        >
+        <motion.div className="overflow-hidden">
           <motion.p
             className="text-sm text-slate-400 tracking-[0.25em] uppercase font-medium"
             initial={{ y: "100%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] as const, delay: 0.38 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] as const, delay: 0.32 }}
           >
             CMN · Aeropuerto Mohammed V
           </motion.p>
@@ -177,7 +302,7 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
             className="h-full bg-brand-primary rounded-full"
             initial={{ x: "-100%" }}
             animate={{ x: "0%" }}
-            transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] as const, delay: 0.4 }}
+            transition={{ duration: 1.8, ease: [0.22, 1, 0.36, 1] as const, delay: 0.36 }}
           />
         </motion.div>
       </div>
