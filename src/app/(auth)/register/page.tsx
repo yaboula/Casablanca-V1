@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { User, Mail, Phone, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { User, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import PhoneInput from "@/components/ui/PhoneInput";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -69,13 +70,7 @@ export default function RegisterPage() {
       placeholder: "tu@email.com",
       icon: <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />,
     },
-    {
-      id: "phone",
-      label: "WhatsApp (con código de país)",
-      type: "tel",
-      placeholder: "+212 6XX XXX XXX",
-      icon: <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />,
-    },
+
     {
       id: "password",
       label: "Contraseña",
@@ -100,7 +95,42 @@ export default function RegisterPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {fields.map((field) => (
+        {/* Name */}
+        {fields.filter((f) => f.id !== "password").map((field) => (
+          <div key={field.id} className="space-y-1.5">
+            <label htmlFor={field.id} className="text-sm font-medium text-brand-dark">
+              {field.label}
+            </label>
+            <div className="relative">
+              {field.icon}
+              <input
+                id={field.id}
+                name={field.id}
+                type={field.type}
+                required
+                placeholder={field.placeholder}
+                value={form[field.id]}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 rounded-brand-card border border-gray-200 bg-white
+                           text-brand-dark placeholder:text-brand-muted/60
+                           focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary
+                           transition-all text-sm"
+              />
+            </div>
+          </div>
+        ))}
+
+        {/* Phone with country code selector */}
+        <PhoneInput
+          value={form.phone}
+          onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}
+          label="WhatsApp (con código de país)"
+          placeholder="6XX XXX XXX"
+          required
+        />
+
+        {/* Password */}
+        {fields.filter((f) => f.id === "password").map((field) => (
           <div key={field.id} className="space-y-1.5">
             <label htmlFor={field.id} className="text-sm font-medium text-brand-dark">
               {field.label}

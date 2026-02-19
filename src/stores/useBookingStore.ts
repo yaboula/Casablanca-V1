@@ -17,6 +17,8 @@ interface BookingState {
   // Derived — recalculated automatically when dates or price change
   totalDays: number | null;
   totalPriceEUR: number | null;
+  // Set after payment confirmation
+  reservationId: string | null;
 }
 
 // ── Actions ──────────────────────────────────────────────────
@@ -26,6 +28,7 @@ interface BookingActions {
   setLocation: (loc: PickupLocation) => void;
   setVehicle: (vehicleId: string, pricePerDay: number) => void;
   clearVehicle: () => void;
+  setReservationId: (id: string) => void;
   reset: () => void;
 }
 
@@ -57,6 +60,7 @@ const INITIAL_STATE: BookingState = {
   selectedVehiclePricePerDay: null,
   totalDays: null,
   totalPriceEUR: null,
+  reservationId: null,
 };
 
 // ── Store ────────────────────────────────────────────────────
@@ -91,6 +95,8 @@ export const useBookingStore = create<BookingState & BookingActions>()(
           totalPriceEUR: null,
         }),
 
+      setReservationId: (id) => set({ reservationId: id }),
+
       reset: () => set(INITIAL_STATE),
     }),
     {
@@ -103,6 +109,7 @@ export const useBookingStore = create<BookingState & BookingActions>()(
         pickupLocation: state.pickupLocation,
         selectedVehicleId: state.selectedVehicleId,
         selectedVehiclePricePerDay: state.selectedVehiclePricePerDay,
+        reservationId: state.reservationId,
       }),
     }
   )

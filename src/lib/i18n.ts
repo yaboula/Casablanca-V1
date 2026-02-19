@@ -18,9 +18,9 @@ const messageMap: Record<Locale, Messages> = {
 };
 
 export const LOCALE_LABELS: Record<Locale, string> = {
-  es: "ES",
-  fr: "FR",
-  ar: "AR",
+  es: "Español",
+  fr: "Français",
+  ar: "العربية",
 };
 
 // ── Store ─────────────────────────────────────────────────────

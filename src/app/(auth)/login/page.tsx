@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -81,9 +82,9 @@ function LoginForm() {
             <label htmlFor="password" className="text-sm font-medium text-brand-dark">
               Contraseña
             </label>
-            <button type="button" className="text-xs text-brand-primary hover:underline">
+            <Link href="/forgot-password" className="text-xs text-brand-primary hover:underline">
               ¿Olvidaste tu contraseña?
-            </button>
+            </Link>
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />

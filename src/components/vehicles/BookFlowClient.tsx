@@ -21,6 +21,7 @@ import { es } from "date-fns/locale";
 import type { Vehicle } from "@/types";
 import { useBookingStore } from "@/stores/useBookingStore";
 import { DEPOSIT_AMOUNT_EUR, PICKUP_LOCATION_LABELS } from "@/lib/constants";
+import PhoneInput from "@/components/ui/PhoneInput";
 
 // ── Steps ─────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ const slideVariants = {
 
 export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
   const router = useRouter();
-  const { pickupDate, returnDate, pickupLocation, totalDays, totalPriceEUR } =
+  const { pickupDate, returnDate, pickupLocation, totalDays, totalPriceEUR, setReservationId } =
     useBookingStore();
 
   const [step, setStep] = useState<Step>(1);
@@ -86,13 +87,15 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
 
   const handleSubmit = useCallback(async () => {
     setProcessing(true);
-    // Simulate payment
+    // Simulate payment processing
     await new Promise((r) => setTimeout(r, 2200));
-    // Would create reservation via API here
-    router.push("/check-in");
-  }, [router]);
+    // Generate reservation ID
+    const id = "CMN-" + Date.now().toString(36).toUpperCase();
+    setReservationId(id);
+    router.push(`/booking/confirmed?id=${id}`);
+  }, [router, setReservationId]);
 
-  const contactValid = name.trim().length >= 2 && phone.trim().length >= 6;
+  const contactValid = name.trim().length >= 2 && phone.replace(/[^\d]/g, "").length >= 8;
   const cardValid =
     cardNumber.replace(/\s/g, "").length >= 14 &&
     expiry.length >= 4 &&
@@ -237,12 +240,11 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                     placeholder="Ej: Ahmed El Fassi"
                     autoFocus
                   />
-                  <Field
-                    label="Teléfono / WhatsApp"
+                  <PhoneInput
                     value={phone}
                     onChange={setPhone}
-                    placeholder="+212 6XX XX XX XX"
-                    type="tel"
+                    label="Teléfono / WhatsApp"
+                    placeholder="6XX XX XX XX"
                   />
                   <Field
                     label="Email (opcional)"
