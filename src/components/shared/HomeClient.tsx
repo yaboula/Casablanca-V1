@@ -1,11 +1,10 @@
 "use client";
 
-import { motion, useMotionTemplate, useMotionValue, useSpring, AnimatePresence } from "framer-motion";
+import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
 import { ArrowRight, Clock, ShieldCheck, Star, Zap } from "lucide-react";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback } from "react";
 import BookingPanel from "@/components/shared/BookingPanel";
 import CountUp from "@/components/ui/CountUp";
-import IntroSplash from "@/components/shared/IntroSplash";
 import Marquee from "@/components/ui/Marquee";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import TrustCard from "@/components/vehicles/TrustCard";
@@ -97,18 +96,6 @@ const stagger = {
 // ── Component ─────────────────────────────────────────────────
 
 export default function HomeClient() {
-  // Intro splash — show once per session
-  const [showSplash, setShowSplash] = useState(false);
-  useEffect(() => {
-    if (!sessionStorage.getItem("nexus_intro_shown")) {
-      setShowSplash(true);
-    }
-  }, []);
-  const handleSplashDone = useCallback(() => {
-    sessionStorage.setItem("nexus_intro_shown", "1");
-    setShowSplash(false);
-  }, []);
-
   // Mouse spotlight
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -130,9 +117,6 @@ export default function HomeClient() {
 
   return (
     <>
-      <AnimatePresence>
-        {showSplash && <IntroSplash onDone={handleSplashDone} />}
-      </AnimatePresence>
       <div className="relative w-full bg-brand-bg">
 
         {/* ==========================================================

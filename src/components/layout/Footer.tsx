@@ -44,14 +44,14 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               {[
                 { label: "Cómo funciona", href: "/#why" },
-                { label: "Preguntas frecuentes", href: "#" },
-                { label: "Términos de uso", href: "#" },
-                { label: "Privacidad", href: "#" },
+                { label: "Preguntas frecuentes", href: "/faq" },
+                { label: "Términos de uso", href: "/terms" },
+                { label: "Privacidad", href: "/privacy" },
               ].map((item) => (
                 <li key={item.label}>
-                  <a href={item.href} className="hover:text-white transition-colors">
+                  <Link href={item.href} className="hover:text-white transition-colors">
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
