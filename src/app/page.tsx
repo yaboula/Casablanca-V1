@@ -7,7 +7,7 @@ import {
   useMotionValue,
   useSpring,
 } from "framer-motion";
-import { ArrowRight, Car, Clock, Plane, ShieldCheck, Star, User, Zap } from "lucide-react";
+import { ArrowRight, Clock, ShieldCheck, Star, Zap } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import TrustCard from "@/components/vehicles/TrustCard";
 import CountUp from "@/components/ui/CountUp";
@@ -105,224 +105,79 @@ const stagger = {
 };
 
 /* ==========================================================================
-   INTRO SPLASH — Airport cinematic entrance
+   INTRO SPLASH — cinematic full-screen entrance
    ========================================================================== */
 function IntroSplash({ onDone }: { onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 3600);
+    const t = setTimeout(onDone, 2000);
     return () => clearTimeout(t);
   }, [onDone]);
 
   return (
     <motion.div
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#080D1A] overflow-hidden"
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-brand-dark overflow-hidden"
       initial={{ y: 0 }}
       exit={{
         y: "-100%",
-        transition: { duration: 0.9, ease: [0.76, 0, 0.24, 1] as const },
+        transition: { duration: 0.85, ease: [0.76, 0, 0.24, 1] as const },
       }}
     >
-      {/* ── Dot grid ──────────────────────────────────── */}
+      {/* Dot grid  */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none opacity-[0.18]"
+        className="absolute inset-0 pointer-events-none opacity-20"
         style={{
           backgroundImage: "radial-gradient(circle, #334155 1px, transparent 1px)",
           backgroundSize: "28px 28px",
         }}
       />
-      {/* ── Blue radial top-right ─────────────────────── */}
+      {/* Top-right blue radial */}
       <div
         aria-hidden
-        className="absolute top-0 right-0 w-[700px] h-[700px] pointer-events-none"
+        className="absolute top-0 right-0 w-[600px] h-[600px] pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at top right, rgba(37,99,235,0.20) 0%, transparent 62%)",
-        }}
-      />
-      {/* ── Emerald radial bottom-left ────────────────── */}
-      <div
-        aria-hidden
-        className="absolute bottom-0 left-0 w-[400px] h-[400px] pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.08) 0%, transparent 60%)",
+            "radial-gradient(ellipse at top right, rgba(37,99,235,0.25) 0%, transparent 65%)",
         }}
       />
 
-      {/* ── Airport scene ─────────────────────────────── */}
-      <div className="relative z-10 w-72 sm:w-96 h-44 mb-10">
-
-        {/* Runway label */}
-        <motion.p
-          className="absolute top-0 left-0 text-[9px] text-slate-600 tracking-[0.22em] uppercase font-medium"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25, duration: 0.5 }}
+      {/* Logo reveal */}
+      <div className="relative z-10 flex flex-col items-center gap-5">
+        <motion.div
+          className="overflow-hidden"
+          initial={{ opacity: 1 }}
         >
-          CMN · Runway 25L
-        </motion.p>
-
-        {/* ── Sky horizon glow ── */}
-        <div
-          aria-hidden
-          className="absolute left-0 right-0 pointer-events-none"
-          style={{
-            bottom: "56px",
-            height: "40px",
-            background: "linear-gradient(to top, rgba(37,99,235,0.06), transparent)",
-          }}
-        />
-
-        {/* ── Runway ground line ── */}
-        <motion.div
-          className="absolute left-0 right-0 h-px bg-slate-600"
-          style={{ bottom: "52px", transformOrigin: "left center" }}
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" as const }}
-        />
-
-        {/* ── Runway center dashes ── */}
-        <motion.div
-          className="absolute left-0 right-0 flex gap-2"
-          style={{ bottom: "50px" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9, duration: 0.3 }}
-        >
-          {[...Array(9)].map((_, i) => (
-            <div key={i} className="flex-1 h-px bg-slate-700" />
-          ))}
-        </motion.div>
-
-        {/* ── Plane — descends from top-right ── */}
-        {/* Lucide Plane points NE by default. scaleX(-1) flips it to NW.       */}
-        {/* rotate: -35 tilts nose down → landing approach. rotate: 0 = level.  */}
-        <motion.div
-          className="absolute"
-          style={{ transformOrigin: "center center" }}
-          initial={{ x: 200, y: -35, rotate: -35, opacity: 0 }}
-          animate={{
-            x:      [210, 130,  55,  18],
-            y:      [-35,   0,  46,  46],
-            rotate: [-35, -24,  -7,   0],
-            opacity:[  0,   1,   1,   1],
-          }}
-          transition={{
-            duration: 1.7,
-            delay: 0.45,
-            times: [0, 0.32, 0.72, 1],
-            ease: [0.3, 1, 0.4, 1] as const,
-          }}
-        >
-          <Plane
-            className="w-8 h-8 text-white drop-shadow-[0_0_8px_rgba(37,99,235,0.6)]"
-            style={{ transform: "scaleX(-1)" }}
-          />
-        </motion.div>
-
-        {/* ── Touch-down glow burst ── */}
-        <motion.div
-          className="absolute rounded-full bg-brand-primary blur-md"
-          style={{ bottom: "46px", left: "28px", width: "36px", height: "10px" }}
-          initial={{ opacity: 0, scaleX: 0 }}
-          animate={{ opacity: [0, 0.9, 0], scaleX: [0, 1.4, 0] }}
-          transition={{ delay: 2.15, duration: 0.45, ease: "easeOut" as const }}
-        />
-
-        {/* ── Person — walks right after plane stops ── */}
-        <motion.div
-          className="absolute"
-          style={{ bottom: "50px" }}
-          initial={{ x: 22, opacity: 0 }}
-          animate={{
-            x:       [22,  26,  62, 100],
-            opacity: [ 0,   1,   1,   0],
-          }}
-          transition={{
-            delay: 2.35,
-            duration: 0.85,
-            times: [0, 0.07, 0.78, 1],
-            ease: "easeOut" as const,
-          }}
-        >
-          <User className="w-4 h-4 text-slate-400" />
-        </motion.div>
-
-        {/* ── Road line (below runway) ── */}
-        <motion.div
-          className="absolute left-0 right-0 h-px bg-slate-700"
-          style={{ bottom: "20px", transformOrigin: "left center" }}
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ delay: 0.5, duration: 0.55, ease: "easeOut" as const }}
-        />
-
-        {/* ── Car — zooms L→R on the road ── */}
-        <motion.div
-          className="absolute flex items-center"
-          style={{ bottom: "14px" }}
-          initial={{ x: -90, opacity: 0 }}
-          animate={{
-            x:       [-90, -50, 480],
-            opacity: [  0,   1,   1],
-          }}
-          transition={{
-            delay: 2.55,
-            duration: 0.7,
-            times: [0, 0.06, 1],
-            ease: [0.4, 0, 0.2, 1] as const,
-          }}
-        >
-          <Car
-            className="w-7 h-7 text-brand-primary drop-shadow-[0_0_10px_rgba(37,99,235,0.7)]"
-          />
-          {/* Speed lines */}
-          <div className="flex flex-col gap-[3px] ml-0.5 -translate-x-2">
-            <div className="w-5 h-px bg-brand-primary/25 rounded" />
-            <div className="w-3 h-px bg-brand-primary/18 rounded" />
-            <div className="w-6 h-px bg-brand-primary/25 rounded" />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ── Logo + bar ────────────────────────────────── */}
-      <div className="relative z-10 flex flex-col items-center gap-4">
-        <div className="overflow-hidden">
           <motion.p
-            className="text-4xl sm:text-6xl font-black text-white tracking-tight"
-            initial={{ y: "110%" }}
+            className="text-5xl md:text-7xl font-black text-white tracking-tight"
+            initial={{ y: "100%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] as const, delay: 2.8 }}
+            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] as const, delay: 0.15 }}
           >
             Casablanca<span className="text-brand-primary">.</span>
           </motion.p>
-        </div>
+        </motion.div>
 
-        <div className="overflow-hidden">
+        <motion.div
+          className="overflow-hidden"
+          initial={{ opacity: 1 }}
+        >
           <motion.p
-            className="text-[10px] text-slate-500 tracking-[0.3em] uppercase font-medium"
-            initial={{ y: "110%" }}
+            className="text-sm text-slate-400 tracking-[0.25em] uppercase font-medium"
+            initial={{ y: "100%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const, delay: 3.0 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] as const, delay: 0.38 }}
           >
-            Alquiler de Coches · CMN
+            CMN · Aeropuerto Mohammed V
           </motion.p>
-        </div>
+        </motion.div>
 
         {/* Loading bar */}
-        <motion.div
-          className="mt-2 w-28 h-[2px] bg-slate-800 rounded-full overflow-hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 3.05 }}
-        >
+        <motion.div className="mt-4 w-32 h-[2px] bg-slate-700 rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-brand-primary rounded-full"
             initial={{ x: "-100%" }}
             animate={{ x: "0%" }}
-            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] as const, delay: 3.1 }}
+            transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] as const, delay: 0.4 }}
           />
         </motion.div>
       </div>
