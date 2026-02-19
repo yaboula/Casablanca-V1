@@ -3,9 +3,28 @@
 import { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronRight, ChevronDown } from "lucide-react";
-import { format, differenceInCalendarDays, addDays, isAfter } from "date-fns";
+import {
+  ArrowRight,
+  CalendarIcon,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+} from "lucide-react";
+import {
+  format,
+  differenceInCalendarDays,
+  addDays,
+  isAfter,
+  isBefore,
+  startOfDay,
+} from "date-fns";
 import { es } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useBookingStore } from "@/stores/useBookingStore";
 import { PICKUP_LOCATION_LABELS } from "@/lib/constants";
 import type { PickupLocation } from "@/types";
@@ -13,52 +32,169 @@ import type { PickupLocation } from "@/types";
 //  helpers 
 
 const LOCATIONS: PickupLocation[] = ["CMN_T1", "CMN_T2"];
-const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
+const HOURS = Array.from(
+  { length: 24 },
+  (_, i) => `${String(i).padStart(2, "0")}:00`
+);
 
-function toDateStr(d: Date) { return d.toISOString().split("T")[0]; }
-function buildDate(dateStr: string, timeStr: string) {
-  return new Date(`${dateStr}T${timeStr}:00`);
+function buildDate(date: Date, timeStr: string) {
+  const [h, m] = timeStr.split(":").map(Number);
+  const d = new Date(date);
+  d.setHours(h, m, 0, 0);
+  return d;
 }
 
-//  Shared field wrapper 
+//  DateTimeField 
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+interface DateTimeFieldProps {
+  label: string;
+  date: Date | undefined;
+  time: string;
+  onDateChange: (d: Date) => void;
+  onTimeChange: (t: string) => void;
+  disabledBefore?: Date;
+  defaultMonth?: Date;
+}
+
+function DateTimeField({
+  label,
+  date,
+  time,
+  onDateChange,
+  onTimeChange,
+  disabledBefore,
+  defaultMonth,
+}: DateTimeFieldProps) {
+  const [open, setOpen] = useState(false);
+
+  const displayText = date
+    ? format(date, "dd MMM yyyy", { locale: es })
+    : "Seleccionar fecha";
+
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">{label}</span>
-      {children}
+      <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
+        {label}
+      </span>
+
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div className="flex items-center gap-2">
+            {/* Date trigger button */}
+            <button
+              type="button"
+              className="flex items-center gap-2.5 flex-[2] h-12 px-4 rounded-2xl border border-slate-200
+                         bg-white text-sm font-semibold text-brand-dark text-left
+                         hover:border-brand-primary/50 hover:shadow-sm
+                         focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary
+                         transition-all duration-150"
+            >
+              <CalendarIcon className="w-4 h-4 text-brand-muted shrink-0" />
+              <span className={date ? "text-brand-dark" : "text-brand-muted"}>
+                {displayText}
+              </span>
+            </button>
+
+            {/* Time selector */}
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                <Clock className="w-3.5 h-3.5 text-brand-muted" />
+              </span>
+              <select
+                value={time}
+                onChange={(e) => { e.stopPropagation(); onTimeChange(e.target.value); }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full h-12 pl-8 pr-2 rounded-2xl border border-slate-200 bg-white
+                           text-sm font-semibold text-brand-dark appearance-none cursor-pointer
+                           focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary
+                           transition-all"
+              >
+                {HOURS.map((h) => (
+                  <option key={h} value={h}>{h}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-brand-muted" />
+            </div>
+          </div>
+        </PopoverTrigger>
+
+        {/* Calendar Popover */}
+        <PopoverContent
+          className="w-auto p-0 rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+          align="start"
+          sideOffset={8}
+        >
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(d) => { if (d) { onDateChange(d); setOpen(false); } }}
+            defaultMonth={defaultMonth ?? date ?? new Date()}
+            disabled={(d) =>
+              isBefore(startOfDay(d), startOfDay(disabledBefore ?? new Date()))
+            }
+            locale={es}
+            className="p-4 [--cell-size:--spacing(10)]"
+            classNames={{
+              day_selected:
+                "bg-brand-primary text-white hover:bg-brand-primary focus:bg-brand-primary rounded-full",
+              day_today: "font-extrabold underline underline-offset-2",
+              day: "rounded-full transition-colors",
+            }}
+          />
+
+          {/* Hour grid inside popover */}
+          <div className="px-4 pb-4 pt-1 border-t border-slate-100 bg-slate-50">
+            <p className="text-[10px] uppercase tracking-wider text-brand-muted font-semibold mb-2">
+              Hora de {label === "Fecha de recogida" ? "recogida" : "devolución"}
+            </p>
+            <div className="grid grid-cols-6 gap-1">
+              {HOURS.map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => onTimeChange(h)}
+                  className={`text-xs font-semibold py-1.5 rounded-lg transition-all
+                    ${
+                      time === h
+                        ? "bg-brand-primary text-white shadow-sm"
+                        : "bg-white border border-slate-200 text-brand-dark hover:border-brand-primary/40 hover:text-brand-primary"
+                    }`}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
 
-//  Input styles (shared) 
-
-const inputCls =
-  "w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-brand-dark " +
-  "focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary " +
-  "transition-all cursor-pointer appearance-none";
-
-//  Step 1 
+//  Step 1: Dates 
 
 function StepDates({ onNext }: { onNext: () => void }) {
   const { pickupLocation, setDates, setLocation } = useBookingStore();
 
-  const todayStr = toDateStr(new Date());
-  const tomorrowStr = toDateStr(addDays(new Date(), 1));
+  const today = startOfDay(new Date());
 
-  const [pickupDate, setPickupDate] = useState(todayStr);
+  const [pickupDate, setPickupDate] = useState<Date | undefined>(today);
   const [pickupTime, setPickupTime] = useState("12:00");
-  const [returnDate, setReturnDate]   = useState(tomorrowStr);
-  const [returnTime, setReturnTime]   = useState("12:00");
+  const [returnDate, setReturnDate] = useState<Date | undefined>(addDays(today, 1));
+  const [returnTime, setReturnTime] = useState("12:00");
 
-  function handlePickupDateChange(v: string) {
-    setPickupDate(v);
-    if (!isAfter(buildDate(returnDate, returnTime), buildDate(v, pickupTime))) {
-      setReturnDate(toDateStr(addDays(new Date(v + "T12:00:00"), 1)));
+  function handlePickupDateChange(d: Date) {
+    setPickupDate(d);
+    if (
+      returnDate &&
+      !isAfter(buildDate(returnDate, returnTime), buildDate(d, pickupTime))
+    ) {
+      setReturnDate(addDays(d, 1));
     }
   }
 
   const days = useMemo(() => {
+    if (!pickupDate || !returnDate) return null;
     const d = differenceInCalendarDays(
       buildDate(returnDate, returnTime),
       buildDate(pickupDate, pickupTime)
@@ -66,23 +202,31 @@ function StepDates({ onNext }: { onNext: () => void }) {
     return d > 0 ? d : null;
   }, [pickupDate, pickupTime, returnDate, returnTime]);
 
-  const isValid = !!days;
-
   function handleNext() {
-    setDates(buildDate(pickupDate, pickupTime).getTime(), buildDate(returnDate, returnTime).getTime());
+    if (!pickupDate || !returnDate) return;
+    setDates(
+      buildDate(pickupDate, pickupTime).getTime(),
+      buildDate(returnDate, returnTime).getTime()
+    );
     onNext();
   }
 
   return (
     <div className="flex flex-col gap-4">
 
-      {/* Terminal dropdown */}
-      <Field label="Terminal de recogida">
+      {/* Terminal */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
+          Terminal de recogida
+        </span>
         <div className="relative">
           <select
             value={pickupLocation}
             onChange={(e) => setLocation(e.target.value as PickupLocation)}
-            className={inputCls + " pr-10"}
+            className="w-full h-12 px-4 pr-10 rounded-2xl border border-slate-200 bg-white
+                       text-sm font-semibold text-brand-dark appearance-none cursor-pointer
+                       focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary
+                       transition-all"
           >
             {LOCATIONS.map((loc) => (
               <option key={loc} value={loc}>{PICKUP_LOCATION_LABELS[loc]}</option>
@@ -90,73 +234,52 @@ function StepDates({ onNext }: { onNext: () => void }) {
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
         </div>
-      </Field>
+      </div>
 
       {/* Pickup date + time */}
-      <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Fecha de recogida</span>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={pickupDate}
-            min={todayStr}
-            onChange={(e) => handlePickupDateChange(e.target.value)}
-            className={inputCls + " flex-[2]"}
-          />
-          <div className="relative flex-1">
-            <select
-              value={pickupTime}
-              onChange={(e) => setPickupTime(e.target.value)}
-              className={inputCls + " pr-8"}
-            >
-              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-muted" />
-          </div>
-        </div>
-      </div>
+      <DateTimeField
+        label="Fecha de recogida"
+        date={pickupDate}
+        time={pickupTime}
+        onDateChange={handlePickupDateChange}
+        onTimeChange={setPickupTime}
+        disabledBefore={today}
+      />
 
       {/* Return date + time */}
-      <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Fecha de devolución</span>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={returnDate}
-            min={toDateStr(addDays(new Date(pickupDate + "T12:00:00"), 1))}
-            onChange={(e) => setReturnDate(e.target.value)}
-            className={inputCls + " flex-[2]"}
-          />
-          <div className="relative flex-1">
-            <select
-              value={returnTime}
-              onChange={(e) => setReturnTime(e.target.value)}
-              className={inputCls + " pr-8"}
-            >
-              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-muted" />
-          </div>
-        </div>
-      </div>
+      <DateTimeField
+        label="Fecha de devolución"
+        date={returnDate}
+        time={returnTime}
+        onDateChange={setReturnDate}
+        onTimeChange={setReturnTime}
+        disabledBefore={pickupDate ? addDays(pickupDate, 1) : addDays(today, 1)}
+        defaultMonth={pickupDate}
+      />
 
       {/* Duration chip */}
-      {days && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-xl py-3"
-        >
-          <span className="text-sm font-bold text-brand-dark">{days}</span>
-          <span className="text-sm text-brand-muted">{days === 1 ? "día de alquiler" : "días de alquiler"}</span>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {days && (
+          <motion.div
+            key="chip"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            className="flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl py-3"
+          >
+            <span className="text-sm font-bold text-brand-dark">{days}</span>
+            <span className="text-sm text-brand-muted">
+              {days === 1 ? "día de alquiler" : "días de alquiler"}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* CTA */}
       <button
         type="button"
         onClick={handleNext}
-        disabled={!isValid}
+        disabled={!days}
         className="w-full min-h-[54px] bg-brand-primary disabled:bg-slate-200 disabled:text-slate-400
                    text-white font-bold text-sm rounded-full
                    flex items-center justify-center gap-2
@@ -169,13 +292,14 @@ function StepDates({ onNext }: { onNext: () => void }) {
       </button>
 
       <p className="text-center text-[11px] text-brand-muted">
-        Solo <span className="text-brand-dark font-semibold">10€</span> para confirmar · El precio varía según el coche
+        Solo <span className="text-brand-dark font-semibold">10€</span> para
+        confirmar · El precio varía según el coche
       </p>
     </div>
   );
 }
 
-//  Step 2: Confirmation 
+//  Step 2: Confirm 
 
 function StepConfirm({ onBack }: { onBack: () => void }) {
   const { totalDays, pickupLocation, pickupDate, returnDate } = useBookingStore();
@@ -186,12 +310,12 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-xl bg-slate-50 border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+      <div className="rounded-2xl bg-slate-50 border border-slate-100 divide-y divide-slate-100 overflow-hidden">
         {[
-          { label: "Terminal",    value: PICKUP_LOCATION_LABELS[pickupLocation] },
+          { label: "Terminal",   value: PICKUP_LOCATION_LABELS[pickupLocation] },
           { label: "Recogida",   value: fmt(pickupDate) },
-          { label: "Devolución",  value: fmt(returnDate) },
-          { label: "Duración",    value: `${totalDays} ${totalDays === 1 ? "día" : "días"}` },
+          { label: "Devolución", value: fmt(returnDate) },
+          { label: "Duración",   value: `${totalDays} ${totalDays === 1 ? "día" : "días"}` },
         ].map((r) => (
           <div key={r.label} className="flex justify-between items-center px-4 py-3 text-sm">
             <span className="text-brand-muted">{r.label}</span>
@@ -200,7 +324,7 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
         ))}
       </div>
 
-      <div className="flex items-start gap-3 bg-brand-primary/5 border border-brand-primary/15 rounded-xl p-4">
+      <div className="flex items-start gap-3 bg-brand-primary/5 border border-brand-primary/15 rounded-2xl p-4">
         <div className="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center shrink-0 mt-0.5">
           <span className="text-white font-black text-xs">€</span>
         </div>
@@ -243,7 +367,10 @@ function StepDots({ current }: { current: number }) {
         <motion.div
           key={n}
           className="h-1.5 rounded-full"
-          animate={{ width: n === current ? 20 : 6, backgroundColor: n <= current ? "#2563EB" : "#E2E8F0" }}
+          animate={{
+            width: n === current ? 20 : 6,
+            backgroundColor: n <= current ? "#2563EB" : "#E2E8F0",
+          }}
           transition={{ duration: 0.25 }}
         />
       ))}
@@ -253,7 +380,7 @@ function StepDots({ current }: { current: number }) {
 
 const stepVariants = {
   enter:  { opacity: 0, x: 16 },
-  center: { opacity: 1, x: 0,  transition: { duration: 0.2,  ease: "easeOut" as const } },
+  center: { opacity: 1, x: 0,   transition: { duration: 0.2,  ease: "easeOut" as const } },
   exit:   { opacity: 0, x: -16, transition: { duration: 0.15, ease: "easeIn"  as const } },
 };
 
@@ -271,7 +398,9 @@ export default function BookingPanel() {
     >
       <div className="flex items-center justify-between mb-5">
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-brand-muted font-medium">CMN · Mohammed V</p>
+          <p className="text-[10px] uppercase tracking-widest text-brand-muted font-medium">
+            CMN · Mohammed V
+          </p>
           <h3 className="text-base font-bold text-brand-dark mt-0.5">
             {step === 1 ? "Reserva tu coche" : "Confirmar reserva"}
           </h3>
