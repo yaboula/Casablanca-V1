@@ -21,6 +21,7 @@ export interface ChatMessage {
 interface ChatState {
   messages: ChatMessage[];
   unreadCount: number;
+  _hasHydrated: boolean;
 }
 
 interface ChatActions {
@@ -28,11 +29,13 @@ interface ChatActions {
   updateMessageStatus: (id: string, status: ChatMessage["status"]) => void;
   markAllRead: () => void;
   clearChat: () => void;
+  setHasHydrated: (value: boolean) => void;
 }
 
 const INITIAL_STATE: ChatState = {
   messages: [],
   unreadCount: 0,
+  _hasHydrated: false,
 };
 
 export const useChatStore = create<ChatState & ChatActions>()(
@@ -67,10 +70,20 @@ export const useChatStore = create<ChatState & ChatActions>()(
       markAllRead: () => set({ unreadCount: 0 }),
 
       clearChat: () => set(INITIAL_STATE),
+
+      setHasHydrated: (value) => set({ _hasHydrated: value }),
     }),
     {
       name: "nexus-chat",
       storage: createJSONStorage(() => localStorage),
+      // Only persist messages and unreadCount, not the hydration flag
+      partialize: (state) => ({
+        messages: state.messages,
+        unreadCount: state.unreadCount,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

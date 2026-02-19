@@ -69,7 +69,7 @@ function groupByDate(messages: ChatMessage[]) {
 }
 
 export default function ChatPage() {
-  const { messages, addMessage, updateMessageStatus, markAllRead } =
+  const { messages, addMessage, updateMessageStatus, markAllRead, _hasHydrated } =
     useChatStore();
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -136,8 +136,9 @@ export default function ChatPage() {
     }
   }, [inputValue, isSending, addMessage, updateMessageStatus]);
 
-  // Add welcome system message on first visit
+  // Add welcome system message only on true first visit (after store hydrates)
   useEffect(() => {
+    if (!_hasHydrated) return; // wait for localStorage to load
     if (messages.length === 0) {
       addMessage(
         "¡Bienvenido al chat de NEXUS! 👋\n\nEscríbenos tu consulta y nuestro equipo te responderá lo antes posible. También puedes usar WhatsApp si lo prefieres.",
@@ -145,7 +146,7 @@ export default function ChatPage() {
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [_hasHydrated]);
 
   const messageGroups = groupByDate(messages);
 

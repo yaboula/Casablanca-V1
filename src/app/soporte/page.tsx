@@ -188,7 +188,7 @@ export default function SoportePage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 -mt-4 pb-12">
+      <div className="max-w-4xl mx-auto px-4 mt-6 pb-12">
         {/* ── In-app Chat CTA ───────────────────────────── */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}
