@@ -101,7 +101,7 @@ export default function HomeClient() {
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { damping: 28, stiffness: 100, mass: 0.5 });
   const springY = useSpring(mouseY, { damping: 28, stiffness: 100, mass: 0.5 });
-  const spotlightBg = useMotionTemplate`radial-gradient(900px at ${springX}px ${springY}px, rgba(37, 99, 235, 0.13), transparent 75%)`;
+  const spotlightBg = useMotionTemplate`radial-gradient(600px at ${springX}px ${springY}px, rgba(37, 99, 235, 0.13), transparent 75%)`;
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
@@ -162,7 +162,7 @@ export default function HomeClient() {
 
           {/* ── Floating badges (desktop) ─────────────── */}
           <motion.div
-            className="absolute top-[22%] left-[13%] xl:left-[17%] hidden lg:block z-10"
+            className="absolute top-[22%] left-[4%] xl:left-[5%] hidden lg:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -183,7 +183,7 @@ export default function HomeClient() {
           </motion.div>
 
           <motion.div
-            className="absolute top-[18%] right-[13%] xl:right-[17%] hidden lg:block z-10"
+            className="absolute top-[18%] right-[4%] xl:right-[5%] hidden lg:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -206,7 +206,7 @@ export default function HomeClient() {
           </motion.div>
 
           <motion.div
-            className="absolute bottom-[28%] left-[13%] xl:left-[17%] hidden lg:block z-10"
+            className="absolute bottom-[28%] left-[4%] xl:left-[5%] hidden lg:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.8, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -227,7 +227,7 @@ export default function HomeClient() {
           </motion.div>
 
           <motion.div
-            className="absolute bottom-[30%] right-[13%] xl:right-[17%] hidden lg:block z-10"
+            className="absolute bottom-[30%] right-[4%] xl:right-[5%] hidden lg:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 1.0, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
