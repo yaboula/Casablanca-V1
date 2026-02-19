@@ -1,12 +1,10 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
-import { ArrowRight, Clock, Key, Plane, QrCode, ShieldCheck, Star, Zap } from "lucide-react";
-import { useCallback, useState } from "react";
-import IntroSplash from "@/components/shared/IntroSplash";
+import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
+import { ArrowRight, Clock, ShieldCheck, Star, Zap } from "lucide-react";
+import { useCallback } from "react";
 import BookingPanel from "@/components/shared/BookingPanel";
 import CountUp from "@/components/ui/CountUp";
-import MagneticButton from "@/components/ui/MagneticButton";
 import Marquee from "@/components/ui/Marquee";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import TrustCard from "@/components/vehicles/TrustCard";
@@ -98,8 +96,6 @@ const stagger = {
 // ── Component ─────────────────────────────────────────────────
 
 export default function HomeClient() {
-  const [introVisible, setIntroVisible] = useState(true);
-
   // Mouse spotlight
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -121,13 +117,6 @@ export default function HomeClient() {
 
   return (
     <>
-      {/* Intro splash */}
-      <AnimatePresence>
-        {introVisible && (
-          <IntroSplash key="intro" onDone={() => setIntroVisible(false)} />
-        )}
-      </AnimatePresence>
-
       <div className="relative w-full bg-brand-bg">
 
         {/* ==========================================================
@@ -176,7 +165,7 @@ export default function HomeClient() {
             className="absolute top-[22%] left-[6%] xl:left-[8%] hidden lg:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 2.2, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+            transition={{ delay: 0.4, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
           >
             <motion.div
               animate={{ y: [0, -9, 0] }}
@@ -197,7 +186,7 @@ export default function HomeClient() {
             className="absolute top-[18%] right-[6%] xl:right-[8%] hidden lg:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 2.4, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+            transition={{ delay: 0.6, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
           >
             <motion.div
               animate={{ y: [0, -7, 0] }}
@@ -220,7 +209,7 @@ export default function HomeClient() {
             className="absolute bottom-[28%] left-[5%] xl:left-[8%] hidden lg:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 2.6, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+            transition={{ delay: 0.8, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
           >
             <motion.div
               animate={{ y: [0, -10, 0] }}
@@ -241,7 +230,7 @@ export default function HomeClient() {
             className="absolute bottom-[30%] right-[5%] xl:right-[8%] hidden lg:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 2.8, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+            transition={{ delay: 1.0, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
           >
             <motion.div
               animate={{ y: [0, -8, 0] }}
@@ -268,7 +257,7 @@ export default function HomeClient() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.9, duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
+                transition={{ delay: 0.2, duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
                 className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-slate-200 bg-white shadow-sm text-xs text-brand-muted tracking-[0.16em] uppercase font-semibold mb-10"
               >
                 <span className="relative flex h-2 w-2 flex-shrink-0">
@@ -325,7 +314,7 @@ export default function HomeClient() {
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.6, duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
+                transition={{ delay: 0.45, duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
                 className="flex items-center gap-2 sm:gap-3 mb-8"
               >
                 {STEPS.map((step, i) => (
@@ -359,51 +348,17 @@ export default function HomeClient() {
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.65, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }}
+                transition={{ delay: 0.5, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }}
                 className="text-base md:text-lg text-brand-muted max-w-sm mb-10 leading-relaxed"
               >
                 Sin filas. Sin papel. Solo tú y la carretera.
               </motion.p>
 
-              {/* CTA (mobile only — desktop uses BookingPanel) */}
-              <motion.div
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.75, duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
-                className="flex flex-col sm:flex-row items-center gap-4 mb-10 lg:hidden"
-              >
-                <MagneticButton
-                  onClick={scrollToFleet}
-                  className="group relative overflow-hidden flex items-center gap-3 bg-brand-primary text-white font-bold text-sm px-8 py-4 rounded-brand-pill min-h-[52px] shadow-[0_4px_24px_rgba(37,99,235,0.30)]"
-                >
-                  <motion.span
-                    aria-hidden
-                    className="absolute inset-0 -skew-x-12 pointer-events-none"
-                    style={{
-                      background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%)",
-                    }}
-                    animate={{ x: ["-120%", "220%"] }}
-                    transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 2.8, ease: "easeInOut" }}
-                  />
-                  <span className="relative">Reservar ahora</span>
-                  <span className="relative font-black opacity-75">· 10€</span>
-                  <ArrowRight className="relative w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </MagneticButton>
-
-                <button
-                  type="button"
-                  onClick={scrollToFleet}
-                  className="text-brand-muted hover:text-brand-dark text-xs tracking-[0.18em] uppercase font-semibold transition-colors min-h-[48px] px-6 border border-slate-200 rounded-brand-pill bg-white"
-                >
-                  Ver flota
-                </button>
-              </motion.div>
-
               {/* Star rating row */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 1.9, duration: 0.6 }}
+                transition={{ delay: 0.6, duration: 0.6 }}
                 className="flex items-center gap-3"
               >
                 <div className="flex gap-0.5">
@@ -418,15 +373,10 @@ export default function HomeClient() {
               </motion.div>
             </div>
 
-            {/* ── Booking Panel (desktop right side) ──── */}
-            <motion.div
-              className="w-full max-w-sm hidden lg:block"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 2.0, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
-            >
+            {/* ── Booking Panel ──── */}
+            <div className="w-full lg:max-w-sm">
               <BookingPanel />
-            </motion.div>
+            </div>
           </div>
         </section>
 
@@ -605,11 +555,6 @@ export default function HomeClient() {
           </div>
         </section>
 
-      </div>
-
-      {/* ── Mobile Booking Panel (bottom drawer) ───── */}
-      <div className="lg:hidden">
-        <BookingPanel />
       </div>
     </>
   );
