@@ -193,14 +193,24 @@ export default function Header() {
                       )}
 
                       {session.role === "USER" && (
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-dark hover:bg-slate-50 transition-colors"
-                        >
-                          <User size={16} className="text-brand-muted" />
-                          Mis reservas
-                        </Link>
+                        <>
+                          <Link
+                            href="/dashboard"
+                            onClick={() => setMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-dark hover:bg-slate-50 transition-colors"
+                          >
+                            <LayoutDashboard size={16} className="text-brand-muted" />
+                            Mis reservas
+                          </Link>
+                          <Link
+                            href="/profile"
+                            onClick={() => setMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-dark hover:bg-slate-50 transition-colors"
+                          >
+                            <User size={16} className="text-brand-muted" />
+                            Mi perfil
+                          </Link>
+                        </>
                       )}
 
                       <div className="border-t border-slate-100 mt-1 pt-1">
@@ -343,6 +353,27 @@ export default function Header() {
                       <LayoutDashboard size={20} className="text-brand-muted" />
                       Panel operador
                     </Link>
+                  )}
+
+                  {session.role === "USER" && (
+                    <>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-base font-medium text-brand-dark hover:bg-slate-50"
+                      >
+                        <LayoutDashboard size={20} className="text-brand-muted" />
+                        Mis reservas
+                      </Link>
+                      <Link
+                        href="/profile"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-base font-medium text-brand-dark hover:bg-slate-50"
+                      >
+                        <User size={20} className="text-brand-muted" />
+                        Mi perfil
+                      </Link>
+                    </>
                   )}
 
                   <button

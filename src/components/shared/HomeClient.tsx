@@ -1,8 +1,9 @@
 "use client";
 
 import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
-import { ArrowRight, Car, Clock, MapPin, Plane, QrCode, Shield, Smartphone, Star, Wifi, Zap } from "lucide-react";
-import React, { useCallback, useEffect, useRef } from "react";
+import { ArrowRight, Car, Clock, LayoutDashboard, MapPin, Plane, QrCode, Shield, Smartphone, Star, User, Wifi, Zap } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import BookingPanel from "@/components/shared/BookingPanel";
 import CountUp from "@/components/ui/CountUp";
 import Marquee from "@/components/ui/Marquee";
@@ -183,7 +184,20 @@ const stagger = {
 
 // ── Component ─────────────────────────────────────────────────
 
+type SessionRole = "USER" | "OPERATOR" | null;
+
+function getSession(): { email: string; role: SessionRole } | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/nexus_session=([^;]+)/);
+  if (!match) return null;
+  try { return JSON.parse(decodeURIComponent(match[1])); } catch { return null; }
+}
+
 export default function HomeClient() {
+  const [session, setSession] = useState<{ email: string; role: SessionRole } | null>(null);
+
+  useEffect(() => { setSession(getSession()); }, []);
+
   // Mouse spotlight
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -459,6 +473,43 @@ export default function HomeClient() {
                   {" "}· Beta · CMN
                 </span>
               </motion.div>
+
+              {/* ── Session CTA (logged-in users only) ───── */}
+              {session && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.75, duration: 0.45, ease: [0.22, 1, 0.36, 1] as const }}
+                  className="mt-6 w-full max-w-sm"
+                >
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-brand-dark truncate">
+                        Hola, {session.email.split("@")[0]} 👋
+                      </p>
+                      <p className="text-[11px] text-brand-muted">
+                        {session.role === "OPERATOR" ? "Panel de operador" : "Ver tus reservas activas"}
+                      </p>
+                    </div>
+                    <Link
+                      href={session.role === "OPERATOR" ? "/operator/dashboard" : "/dashboard"}
+                      className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-bold
+                                 px-3.5 py-2 rounded-xl hover:bg-blue-700 active:scale-[0.98]
+                                 transition-all shrink-0 min-h-[36px]"
+                    >
+                      {session.role === "OPERATOR" ? (
+                        <LayoutDashboard className="w-3.5 h-3.5" />
+                      ) : (
+                        <QrCode className="w-3.5 h-3.5" />
+                      )}
+                      {session.role === "OPERATOR" ? "Panel" : "Mi dashboard"}
+                    </Link>
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             {/* ── Booking Panel ──── */}
