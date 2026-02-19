@@ -3,137 +3,122 @@
 import { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowRight, MapPin, Minus, Plus, Calendar, ChevronRight } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { ArrowRight, ChevronRight, MapPin } from "lucide-react";
+import { format, differenceInCalendarDays, addDays, isAfter, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import Price from "@/components/shared/Price";
 import { useBookingStore } from "@/stores/useBookingStore";
-import { PICKUP_LOCATION_LABELS, DEPOSIT_AMOUNT_EUR } from "@/lib/constants";
+import { PICKUP_LOCATION_LABELS } from "@/lib/constants";
 import type { PickupLocation } from "@/types";
 
-//  Constants 
+//  helpers 
 
 const LOCATIONS: PickupLocation[] = ["CMN_T1", "CMN_T2"];
-const MIN_DAYS = 1;
-const MAX_DAYS = 30;
-const DEFAULT_PRICE_PER_DAY = 160; // EUR, shown before vehicle selection
 
-//  Stepper button 
+function toDateStr(d: Date) {
+  return d.toISOString().split("T")[0];
+}
 
-function Stepper({
+function fromStr(s: string): Date {
+  return new Date(s + "T12:00:00");
+}
+
+//  DateField component 
+// Native <input type="date"> styled to match brand.
+// Shows a friendly formatted label above the raw input.
+
+function DateField({
+  id,
+  label,
   value,
   min,
   max,
   onChange,
-  label,
 }: {
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
+  id: string;
   label: string;
+  value: string;
+  min?: string;
+  max?: string;
+  onChange: (v: string) => void;
 }) {
+  const displayDate = useMemo(() => {
+    if (!value) return null;
+    return format(fromStr(value), "EEE d MMM", { locale: es });
+  }, [value]);
+
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
+    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+      <label htmlFor={id} className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
         {label}
-      </span>
-      <div className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2">
-        <button
-          type="button"
-          aria-label="Menos días"
-          onClick={() => onChange(Math.max(min, value - 1))}
-          disabled={value <= min}
-          className="w-11 h-11 rounded-lg flex items-center justify-center
-                     bg-white border border-slate-200 text-brand-dark shadow-sm
-                     hover:bg-brand-primary hover:text-white hover:border-brand-primary
-                     disabled:opacity-30 disabled:cursor-not-allowed
-                     transition-all active:scale-95"
-        >
-          <Minus className="w-4 h-4" />
-        </button>
-
-        <div className="flex flex-col items-center flex-1">
-          <span className="text-2xl font-black text-brand-dark leading-none tabular-nums">
-            {value}
-          </span>
-          <span className="text-[11px] text-brand-muted mt-0.5">
-            {value === 1 ? "día" : "días"}
-          </span>
+      </label>
+      <div className="relative">
+        {/* Styled overlay  shows friendly date, hidden when input is focused */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-center px-4 rounded-xl bg-white border border-slate-200 z-[1]">
+          {displayDate ? (
+            <>
+              <span className="text-[11px] text-brand-muted leading-none capitalize">
+                {displayDate.split(" ").slice(0, 1).join("")}
+              </span>
+              <span className="text-sm font-bold text-brand-dark leading-tight">
+                {displayDate.split(" ").slice(1).join(" ")}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm text-brand-muted">Seleccionar</span>
+          )}
         </div>
-
-        <button
-          type="button"
-          aria-label="Más días"
-          onClick={() => onChange(Math.min(max, value + 1))}
-          disabled={value >= max}
-          className="w-11 h-11 rounded-lg flex items-center justify-center
-                     bg-white border border-slate-200 text-brand-dark shadow-sm
-                     hover:bg-brand-primary hover:text-white hover:border-brand-primary
-                     disabled:opacity-30 disabled:cursor-not-allowed
-                     transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Quick pills */}
-      <div className="flex gap-1.5 flex-wrap">
-        {[3, 7, 14].map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => onChange(d)}
-            className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
-              value === d
-                ? "bg-brand-primary text-white border-brand-primary"
-                : "bg-white text-brand-muted border-slate-200 hover:border-brand-primary hover:text-brand-primary"
-            }`}
-          >
-            {d} días
-          </button>
-        ))}
+        {/* Real input  invisible but clickable on top */}
+        <input
+          id={id}
+          type="date"
+          value={value}
+          min={min}
+          max={max}
+          onChange={(e) => onChange(e.target.value)}
+          className="relative z-[2] w-full h-[58px] opacity-0 cursor-pointer"
+        />
+        {/* Border always visible below overlay */}
+        <div className="absolute inset-0 rounded-xl border border-slate-200 pointer-events-none" />
       </div>
     </div>
   );
 }
 
-//  Step 1: Location + Date + Duration 
+//  Step 1 
 
 function StepDates({ onNext }: { onNext: () => void }) {
   const { pickupLocation, setDates, setLocation } = useBookingStore();
 
-  // Local state  sync to store on "next"
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    return d.toISOString().split("T")[0];
-  }, []);
+  const todayStr = toDateStr(new Date());
+  const tomorrowStr = toDateStr(addDays(new Date(), 1));
 
-  const [arrivalDate, setArrivalDate] = useState(todayStr);
-  const [days, setDays] = useState(3);
+  const [pickupStr, setPickupStr] = useState(todayStr);
+  const [returnStr, setReturnStr] = useState(tomorrowStr);
 
-  const totalPrice = days * DEFAULT_PRICE_PER_DAY;
+  // Auto-correct: return must be after pickup
+  function handlePickupChange(v: string) {
+    setPickupStr(v);
+    // If return is not after new pickup, push it forward by 1 day
+    if (!isAfter(fromStr(returnStr), fromStr(v))) {
+      setReturnStr(toDateStr(addDays(fromStr(v), 1)));
+    }
+  }
 
-  const returnDateLabel = useMemo(() => {
-    const base = new Date(arrivalDate + "T12:00:00");
-    return format(addDays(base, days), "d MMM yyyy", { locale: es });
-  }, [arrivalDate, days]);
+  const days = useMemo(() => {
+    const d = differenceInCalendarDays(fromStr(returnStr), fromStr(pickupStr));
+    return d > 0 ? d : 1;
+  }, [pickupStr, returnStr]);
 
-  const arrivalDateLabel = useMemo(() => {
-    const base = new Date(arrivalDate + "T12:00:00");
-    return format(base, "d MMM yyyy", { locale: es });
-  }, [arrivalDate]);
+  const isValid = pickupStr && returnStr && isAfter(fromStr(returnStr), fromStr(pickupStr));
 
   function handleNext() {
-    const pickup = new Date(arrivalDate + "T12:00:00");
-    const ret = addDays(pickup, days);
-    setDates(pickup.getTime(), ret.getTime());
+    setDates(fromStr(pickupStr).getTime(), fromStr(returnStr).getTime());
     onNext();
   }
 
   return (
     <div className="flex flex-col gap-5">
-      {/* 1  Terminal */}
+      {/* Terminal */}
       <div className="flex flex-col gap-2">
         <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
           Terminal de recogida
@@ -144,11 +129,11 @@ function StepDates({ onNext }: { onNext: () => void }) {
               key={loc}
               type="button"
               onClick={() => setLocation(loc)}
-              className={`min-h-[48px] px-3 py-3 rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2 ${
-                pickupLocation === loc
-                  ? "bg-brand-primary text-white border-brand-primary shadow-sm"
-                  : "bg-slate-50 text-brand-muted border-slate-200 hover:border-brand-primary hover:text-brand-dark"
-              }`}
+              className={`min-h-[48px] rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2 px-3
+                ${pickupLocation === loc
+                  ? "bg-brand-dark text-white border-brand-dark shadow-sm"
+                  : "bg-white text-brand-muted border-slate-200 hover:border-brand-dark hover:text-brand-dark"
+                }`}
             >
               <MapPin className="w-3.5 h-3.5 shrink-0" />
               {PICKUP_LOCATION_LABELS[loc]}
@@ -157,69 +142,48 @@ function StepDates({ onNext }: { onNext: () => void }) {
         </div>
       </div>
 
-      {/* 2  Arrival date */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="arrival" className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
-          Fecha de llegada
-        </label>
-        <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted pointer-events-none" />
-          <input
-            id="arrival"
-            type="date"
-            value={arrivalDate}
-            min={todayStr}
-            onChange={(e) => setArrivalDate(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white
-                       text-brand-dark font-semibold text-sm
-                       focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary
-                       transition-all cursor-pointer"
-          />
-        </div>
+      {/* Dates  two side-by-side pickers */}
+      <div className="flex gap-2">
+        <DateField
+          id="pickup"
+          label="Recogida"
+          value={pickupStr}
+          min={todayStr}
+          onChange={handlePickupChange}
+        />
+        <DateField
+          id="returnd"
+          label="Devolución"
+          value={returnStr}
+          min={toDateStr(addDays(fromStr(pickupStr), 1))}
+          onChange={setReturnStr}
+        />
       </div>
 
-      {/* 3  Days stepper */}
-      <Stepper
-        value={days}
-        min={MIN_DAYS}
-        max={MAX_DAYS}
-        onChange={setDays}
-        label="¿Cuántos días necesitas?"
-      />
-
-      {/* 4  Summary bar */}
-      <div className="bg-brand-primary/5 border border-brand-primary/15 rounded-xl p-4 flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-0.5 text-xs text-brand-muted leading-snug min-w-0">
-          <span>
-            <span className="font-semibold text-brand-dark">{arrivalDateLabel}</span>
-            {"  "}
-            <span className="font-semibold text-brand-dark">{returnDateLabel}</span>
-          </span>
-          <span>{days} {days === 1 ? "día" : "días"} · desde {DEFAULT_PRICE_PER_DAY}€/día</span>
-        </div>
-        <div className="shrink-0 text-right">
-          <Price amount={totalPrice} size="md" animated className="text-brand-dark" />
-          <p className="text-[10px] text-brand-muted">estimado</p>
-        </div>
+      {/* Duration chip  informative only, no price */}
+      <div className="flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-xl py-3">
+        <span className="text-sm font-bold text-brand-dark tabular-nums">{days}</span>
+        <span className="text-sm text-brand-muted">{days === 1 ? "día de alquiler" : "días de alquiler"}</span>
       </div>
 
-      {/* 5  CTA */}
+      {/* CTA */}
       <button
         type="button"
         onClick={handleNext}
-        className="w-full min-h-[54px] bg-brand-primary text-white font-bold text-sm rounded-full
+        disabled={!isValid}
+        className="w-full min-h-[54px] bg-brand-primary disabled:bg-slate-200 disabled:text-slate-400
+                   text-white font-bold text-sm rounded-full
                    flex items-center justify-center gap-2
                    hover:bg-brand-primary-hover active:scale-[0.98]
                    shadow-[0_4px_20px_rgba(37,99,235,0.28)] hover:shadow-[0_6px_28px_rgba(37,99,235,0.38)]
                    transition-all duration-200"
       >
-        Ver coches disponibles
+        Buscar coches disponibles
         <ArrowRight className="w-4 h-4" />
       </button>
 
-      {/* Deposit note */}
       <p className="text-center text-[11px] text-brand-muted">
-        Solo <span className="text-brand-dark font-semibold">10€</span> para confirmar · Resto al recoger
+        Solo <span className="text-brand-dark font-semibold">10€</span> para confirmar · El precio varía según el coche
       </p>
     </div>
   );
@@ -231,46 +195,36 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
   const { totalDays, pickupLocation, pickupDate, returnDate } = useBookingStore();
   const router = useRouter();
 
-  const estimatedTotal = totalDays ? totalDays * DEFAULT_PRICE_PER_DAY : null;
-
-  const fmt = (ts: number | null) => {
-    if (!ts) return "";
-    return format(new Date(ts), "d MMM yyyy", { locale: es });
-  };
-
-  const rows = [
-    { label: "Terminal", value: PICKUP_LOCATION_LABELS[pickupLocation] },
-    { label: "Llegada", value: fmt(pickupDate) },
-    { label: "Salida", value: fmt(returnDate) },
-    { label: "Duración", value: `${totalDays} ${totalDays === 1 ? "día" : "días"}` },
-  ];
+  const fmt = (ts: number | null) =>
+    ts ? format(new Date(ts), "d MMM yyyy", { locale: es }) : "";
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Summary card */}
+      {/* Summary rows */}
       <div className="rounded-xl bg-slate-50 border border-slate-100 divide-y divide-slate-100 overflow-hidden">
-        {rows.map((r) => (
+        {[
+          { label: "Terminal", value: PICKUP_LOCATION_LABELS[pickupLocation] },
+          { label: "Recogida", value: fmt(pickupDate) },
+          { label: "Devolución", value: fmt(returnDate) },
+          { label: "Duración", value: `${totalDays} ${totalDays === 1 ? "día" : "días"}` },
+        ].map((r) => (
           <div key={r.label} className="flex justify-between items-center px-4 py-3 text-sm">
             <span className="text-brand-muted">{r.label}</span>
             <span className="font-semibold text-brand-dark">{r.value}</span>
           </div>
         ))}
-        {estimatedTotal && (
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="font-semibold text-brand-dark text-sm">Total estimado</span>
-            <Price amount={estimatedTotal} size="md" animated className="text-brand-dark" />
-          </div>
-        )}
       </div>
 
-      {/* Deposit highlight */}
-      <div className="flex items-center gap-3 bg-brand-primary/5 border border-brand-primary/15 rounded-xl p-4">
-        <div className="w-10 h-10 rounded-xl bg-brand-primary flex items-center justify-center shrink-0">
-          <span className="text-white font-black text-sm">€</span>
+      {/* Info note  no price */}
+      <div className="flex items-start gap-3 bg-brand-primary/5 border border-brand-primary/15 rounded-xl p-4">
+        <div className="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center shrink-0 mt-0.5">
+          <span className="text-white font-black text-xs">€</span>
         </div>
         <div>
           <p className="text-sm font-bold text-brand-dark">Pagas ahora: 10€</p>
-          <p className="text-xs text-brand-muted">El resto lo abonas al recoger el vehículo</p>
+          <p className="text-xs text-brand-muted mt-0.5">
+            El precio exacto lo verás al elegir el vehículo. El depósito se descuenta del total.
+          </p>
         </div>
       </div>
 
@@ -291,13 +245,13 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
         onClick={onBack}
         className="text-xs text-brand-muted text-center hover:text-brand-dark transition-colors py-1"
       >
-         Cambiar fechas
+         Modificar fechas
       </button>
     </div>
   );
 }
 
-//  Step indicator 
+//  Step dots 
 
 function StepDots({ current }: { current: number }) {
   return (
@@ -317,7 +271,7 @@ function StepDots({ current }: { current: number }) {
   );
 }
 
-//  Main export 
+//  Animation variants 
 
 const stepVariants = {
   enter: { opacity: 0, x: 16 },
@@ -325,10 +279,7 @@ const stepVariants = {
   exit: { opacity: 0, x: -16, transition: { duration: 0.15, ease: "easeIn" as const } },
 };
 
-const STEP_TITLES: Record<number, string> = {
-  1: "Reserva tu coche",
-  2: "Confirmar reserva",
-};
+//  Main export 
 
 export default function BookingPanel() {
   const [step, setStep] = useState(1);
@@ -341,19 +292,18 @@ export default function BookingPanel() {
       transition={{ delay: 0.5, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <p className="text-[10px] uppercase tracking-widest text-brand-muted font-medium">
-            CMN · Aeropuerto Mohammed V
+            CMN · Mohammed V
           </p>
           <h3 className="text-base font-bold text-brand-dark mt-0.5">
-            {STEP_TITLES[step]}
+            {step === 1 ? "Reserva tu coche" : "Confirmar reserva"}
           </h3>
         </div>
         <StepDots current={step} />
       </div>
 
-      {/* Steps */}
       <AnimatePresence mode="wait">
         {step === 1 && (
           <motion.div key="s1" variants={stepVariants} initial="enter" animate="center" exit="exit">
