@@ -67,8 +67,8 @@ export default function DeliveryPage() {
   if (!delivery) {
     return (
       <div className="max-w-lg mx-auto px-5 pt-12 text-center">
-        <p className="text-white text-lg font-bold">Reserva no encontrada</p>
-        <Link href="/operator/dashboard" className="text-brand-primary text-sm mt-2 inline-block">
+        <p className="text-slate-900 text-lg font-bold">Reserva no encontrada</p>
+        <Link href="/operator/dashboard" className="text-blue-600 text-sm mt-2 inline-block">
           ← Volver al dashboard
         </Link>
       </div>
@@ -83,25 +83,25 @@ export default function DeliveryPage() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-8 text-center"
+          className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 400, damping: 12, delay: 0.1 }}
           >
-            <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
+            <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
           </motion.div>
-          <h2 className="text-xl font-bold text-white mb-2">Entrega completada</h2>
-          <p className="text-sm text-slate-400 mb-1">
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Entrega completada</h2>
+          <p className="text-sm text-slate-500 mb-1">
             {delivery.customerName} — {delivery.vehicle.brand} {delivery.vehicle.model}
           </p>
-          <p className="text-2xl font-black text-emerald-400 mb-6">
+          <p className="text-2xl font-black text-emerald-600 mb-6">
             {delivery.balanceDueEUR} € cobrados
           </p>
           <Link
             href="/operator/dashboard"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-brand-primary hover:text-blue-400 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Volver al dashboard
@@ -118,7 +118,7 @@ export default function DeliveryPage() {
       {/* Back */}
       <Link
         href="/operator/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors mb-5"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-5"
       >
         <ArrowLeft className="w-4 h-4" />
         Dashboard
@@ -128,17 +128,17 @@ export default function DeliveryPage() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-3 mb-5"
+        className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 mb-5"
       >
-        <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
+        <ShieldCheck className="w-6 h-6 text-emerald-500 shrink-0" />
         <div>
-          <p className="text-sm font-bold text-white">Reserva validada</p>
-          <p className="text-xs text-slate-400">#{delivery.id}</p>
+          <p className="text-sm font-bold text-slate-900">Reserva validada</p>
+          <p className="text-xs text-slate-500">#{delivery.id}</p>
         </div>
       </motion.div>
 
       {/* Customer + Vehicle info */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 mb-5">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 mb-5 shadow-sm">
         <div className="grid grid-cols-2 gap-3">
           <InfoBlock label="Cliente" value={delivery.customerName ?? "—"} />
           <InfoBlock
@@ -148,26 +148,26 @@ export default function DeliveryPage() {
           <InfoBlock label="Terminal" value={PICKUP_LOCATION_LABELS[delivery.pickupLocation]} />
           <InfoBlock label="Duración" value={`${delivery.totalDays} días`} />
         </div>
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
-          <FileText className="w-4 h-4 text-emerald-400" />
-          <span className="text-xs font-bold text-emerald-400">Pasaporte ✓ · Carnet ✓</span>
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+          <FileText className="w-4 h-4 text-emerald-500" />
+          <span className="text-xs font-bold text-emerald-500">Pasaporte ✓ · Carnet ✓</span>
         </div>
       </div>
 
       {/* Balance to collect */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center mb-5">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center mb-5 shadow-sm">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
           Cobrar ahora
         </p>
-        <p className="text-4xl font-black text-white tabular-nums">
+        <p className="text-4xl font-black text-slate-900 tabular-nums">
           {delivery.balanceDueEUR} €
         </p>
-        <p className="text-xs text-slate-500 mt-1">en efectivo o TPV</p>
+        <p className="text-xs text-slate-400 mt-1">en efectivo o TPV</p>
       </div>
 
       {/* Checklist */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-5">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-5 shadow-sm">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
           Checklist de entrega
         </p>
         <div className="space-y-2">
@@ -199,10 +199,10 @@ export default function DeliveryPage() {
         className={`w-full min-h-[50px] rounded-xl font-bold text-sm flex items-center justify-center gap-2 mb-4 transition-all
           ${
             videoRecorded
-              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+              ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
               : recording
-                ? "bg-red-500/15 text-red-400 border border-red-500/20"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+                ? "bg-red-50 text-red-600 border border-red-200"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
           }`}
       >
         <Video className="w-4 h-4" />
@@ -234,8 +234,8 @@ export default function DeliveryPage() {
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
-      <p className="text-sm font-bold text-white mt-0.5">{value}</p>
+      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-sm font-bold text-slate-900 mt-0.5">{value}</p>
     </div>
   );
 }
@@ -255,16 +255,16 @@ function ChecklistItem({
     <button
       onClick={() => onChange(!checked)}
       className={`w-full flex items-center gap-3 min-h-[48px] px-3 rounded-xl transition-colors
-        ${checked ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-slate-800 border border-slate-700 hover:border-slate-600"}`}
+        ${checked ? "bg-emerald-50 border border-emerald-200" : "bg-slate-50 border border-slate-200 hover:border-slate-300"}`}
     >
       <div
         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors
-          ${checked ? "bg-emerald-500 border-emerald-500" : "border-slate-600"}`}
+          ${checked ? "bg-emerald-500 border-emerald-500" : "border-slate-300"}`}
       >
         {checked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
       </div>
-      <Icon className={`w-4 h-4 shrink-0 ${checked ? "text-emerald-400" : "text-slate-400"}`} />
-      <span className={`text-sm font-medium ${checked ? "text-white" : "text-slate-300"}`}>
+      <Icon className={`w-4 h-4 shrink-0 ${checked ? "text-emerald-500" : "text-slate-400"}`} />
+      <span className={`text-sm font-medium ${checked ? "text-slate-900" : "text-slate-600"}`}>
         {label}
       </span>
     </button>

@@ -16,9 +16,9 @@ export default function QRScannerFAB() {
       <motion.button
         onClick={() => setIsOpen(true)}
         whileTap={{ scale: 0.92 }}
-        className="fixed bottom-24 right-5 z-40 w-14 h-14 bg-brand-primary rounded-full shadow-lg
-                   shadow-brand-primary/30 flex items-center justify-center
-                   hover:bg-brand-primary-hover active:shadow-md transition-all"
+        className="fixed bottom-24 right-5 z-40 w-14 h-14 bg-blue-600 rounded-full shadow-lg
+                   shadow-blue-600/30 flex items-center justify-center
+                   hover:bg-blue-700 active:shadow-md transition-all"
         aria-label="Escanear QR"
       >
         <QrCode className="w-6 h-6 text-white" />
@@ -87,26 +87,26 @@ function ScannerSheet({ onClose }: { onClose: () => void }) {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="fixed bottom-0 inset-x-0 z-50 bg-slate-900 border-t border-slate-700 rounded-t-3xl max-w-lg mx-auto"
+        className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 rounded-t-3xl max-w-lg mx-auto shadow-xl"
       >
         {/* Handle & close */}
         <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <div className="w-10 h-1 bg-slate-700 rounded-full" />
+          <div className="w-10 h-1 bg-slate-300 rounded-full" />
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition-colors"
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
           >
-            <X className="w-4 h-4 text-slate-400" />
+            <X className="w-4 h-4 text-slate-500" />
           </button>
         </div>
 
         <div className="px-5 pb-8 space-y-4">
           {/* Mode toggle */}
-          <div className="flex bg-slate-800 rounded-xl p-1">
+          <div className="flex bg-slate-100 rounded-xl p-1">
             <button
               onClick={() => setMode("scan")}
               className={`flex-1 min-h-[40px] rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors
-                ${mode === "scan" ? "bg-brand-primary text-white" : "text-slate-400 hover:text-white"}`}
+                ${mode === "scan" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
             >
               <QrCode className="w-3.5 h-3.5" />
               Escanear QR
@@ -114,7 +114,7 @@ function ScannerSheet({ onClose }: { onClose: () => void }) {
             <button
               onClick={() => setMode("manual")}
               className={`flex-1 min-h-[40px] rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors
-                ${mode === "manual" ? "bg-brand-primary text-white" : "text-slate-400 hover:text-white"}`}
+                ${mode === "manual" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
             >
               <Keyboard className="w-3.5 h-3.5" />
               Búsqueda manual
@@ -132,15 +132,15 @@ function ScannerSheet({ onClose }: { onClose: () => void }) {
                 <div className="absolute inset-8 border-2 border-white/20 rounded-xl" />
 
                 {/* Corner markers */}
-                <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-brand-primary rounded-tl-lg" />
-                <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-brand-primary rounded-tr-lg" />
-                <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-brand-primary rounded-bl-lg" />
-                <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-brand-primary rounded-br-lg" />
+                <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-blue-600 rounded-tl-lg" />
+                <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-blue-600 rounded-tr-lg" />
+                <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-blue-600 rounded-bl-lg" />
+                <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-blue-600 rounded-br-lg" />
 
                 {/* Scanning line animation */}
                 {scanning && (
                   <motion.div
-                    className="absolute left-8 right-8 h-0.5 bg-brand-primary/60"
+                    className="absolute left-8 right-8 h-0.5 bg-blue-600/60"
                     animate={{ top: ["15%", "85%", "15%"] }}
                     transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
                   />
@@ -161,7 +161,7 @@ function ScannerSheet({ onClose }: { onClose: () => void }) {
             <>
               {/* Manual search */}
               <div className="space-y-3">
-                <p className="text-sm text-slate-300 font-medium">
+                <p className="text-sm text-slate-600 font-medium">
                   Busca por nombre del cliente o ID de reserva
                 </p>
                 <div className="flex gap-2">
@@ -171,13 +171,13 @@ function ScannerSheet({ onClose }: { onClose: () => void }) {
                     onChange={(e) => setManualQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleManualSearch()}
                     placeholder="Ahmed Benjelloun o CMN-2026-001"
-                    className="flex-1 min-h-[48px] px-4 bg-slate-800 border border-slate-700 rounded-xl
-                               text-sm text-white placeholder:text-slate-500 focus:border-brand-primary focus:outline-none"
+                    className="flex-1 min-h-[48px] px-4 bg-slate-50 border border-slate-200 rounded-xl
+                               text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
                   />
                   <button
                     onClick={handleManualSearch}
-                    className="min-h-[48px] px-4 bg-brand-primary text-white rounded-xl font-bold text-sm
-                               hover:bg-brand-primary-hover transition-colors"
+                    className="min-h-[48px] px-4 bg-blue-600 text-white rounded-xl font-bold text-sm
+                               hover:bg-blue-700 transition-colors"
                   >
                     <Search className="w-5 h-5" />
                   </button>

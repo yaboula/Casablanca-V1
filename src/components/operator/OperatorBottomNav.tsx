@@ -16,7 +16,7 @@ export default function OperatorBottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 bg-slate-900 border-t border-slate-800 safe-area-bottom">
+    <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] safe-area-bottom">
       <div className="flex items-center justify-around max-w-lg mx-auto h-16">
         {tabs.map((tab) => {
           const isActive =
@@ -29,7 +29,7 @@ export default function OperatorBottomNav() {
               key={tab.href}
               href={tab.href}
               className={`flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[48px] rounded-xl transition-colors relative
-                ${isActive ? "text-brand-primary" : "text-slate-400 hover:text-slate-200"}`}
+                ${isActive ? "text-blue-600" : "text-slate-400 hover:text-slate-700"}`}
             >
               <div className="relative">
                 <Icon className="w-5 h-5" />
