@@ -302,7 +302,7 @@ export default function DashboardPage() {
           transition={{ delay: 0.2 }}
           className="mb-5"
         >
-          <h2 className="text-sm font-bold text-slate-900 mb-3">Contacto y acciones</h2>
+          <h2 className="text-sm font-bold text-slate-900 mb-3">Acciones rápidas</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <QuickAction
               icon={QrCode}
@@ -330,18 +330,6 @@ export default function DashboardPage() {
             />
             <QuickAction
               icon={MessageCircle}
-              label="Chat en vivo"
-              description="Habla con nosotros"
-              href="#"
-              color="blue"
-              onClick={() => {
-                // Trigger ContactHub FAB click
-                const fab = document.getElementById("contact-hub-fab");
-                if (fab) fab.click();
-              }}
-            />
-            <QuickAction
-              icon={MessageCircle}
               label="WhatsApp"
               description="Mensaje directo"
               href={`https://wa.me/${OPERATOR_WHATSAPP}?text=${encodeURIComponent(
@@ -360,14 +348,10 @@ export default function DashboardPage() {
             />
             <QuickAction
               icon={Headphones}
-              label="Centro ayuda"
-              description="Soporte 24/7"
-              href="#"
+              label="Centro soporte"
+              description="FAQ y ayuda 24/7"
+              href="/soporte"
               color="amber"
-              onClick={() => {
-                const fab = document.getElementById("contact-hub-fab");
-                if (fab) fab.click();
-              }}
             />
           </div>
         </motion.div>
