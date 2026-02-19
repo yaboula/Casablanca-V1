@@ -101,7 +101,7 @@ export default function HomeClient() {
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { damping: 28, stiffness: 100, mass: 0.5 });
   const springY = useSpring(mouseY, { damping: 28, stiffness: 100, mass: 0.5 });
-  const spotlightBg = useMotionTemplate`radial-gradient(700px at ${springX}px ${springY}px, rgba(37, 99, 235, 0.07), transparent 80%)`;
+  const spotlightBg = useMotionTemplate`radial-gradient(900px at ${springX}px ${springY}px, rgba(37, 99, 235, 0.13), transparent 75%)`;
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
@@ -140,7 +140,7 @@ export default function HomeClient() {
             style={{
               backgroundImage: "radial-gradient(circle, #94A3B8 1px, transparent 1px)",
               backgroundSize: "28px 28px",
-              opacity: 0.75,
+              opacity: 0.45,
             }}
           />
 
@@ -149,20 +149,20 @@ export default function HomeClient() {
             aria-hidden
             className="absolute top-0 right-0 w-[700px] h-[700px] pointer-events-none z-[1]"
             style={{
-              background: "radial-gradient(ellipse at top right, rgba(37,99,235,0.16) 0%, transparent 62%)",
+              background: "radial-gradient(ellipse at top right, rgba(37,99,235,0.24) 0%, transparent 62%)",
             }}
           />
           <div
             aria-hidden
             className="absolute bottom-0 left-0 w-[500px] h-[500px] pointer-events-none z-[1]"
             style={{
-              background: "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.11) 0%, transparent 60%)",
+              background: "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.17) 0%, transparent 60%)",
             }}
           />
 
           {/* ── Floating badges (desktop) ─────────────── */}
           <motion.div
-            className="absolute top-[22%] left-[6%] xl:left-[8%] hidden lg:block z-10"
+            className="absolute top-[22%] left-[13%] xl:left-[17%] hidden lg:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -183,7 +183,7 @@ export default function HomeClient() {
           </motion.div>
 
           <motion.div
-            className="absolute top-[18%] right-[6%] xl:right-[8%] hidden lg:block z-10"
+            className="absolute top-[18%] right-[13%] xl:right-[17%] hidden lg:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -206,7 +206,7 @@ export default function HomeClient() {
           </motion.div>
 
           <motion.div
-            className="absolute bottom-[28%] left-[5%] xl:left-[8%] hidden lg:block z-10"
+            className="absolute bottom-[28%] left-[13%] xl:left-[17%] hidden lg:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.8, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -227,7 +227,7 @@ export default function HomeClient() {
           </motion.div>
 
           <motion.div
-            className="absolute bottom-[30%] right-[5%] xl:right-[8%] hidden lg:block z-10"
+            className="absolute bottom-[30%] right-[13%] xl:right-[17%] hidden lg:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 1.0, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
