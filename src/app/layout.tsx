@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "Nexus — Alquiler de Coches en Casablanca",
@@ -19,6 +20,7 @@ export default function RootLayout({
         <main className="flex-1 w-full">
           {children}
         </main>
+        <Footer />
       </body>
     </html>
   );
