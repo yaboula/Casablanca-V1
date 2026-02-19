@@ -1,0 +1,115 @@
+{
+  "common": {
+    "brand": "NEXUS.",
+    "backHome": "Retour à l'accueil",
+    "loading": "Chargement...",
+    "error": "Une erreur s'est produite",
+    "retry": "Réessayer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "logout": "Déconnexion",
+    "login": "Se connecter",
+    "register": "S'inscrire"
+  },
+  "hero": {
+    "badge": "Transport Premium CMN",
+    "title": "Votre voiture vous attend à l'atterrissage",
+    "subtitle": "Réservez votre véhicule premium à l'Aéroport Mohammed V. Check-in digital, livraison en 3 minutes, sans file d'attente.",
+    "cta": "Réserver maintenant",
+    "ctaDeposit": "Seulement {amount} € de caution",
+    "stats": {
+      "deliveryTime": "Temps moyen de livraison",
+      "support": "Support à CMN",
+      "deposit": "Pour réserver votre voiture"
+    }
+  },
+  "booking": {
+    "pickupDate": "Date de prise en charge",
+    "returnDate": "Date de retour",
+    "pickupLocation": "Point de prise en charge",
+    "pickupTime": "Heure de prise en charge",
+    "selectDate": "Sélectionner une date",
+    "selectTime": "Sélectionner l'heure",
+    "continue": "Voir les voitures disponibles",
+    "terminal1": "Terminal 1",
+    "terminal2": "Terminal 2"
+  },
+  "catalog": {
+    "title": "Choisissez votre véhicule",
+    "subtitle": "Tous incluent SIM, Tag Jawaz et Assurance Tous Risques",
+    "filters": {
+      "all": "Tous",
+      "sedan": "Berlines",
+      "suv": "SUV",
+      "luxury": "Premium",
+      "compact": "Compactes"
+    },
+    "perDay": "/ jour",
+    "reserve": "Réserver",
+    "details": "Voir les détails"
+  },
+  "checkin": {
+    "title": "Check-in de Sécurité",
+    "subtitle": "Téléchargez vos documents pour vérifier votre identité.",
+    "passport": "Passeport",
+    "license": "Permis de conduire",
+    "camera": "Caméra",
+    "gallery": "Galerie",
+    "capture": "Prendre la photo",
+    "retake": "Reprendre",
+    "usePhoto": "Utiliser cette photo",
+    "uploading": "Envoi en cours...",
+    "uploaded": "Envoyé avec succès",
+    "lowLight": "Faible luminosité détectée — essayez dans un endroit plus éclairé"
+  },
+  "waitingRoom": {
+    "title": "Vérification de Sécurité",
+    "subtitle": "Réservation #{id}",
+    "docsSent": "Documents Envoyés",
+    "passport": "Passeport",
+    "license": "Permis de conduire",
+    "received": "Reçu",
+    "pending": "En attente",
+    "status": "État de la Vérification",
+    "reviewing": "En cours de révision",
+    "reviewingDesc": "Notre équipe vérifie vos documents manuellement.",
+    "estimatedTime": "Temps estimé : < 2 heures",
+    "approved": "Profil Vérifié !",
+    "redirecting": "Redirection vers votre Smart Ticket…",
+    "actionRequired": "Action requise",
+    "reupload": "Renvoyer le passeport",
+    "whatsappHelp": "Besoin d'aide ? WhatsApp",
+    "feedTitle": "Fil d'état"
+  },
+  "smartTicket": {
+    "passApproved": "Pass Approuvé",
+    "passenger": "Passager",
+    "vehicle": "Véhicule",
+    "pickup": "Prise en charge",
+    "return": "Retour",
+    "terminal": "Terminal",
+    "duration": "Durée",
+    "showQR": "Montrez ce code à l'opérateur",
+    "balanceDue": "Solde à la prise en charge",
+    "timeToPickup": "Temps avant la prise en charge",
+    "operatorWaiting": "Votre opérateur vous attend",
+    "now": "Maintenant !",
+    "whatsappLanded": "Prévenir — \"J'ai atterri\"",
+    "addWallet": "Ajouter au Wallet",
+    "walletSoon": "Apple Wallet / Google Wallet — Bientôt disponible",
+    "day": "jour",
+    "days": "jours"
+  },
+  "nav": {
+    "fleet": "Voir la flotte",
+    "howItWorks": "Comment ça marche",
+    "bookNow": "Réserver maintenant"
+  },
+  "notFound": {
+    "title": "Page non trouvée",
+    "description": "Il semble que vous vous soyez égaré. Cette page n'existe pas dans notre système."
+  }
+}

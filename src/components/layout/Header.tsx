@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, LogOut, LayoutDashboard } from "lucide-react";
+import { useCurrencyStore } from "@/stores/useBookingStore";
 
 type SessionRole = "USER" | "OPERATOR" | null;
 
@@ -68,6 +69,7 @@ export default function Header() {
 
         {/* Auth area */}
         <div className="flex items-center gap-2 relative">
+          <CurrencyToggle />
           {!session ? (
             <>
               <Link
@@ -137,5 +139,39 @@ export default function Header() {
         </div>
       </div>
     </header>
+  );
+}
+
+// ── Currency Toggle ──────────────────────────────────────────
+
+function CurrencyToggle() {
+  const { currency, toggleCurrency } = useCurrencyStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  return (
+    <button
+      onClick={toggleCurrency}
+      className="hidden sm:flex items-center gap-0.5 text-xs font-bold rounded-full border border-slate-200 overflow-hidden hover:border-slate-300 transition-colors"
+      aria-label="Cambiar divisa"
+    >
+      <span
+        className={`px-2.5 py-1.5 transition-colors ${
+          currency === "EUR" ? "bg-brand-primary text-white" : "text-brand-muted"
+        }`}
+      >
+        € EUR
+      </span>
+      <span
+        className={`px-2.5 py-1.5 transition-colors ${
+          currency === "MAD" ? "bg-brand-primary text-white" : "text-brand-muted"
+        }`}
+      >
+        DH MAD
+      </span>
+    </button>
   );
 }
