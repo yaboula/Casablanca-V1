@@ -7,7 +7,7 @@ import {
   useMotionValue,
   useSpring,
 } from "framer-motion";
-import { ArrowRight, Clock, ShieldCheck, Star, Zap } from "lucide-react";
+import { ArrowRight, Clock, Key, Plane, QrCode, ShieldCheck, Star, Zap } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import TrustCard from "@/components/vehicles/TrustCard";
 import CountUp from "@/components/ui/CountUp";
@@ -105,83 +105,85 @@ const stagger = {
 };
 
 /* ==========================================================================
-   INTRO SPLASH — Tech-Trust-Friendly brand reveal · NEXUS
+   INTRO SPLASH — Service story: Aterriza → Escanea → Conduce
+   100% specific to NEXUS at CMN airport, nobody else has this flow.
    ========================================================================== */
 
 const introLetterContainer = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.2 } },
+  visible: { transition: { staggerChildren: 0.065, delayChildren: 0.15 } },
 };
 const introLetterItem = {
   hidden: { y: "110%" },
   visible: {
     y: "0%",
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
 
+const INTRO_STEPS = [
+  {
+    Icon: Plane,
+    n: "01",
+    label: "Aterriza",
+    sub: "CMN · Terminal 1 & 2",
+    delay: 0.52,
+    accent: false,
+  },
+  {
+    Icon: QrCode,
+    n: "02",
+    label: "Escanea",
+    sub: "QR en zona de llegadas",
+    delay: 0.72,
+    accent: false,
+  },
+  {
+    Icon: Key,
+    n: "03",
+    label: "Conduce",
+    sub: "Tu coche en 30 segundos",
+    delay: 0.92,
+    accent: true,
+  },
+] as const;
+
 function IntroSplash({ onDone }: { onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 2800);
+    const t = setTimeout(onDone, 3200);
     return () => clearTimeout(t);
   }, [onDone]);
 
   return (
     <motion.div
-      className="fixed inset-0 z-[200] overflow-hidden flex flex-col items-center justify-center"
-      style={{ background: "#080F1E" }}
+      className="fixed inset-0 z-[200] overflow-hidden flex flex-col items-center justify-center gap-10"
+      style={{ background: "#0A1628" }}
       exit={{
         y: "-100%",
         transition: { duration: 0.85, ease: [0.76, 0, 0.24, 1] as const },
       }}
     >
-      {/* ── Noise grain texture ── */}
+      {/* ── Blue top glow ── */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none opacity-[0.035]"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
-        }}
-      />
-      {/* ── Deep blue glow — top center ── */}
-      <div
-        aria-hidden
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[480px] pointer-events-none"
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[420px] pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.28) 0%, transparent 70%)",
+            "radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.22) 0%, transparent 72%)",
         }}
       />
-      {/* ── Thin top border glow ── */}
+      {/* 1px top edge glow */}
       <div
         aria-hidden
-        className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none"
+        className="absolute top-0 left-0 right-0 h-px pointer-events-none"
         style={{
           background:
-            "linear-gradient(to right, transparent, rgba(37,99,235,0.7) 30%, rgba(99,179,237,0.9) 50%, rgba(37,99,235,0.7) 70%, transparent)",
+            "linear-gradient(to right, transparent, rgba(59,130,246,0.8) 30%, rgba(147,197,253,0.9) 50%, rgba(59,130,246,0.8) 70%, transparent)",
         }}
       />
 
-      {/* ── Location badge ── */}
-      <motion.div
-        className="relative z-10 flex items-center gap-2 px-4 py-1.5 rounded-full mb-8"
-        style={{ border: "1px solid rgba(37,99,235,0.3)", background: "rgba(37,99,235,0.08)" }}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const, delay: 0.08 }}
-      >
-        <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-[#3B82F6] opacity-75 animate-ping" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#3B82F6]" />
-        </span>
-        <span className="text-[0.58rem] font-semibold tracking-[0.26em] uppercase" style={{ color: "#93C5FD" }}>
-          CMN &middot; Aeropuerto Mohammed V
-        </span>
-      </motion.div>
-
-      {/* ── NEXUS. logotype ── */}
-      <div className="relative z-10 flex flex-col items-center gap-5 select-none">
+      {/* ── NEXUS. wordmark ── */}
+      <div className="relative z-10 flex flex-col items-center gap-2 select-none">
         <motion.div
           variants={introLetterContainer}
           initial="hidden"
@@ -193,7 +195,7 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
               <motion.span
                 variants={introLetterItem}
                 className="inline-block font-black leading-none text-white"
-                style={{ fontSize: "clamp(4rem,12vw,7.5rem)", letterSpacing: "0.12em" }}
+                style={{ fontSize: "clamp(2.6rem,8vw,4.5rem)", letterSpacing: "0.14em" }}
               >
                 {char}
               </motion.span>
@@ -203,66 +205,116 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
             <motion.span
               variants={introLetterItem}
               className="inline-block font-black leading-none"
-              style={{ fontSize: "clamp(4rem,12vw,7.5rem)", letterSpacing: "0.12em", color: "#3B82F6" }}
+              style={{ fontSize: "clamp(2.6rem,8vw,4.5rem)", letterSpacing: "0.14em", color: "#3B82F6" }}
             >
               .
             </motion.span>
           </span>
         </motion.div>
-
-        {/* Separator */}
-        <motion.div
-          style={{
-            height: "1px",
-            width: "220px",
-            background: "linear-gradient(to right, transparent, rgba(59,130,246,0.6), transparent)",
-          }}
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: 0.55 }}
-        />
-
-        {/* Tagline */}
+        {/* Sub-label */}
         <div className="overflow-hidden">
           <motion.p
-            className="text-[0.68rem] font-medium tracking-[0.3em] uppercase"
-            style={{ color: "#475569" }}
+            className="text-[0.58rem] font-semibold tracking-[0.3em] uppercase"
+            style={{ color: "#334D6B" }}
             initial={{ y: "100%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const, delay: 0.64 }}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] as const, delay: 0.38 }}
           >
-            Tu coche. Al instante.
+            Alquiler de coches en el aeropuerto
           </motion.p>
         </div>
       </div>
 
+      {/* ── 3-step service flow ── */}
+      <div className="relative z-10 flex flex-col items-start gap-0">
+        {INTRO_STEPS.map(({ Icon, n, label, sub, delay, accent }, idx) => (
+          <div key={n} className="flex flex-col items-start">
+            {/* Step row */}
+            <motion.div
+              className="flex items-center gap-4"
+              initial={{ opacity: 0, x: -22 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const, delay }}
+            >
+              {/* Icon badge */}
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: accent
+                    ? "rgba(16,185,129,0.12)"
+                    : "rgba(59,130,246,0.1)",
+                  border: accent
+                    ? "1px solid rgba(16,185,129,0.25)"
+                    : "1px solid rgba(59,130,246,0.2)",
+                }}
+              >
+                <Icon
+                  size={18}
+                  strokeWidth={1.8}
+                  style={{ color: accent ? "#34D399" : "#60A5FA" }}
+                />
+              </div>
+              {/* Text */}
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className="font-mono text-[0.55rem] tracking-widest"
+                    style={{ color: accent ? "#34D399" : "#3B82F6" }}
+                  >
+                    {n}
+                  </span>
+                  <span
+                    className="font-bold text-white"
+                    style={{ fontSize: "1rem", letterSpacing: "-0.01em" }}
+                  >
+                    {label}
+                  </span>
+                </div>
+                <span className="text-[0.68rem]" style={{ color: "#3D5A80" }}>
+                  {sub}
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Connector line between steps */}
+            {idx < INTRO_STEPS.length - 1 && (
+              <div className="ml-[21px] h-7 w-px overflow-hidden">
+                <motion.div
+                  className="w-full h-full origin-top"
+                  style={{
+                    background:
+                      "linear-gradient(to bottom, rgba(59,130,246,0.35), rgba(59,130,246,0.08))",
+                  }}
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: 1 }}
+                  transition={{
+                    duration: 0.4,
+                    ease: [0.22, 1, 0.36, 1] as const,
+                    delay: delay + 0.28,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
       {/* ── Progress bar ── */}
       <motion.div
-        className="relative z-10 mt-14 w-52 h-[1.5px] rounded-full overflow-hidden"
-        style={{ background: "rgba(255,255,255,0.07)" }}
+        className="relative z-10 w-52 h-px rounded-full overflow-hidden"
+        style={{ background: "rgba(255,255,255,0.06)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.22 }}
+        transition={{ duration: 0.4, delay: 0.25 }}
       >
         <motion.div
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{ background: "linear-gradient(90deg, #1D4ED8, #3B82F6)" }}
+          className="absolute inset-y-0 left-0"
+          style={{ background: "linear-gradient(90deg, #1D4ED8, #3B82F6 60%, #34D399)" }}
           initial={{ width: "0%" }}
           animate={{ width: "100%" }}
-          transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] as const, delay: 0.3 }}
+          transition={{ duration: 2.7, ease: [0.22, 1, 0.36, 1] as const, delay: 0.32 }}
         />
       </motion.div>
-
-      {/* ── Bottom corner stamp ── */}
-      <motion.p
-        className="absolute bottom-6 right-7 font-mono tracking-widest uppercase"
-        style={{ fontSize: "0.5rem", color: "#1E3A5F" }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
-      >
-        CMN &middot; 2026
-      </motion.p>
     </motion.div>
   );
 }
