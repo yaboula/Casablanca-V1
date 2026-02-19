@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Routes that require authentication
-const PROTECTED_OPERATOR = /^\/(operator)(\/.*)?$/;
+// NOTE: Operator routes are intentionally open in MVP — no real auth yet.
 const PROTECTED_CUSTOMER = /^\/(customer)(\/.*)?$/;
 
 // TODO: Replace with real JWT validation when backend is ready
@@ -21,16 +21,6 @@ export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const role = getSessionRole(req);
 
-  // Protect operator routes
-  if (PROTECTED_OPERATOR.test(pathname)) {
-    if (role !== "OPERATOR") {
-      const loginUrl = req.nextUrl.clone();
-      loginUrl.pathname = "/login";
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
   // Protect customer routes
   if (PROTECTED_CUSTOMER.test(pathname)) {
     if (!role) {
@@ -46,7 +36,6 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/(operator)/:path*",
     "/(customer)/:path*",
   ],
 };
