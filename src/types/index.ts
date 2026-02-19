@@ -30,6 +30,8 @@ export interface Vehicle {
   pricePerDay: number;
   currency: "EUR";
   imageUrl: string;
+  /** Additional photos for gallery (optional) */
+  imageUrls?: string[];
   transmission: "AUTOMATIC" | "MANUAL";
   seats: number;
   luggageCount: number;

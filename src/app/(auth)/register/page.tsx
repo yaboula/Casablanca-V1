@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { User, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { User, Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import PhoneInput from "@/components/ui/PhoneInput";
 
 export default function RegisterPage() {
@@ -17,6 +17,8 @@ export default function RegisterPage() {
     password: "",
   });
   const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -95,7 +97,7 @@ export default function RegisterPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Name */}
+        {/* Name + Email */}
         {fields.filter((f) => f.id !== "password").map((field) => (
           <div key={field.id} className="space-y-1.5">
             <label htmlFor={field.id} className="text-sm font-medium text-brand-dark">
@@ -111,12 +113,23 @@ export default function RegisterPage() {
                 placeholder={field.placeholder}
                 value={form[field.id]}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 rounded-brand-card border border-gray-200 bg-white
+                onBlur={field.id === "email" ? () => {
+                  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+                  setEmailError(form.email && !valid ? "Email no válido" : "");
+                } : undefined}
+                className={`w-full pl-10 pr-4 py-3 rounded-brand-card border bg-white
                            text-brand-dark placeholder:text-brand-muted/60
-                           focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary
-                           transition-all text-sm"
+                           focus:outline-none focus:ring-2 transition-all text-sm
+                           ${
+                             field.id === "email" && emailError
+                               ? "border-red-400 focus:ring-red-200 focus:border-red-400"
+                               : "border-gray-200 focus:ring-brand-primary/30 focus:border-brand-primary"
+                           }`}
               />
             </div>
+            {field.id === "email" && emailError && (
+              <p className="text-xs text-red-500 mt-0.5">{emailError}</p>
+            )}
           </div>
         ))}
 
@@ -130,29 +143,59 @@ export default function RegisterPage() {
         />
 
         {/* Password */}
-        {fields.filter((f) => f.id === "password").map((field) => (
-          <div key={field.id} className="space-y-1.5">
-            <label htmlFor={field.id} className="text-sm font-medium text-brand-dark">
-              {field.label}
-            </label>
-            <div className="relative">
-              {field.icon}
-              <input
-                id={field.id}
-                name={field.id}
-                type={field.type}
-                required
-                placeholder={field.placeholder}
-                value={form[field.id]}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 rounded-brand-card border border-gray-200 bg-white
-                           text-brand-dark placeholder:text-brand-muted/60
-                           focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary
-                           transition-all text-sm"
-              />
-            </div>
+        <div className="space-y-1.5">
+          <label htmlFor="password" className="text-sm font-medium text-brand-dark">Contraseña</label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
+            <input
+              id="password"
+              name="password"
+              type={showPw ? "text" : "password"}
+              required
+              placeholder="Mínimo 8 caracteres"
+              value={form.password}
+              onChange={handleChange}
+              className="w-full pl-10 pr-11 py-3 rounded-brand-card border border-gray-200 bg-white
+                         text-brand-dark placeholder:text-brand-muted/60
+                         focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary
+                         transition-all text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark transition-colors"
+              aria-label={showPw ? "Ocultar contraseña" : "Mostrar contraseña"}
+            >
+              {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
-        ))}
+          {/* Password strength bar */}
+          {form.password.length > 0 && (() => {
+            const len = form.password.length;
+            const strength = len >= 12 ? 3 : len >= 8 ? 2 : 1;
+            const colors = ["", "bg-red-400", "bg-amber-400", "bg-emerald-500"];
+            const labels = ["", "Débil", "Media", "Fuerte"];
+            return (
+              <div className="space-y-1 pt-1">
+                <div className="flex gap-1">
+                  {[1, 2, 3].map((s) => (
+                    <div
+                      key={s}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        s <= strength ? colors[strength] : "bg-slate-200"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className={`text-[11px] font-semibold ${
+                  strength === 1 ? "text-red-500" : strength === 2 ? "text-amber-500" : "text-emerald-600"
+                }`}>
+                  Contraseña {labels[strength]}
+                </p>
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Terms note */}
         <p className="text-xs text-brand-muted leading-relaxed pt-1">

@@ -2,16 +2,23 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Calendar } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import FilterBar, { type SortMode } from "@/components/vehicles/FilterBar";
 import VehicleCard from "@/components/vehicles/VehicleCard";
 import { useVehicleFilters } from "@/hooks/useVehicleFilters";
 import { MOCK_VEHICLES } from "@/lib/mock-data";
+import { useBookingStore } from "@/stores/useBookingStore";
 
 export default function CatalogGrid() {
   const [category, setCategory] = useState("ALL");
   const [sort, setSort] = useState<SortMode>("default");
+  const { pickupDate, returnDate, pickupTime, returnTime } = useBookingStore();
 
   const filtered = useVehicleFilters(MOCK_VEHICLES, { category, sort });
+
+  const hasDates = pickupDate && returnDate;
 
   return (
     <>
@@ -27,6 +34,27 @@ export default function CatalogGrid() {
           />
         </div>
       </div>
+
+      {/* Dates availability banner */}
+      {hasDates && (
+        <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6">
+          <div className="flex items-center gap-2.5 bg-brand-primary/5 border border-brand-primary/20 rounded-2xl px-4 py-3">
+            <Calendar className="w-4 h-4 text-brand-primary shrink-0" />
+            <p className="text-sm text-brand-dark">
+              Disponibilidad del{" "}
+              <strong>
+                {format(new Date(pickupDate!), "d MMM", { locale: es })}
+              </strong>
+              {pickupTime && <span className="text-brand-muted"> · {pickupTime}</span>}
+              {" "}al{" "}
+              <strong>
+                {format(new Date(returnDate!), "d MMM yyyy", { locale: es })}
+              </strong>
+              {returnTime && <span className="text-brand-muted"> · {returnTime}</span>}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Vehicle grid */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">

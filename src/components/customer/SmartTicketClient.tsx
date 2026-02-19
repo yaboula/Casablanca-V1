@@ -12,10 +12,11 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
-import { useBookingStore } from "@/stores/useBookingStore";
+import { useBookingStore, useCurrencyStore } from "@/stores/useBookingStore";
 import { MOCK_VEHICLES } from "@/lib/mock-data";
 import {
   DEPOSIT_AMOUNT_EUR,
+  EUR_TO_MAD_RATE,
   OPERATOR_PHONE,
   PICKUP_LOCATION_LABELS,
 } from "@/lib/constants";
@@ -37,8 +38,14 @@ export default function SmartTicketClient({ reservationId }: Props) {
     totalPriceEUR,
   } = useBookingStore();
 
+  const { currency } = useCurrencyStore();
   const vehicle = MOCK_VEHICLES.find((v) => v.id === selectedVehicleId) ?? MOCK_VEHICLES[0];
-  const balanceDue = totalPriceEUR ? totalPriceEUR - DEPOSIT_AMOUNT_EUR : 0;
+  const balanceDueEUR = totalPriceEUR ? totalPriceEUR - DEPOSIT_AMOUNT_EUR : 0;
+  const balanceDue =
+    currency === "MAD"
+      ? Math.round(balanceDueEUR * EUR_TO_MAD_RATE)
+      : balanceDueEUR;
+  const balanceLabel = currency === "MAD" ? `${balanceDue} DH` : `${balanceDue}€`;
 
   // ── QR Code ────────────────────────────────────────────────
 
@@ -169,7 +176,7 @@ export default function SmartTicketClient({ reservationId }: Props) {
         <div className="px-5 py-4 space-y-4">
           <div className="flex justify-between items-center bg-brand-primary/5 border border-brand-primary/15 rounded-xl px-4 py-3">
             <span className="text-sm font-semibold text-brand-dark">Balance al recoger</span>
-            <span className="text-xl font-black text-brand-primary">{balanceDue}€</span>
+            <span className="text-xl font-black text-brand-primary">{balanceLabel}</span>
           </div>
 
           <div

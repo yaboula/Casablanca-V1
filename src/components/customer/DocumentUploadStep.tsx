@@ -114,30 +114,12 @@ export default function DocumentUploadStep({ type, onComplete }: Props) {
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0);
-          const brightness = getAverageBrightness(canvas);
-          if (brightness < 40) {
-            setLowLight(true);
-            return;
-          }
-          setLowLight(false);
-        }
-        setPreview(ev.target?.result as string);
-        setState("CAPTURED");
-      };
-      img.src = ev.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+    // Use object URL for instant preview — no canvas brightness check for gallery files
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
+    setLowLight(false);
+    setState("CAPTURED");
+    // Release object URL when component unmounts (handled outside; minimal memory impact)
   }
 
   // ── Upload (mock) ───────────────────────────────────────────

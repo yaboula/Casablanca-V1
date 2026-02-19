@@ -35,8 +35,12 @@ import type { PickupLocation } from "@/types";
 
 const LOCATIONS: PickupLocation[] = ["CMN_T1", "CMN_T2"];
 const HOURS = Array.from(
-  { length: 24 },
-  (_, i) => `${String(i).padStart(2, "0")}:00`
+  { length: 48 },
+  (_, i) => {
+    const h = Math.floor(i / 2);
+    const m = i % 2 === 0 ? "00" : "30";
+    return `${String(h).padStart(2, "0")}:${m}`;
+  }
 );
 
 function buildDate(date: Date, timeStr: string) {

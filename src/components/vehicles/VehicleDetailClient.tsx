@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
   Briefcase,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Fuel,
   Gauge,
   ShieldCheck,
@@ -52,6 +55,20 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
     setVehicle,
   } = useBookingStore();
 
+  // Gallery
+  const allImages = vehicle.imageUrls ?? [vehicle.imageUrl];
+  const [activeImg, setActiveImg] = useState(0);
+  const [dragDir, setDragDir] = useState(0);
+
+  function nextImg() {
+    setDragDir(1);
+    setActiveImg((i) => (i + 1) % allImages.length);
+  }
+  function prevImg() {
+    setDragDir(-1);
+    setActiveImg((i) => (i - 1 + allImages.length) % allImages.length);
+  }
+
   const totalPrice = totalDays ? totalDays * vehicle.pricePerDay : null;
   const heat = getOccupancyHeat(vehicle.id);
 
@@ -82,25 +99,100 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
           {/* ── Left: Image + specs ─────────────────────── */}
           <div className="flex-1 min-w-0">
-            {/* Hero image */}
+            {/* Gallery */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-slate-100 shadow-lg"
+              className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-slate-100 shadow-lg group"
             >
-              <Image
-                src={vehicle.imageUrl}
-                alt={`${vehicle.brand} ${vehicle.model}`}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 60vw"
-                className="object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/images/vehicles/placeholder.svg";
-                }}
-              />
+              {/* Active image with AnimatePresence */}
+              <AnimatePresence mode="wait" custom={dragDir}>
+                <motion.div
+                  key={activeImg}
+                  custom={dragDir}
+                  initial={{ opacity: 0, x: dragDir * 40 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: dragDir * -40 }}
+                  transition={{ duration: 0.3 }}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.15}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.x < -50) nextImg();
+                    else if (info.offset.x > 50) prevImg();
+                  }}
+                  className="absolute inset-0 cursor-grab active:cursor-grabbing"
+                >
+                  <Image
+                    src={allImages[activeImg]}
+                    alt={`${vehicle.brand} ${vehicle.model} - foto ${activeImg + 1}`}
+                    fill
+                    priority={activeImg === 0}
+                    sizes="(max-width: 1024px) 100vw, 60vw"
+                    className="object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/images/vehicles/placeholder.svg";
+                    }}
+                  />
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Nav arrows — only shown when multiple images */}
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={prevImg}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm
+                               flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100
+                               transition-opacity hover:bg-white z-10"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-brand-dark" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={nextImg}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm
+                               flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100
+                               transition-opacity hover:bg-white z-10"
+                  >
+                    <ChevronRight className="w-5 h-5 text-brand-dark" />
+                  </button>
+                  {/* Dots */}
+                  <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5 z-10">
+                    {allImages.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => { setDragDir(i > activeImg ? 1 : -1); setActiveImg(i); }}
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${
+                          i === activeImg ? "bg-white w-4" : "bg-white/50"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </motion.div>
+
+            {/* Thumbnails */}
+            {allImages.length > 1 && (
+              <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                {allImages.map((url, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { setDragDir(i > activeImg ? 1 : -1); setActiveImg(i); }}
+                    className={`relative shrink-0 w-20 h-14 rounded-xl overflow-hidden border-2 transition-all ${
+                      i === activeImg ? "border-brand-primary" : "border-transparent opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <Image src={url} alt={`Foto ${i + 1}`} fill className="object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Title */}
             <motion.div

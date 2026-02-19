@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -71,6 +72,17 @@ const STATUS_CONFIG: Record<
 
 export default function DashboardPage() {
   const reservations = getMockReservations();
+  const [username, setUsername] = useState("viajero");
+
+  useEffect(() => {
+    const match = document.cookie.match(/nexus_session=([^;]+)/);
+    if (match) {
+      try {
+        const session = JSON.parse(decodeURIComponent(match[1]));
+        if (session?.email) setUsername(session.email.split("@")[0]);
+      } catch { /* ignore */ }
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -82,7 +94,7 @@ export default function DashboardPage() {
           className="mb-8"
         >
           <h1 className="text-2xl md:text-3xl font-black text-brand-dark">
-            Hola, viajero
+            Hola, {username} 👋
           </h1>
           <p className="text-sm text-brand-muted mt-1">
             Gestiona tus reservas y documentos.

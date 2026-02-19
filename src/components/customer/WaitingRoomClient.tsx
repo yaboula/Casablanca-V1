@@ -65,6 +65,28 @@ export default function WaitingRoomClient({ reservationId }: Props) {
       setTimeout(() => {
         setLogs((prev) => {
           const updated = [...prev];
+          const idx = updated.findIndex((l) => l.text.includes("pos. 2"));
+          if (idx >= 0) updated[idx] = { text: "En cola de revisión (pos. 1)", status: "pending" };
+          return updated;
+        });
+      }, 12000)
+    );
+
+    timers.push(
+      setTimeout(() => {
+        setLogs((prev) => {
+          const updated = [...prev];
+          const idx = updated.findIndex((l) => l.text.includes("pos."));
+          if (idx >= 0) updated[idx] = { text: "Tu documento está siendo revisado ahora", status: "pending" };
+          return updated;
+        });
+      }, 18000)
+    );
+
+    timers.push(
+      setTimeout(() => {
+        setLogs((prev) => {
+          const updated = [...prev];
           const queueIdx = updated.findIndex((l) => l.text.includes("cola"));
           if (queueIdx >= 0) updated[queueIdx] = { ...updated[queueIdx], status: "done" };
           return [...updated, { text: "Verificación completada", status: "done" }];
