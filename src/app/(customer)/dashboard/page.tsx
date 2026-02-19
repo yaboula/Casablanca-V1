@@ -330,6 +330,13 @@ export default function DashboardPage() {
             />
             <QuickAction
               icon={MessageCircle}
+              label="Chat interno"
+              description="Escríbenos desde la app"
+              href="/soporte/chat"
+              color="blue"
+            />
+            <QuickAction
+              icon={MessageCircle}
               label="WhatsApp"
               description="Mensaje directo"
               href={`https://wa.me/${OPERATOR_WHATSAPP}?text=${encodeURIComponent(

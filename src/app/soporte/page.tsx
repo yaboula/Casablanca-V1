@@ -189,6 +189,39 @@ export default function SoportePage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 -mt-4 pb-12">
+        {/* ── In-app Chat CTA ───────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mb-6"
+        >
+          <Link
+            href="/soporte/chat"
+            className="block bg-white rounded-2xl border-2 border-blue-200 p-5 shadow-sm
+                       hover:border-blue-400 hover:shadow-md active:scale-[0.99] transition-all group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0
+                              group-hover:scale-105 transition-transform">
+                <MessageCircle className="w-7 h-7 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h3 className="text-base font-bold text-slate-900">Chat interno</h3>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Online
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500">
+                  ¿No tienes WhatsApp? Escríbenos directamente desde la app. Un agente real te responde.
+                </p>
+              </div>
+            </div>
+          </Link>
+        </motion.section>
+
         {/* ── Contact Channels ──────────────────────────── */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}

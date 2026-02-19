@@ -85,6 +85,26 @@ export default function ContactHub() {
 
             {/* Channel options */}
             <div className="p-4 space-y-2">
+              {/* In-app chat — for users without WhatsApp */}
+              <Link
+                href="/soporte/chat"
+                onClick={() => setOpen(false)}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-blue-200 bg-blue-50
+                           hover:bg-blue-100 active:scale-[0.98] transition-all group text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900">Chat interno</p>
+                  <p className="text-[11px] text-slate-500">Escríbenos desde la app</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <span className="text-[10px] font-bold text-emerald-600">Online</span>
+                </div>
+              </Link>
+
               {/* WhatsApp — primary */}
               <a
                 href={whatsappUrl}

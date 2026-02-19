@@ -6,7 +6,7 @@ import Footer from "@/components/layout/Footer";
 import ContactHub from "@/components/shared/ContactHub";
 
 // Routes where ContactHub is NOT needed (operator or API)
-const NO_CONTACT_HUB_PATHS = ["/operator", "/api"];
+const NO_CONTACT_HUB_PATHS = ["/operator", "/api", "/soporte/chat"];
 
 /**
  * Conditionally renders Header + Footer only for customer-facing routes.
@@ -15,9 +15,10 @@ const NO_CONTACT_HUB_PATHS = ["/operator", "/api"];
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isOperator = pathname.startsWith("/operator");
+  const isFullScreen = pathname.startsWith("/soporte/chat");
   const showContactHub = !NO_CONTACT_HUB_PATHS.some((p) => pathname.startsWith(p));
 
-  if (isOperator) {
+  if (isOperator || isFullScreen) {
     return <>{children}</>;
   }
 
