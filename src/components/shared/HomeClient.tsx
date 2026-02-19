@@ -1,11 +1,13 @@
 "use client";
 
-import { motion, useMotionTemplate, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
 import { ArrowRight, Clock, ShieldCheck, Star, Zap } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import BookingPanel from "@/components/shared/BookingPanel";
 import CountUp from "@/components/ui/CountUp";
 import Marquee from "@/components/ui/Marquee";
+import SpotlightCard from "@/components/ui/SpotlightCard";
+import TrustCard from "@/components/vehicles/TrustCard";
 
 // ── Static data ───────────────────────────────────────────────
 
@@ -51,15 +53,6 @@ const STEPS = [
   { n: "1", label: "Aterriza" },
   { n: "2", label: "Escanea QR" },
   { n: "3", label: "Conduce", accent: true },
-];
-
-const FLEET_ROWS = [
-  { model: "AUDI A4", category: "PREMIUM", status: "DISPONIBLE", price: "160€/día", hot: false },
-  { model: "MERCEDES CLASE C", category: "PREMIUM", status: "DISPONIBLE", price: "190€/día", hot: false },
-  { model: "BMW SERIE 3", category: "SPORT", status: "DISPONIBLE", price: "180€/día", hot: false },
-  { model: "RANGE ROVER EVOQUE", category: "SUV", status: "2 RESTANTES", price: "240€/día", hot: true },
-  { model: "HYUNDAI TUCSON", category: "SUV", status: "DISPONIBLE", price: "120€/día", hot: false },
-  { model: "RENAULT CLIO", category: "COMPACTO", status: "DISPONIBLE", price: "75€/día", hot: false },
 ];
 
 // ── Animation variants ────────────────────────────────────────
@@ -399,343 +392,170 @@ export default function HomeClient() {
         </div>
 
         {/* ==========================================================
-            3 · NEXUS TERMINAL — Dark departure board + HUD
+            3. STATS
         ========================================================== */}
-        <section className="relative bg-[#060D18] text-white overflow-hidden">
-          {/* Grid bg */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(37,99,235,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.06) 1px, transparent 1px)",
-              backgroundSize: "64px 64px",
-            }}
-          />
-          {/* Top radial glow */}
-          <div
-            className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1100px] h-[560px] pointer-events-none"
-            style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.22) 0%, transparent 65%)" }}
-          />
-
-          <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-24">
-            {/* Status bar */}
+        <section className="py-24 px-6" id="why">
+          <div className="max-w-5xl mx-auto">
             <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7 }}
-              className="flex items-center justify-between mb-16"
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-5"
             >
-              <div className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-brand-success animate-pulse" />
-                <span className="font-mono text-[10px] tracking-[0.28em] uppercase text-white/40">
-                  NEXUS TERMINAL · CMN · SISTEMA ACTIVO
-                </span>
-              </div>
-              <span className="font-mono text-[10px] text-white/20 hidden md:block tracking-widest">
-                24H · T1 &amp; T2
-              </span>
-            </motion.div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-12 xl:gap-20 items-start">
-
-              {/* ── Departure board ── */}
-              <div>
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="flex items-center justify-between mb-3"
-                >
-                  <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/25">
-                    ▸ DISPONIBILIDAD DE FLOTA — HOY
-                  </span>
-                  <motion.span
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="font-mono text-[10px] text-brand-success tracking-widest"
+              {STATS.map((stat) => (
+                <motion.div key={stat.label} variants={fadeUp}>
+                  <SpotlightCard
+                    spotlightColor="rgba(37,99,235,0.06)"
+                    className="bg-white border border-slate-200 rounded-2xl p-8 hover:shadow-lg hover:border-blue-200 transition-all duration-500 cursor-default"
                   >
-                    ● EN VIVO
-                  </motion.span>
-                </motion.div>
-
-                {/* Table header */}
-                <div className="grid grid-cols-[28px_1fr_auto_88px] gap-3 px-4 py-2.5 border-b border-white/10 mb-px">
-                  {["#", "VEHÍCULO", "ESTADO", "TARIFA"].map((h) => (
-                    <span key={h} className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/20">{h}</span>
-                  ))}
-                </div>
-
-                {FLEET_ROWS.map((row, i) => (
-                  <motion.a
-                    key={row.model}
-                    href="/catalog"
-                    initial={{ opacity: 0, x: -18 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.06 * i, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                    whileHover={{ x: 6, backgroundColor: "rgba(37,99,235,0.07)" }}
-                    className="grid grid-cols-[28px_1fr_auto_88px] gap-3 px-4 py-4 border-b border-white/[0.06] items-center rounded-xl cursor-pointer group transition-colors"
-                  >
-                    <span className="font-mono text-[10px] text-white/20">{String(i + 1).padStart(2, "0")}</span>
-                    <div>
-                      <p className="text-sm font-bold text-white group-hover:text-brand-primary transition-colors tracking-wide">
-                        {row.model}
-                      </p>
-                      <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/25 mt-0.5">
-                        {row.category}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-[9px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                        row.hot
-                          ? "text-amber-400 border-amber-400/30 bg-amber-400/10"
-                          : "text-brand-success border-brand-success/30 bg-brand-success/10"
-                      }`}
-                    >
-                      {row.status}
-                    </span>
-                    <span className="font-mono text-sm font-black text-white/50 text-right">{row.price}</span>
-                  </motion.a>
-                ))}
-              </div>
-
-              {/* ── HUD Stats ── */}
-              <div className="space-y-4 xl:sticky xl:top-24">
-                {STATS.map((stat, i) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, scale: 0.94 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.12 + 0.2, duration: 0.5 }}
-                    className="border border-white/8 rounded-2xl p-5 relative overflow-hidden group hover:border-brand-primary/30 transition-colors"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                    <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-white/30 mb-2">
+                    <p className="text-5xl md:text-6xl font-black text-brand-primary tracking-tighter mb-3 tabular-nums">
+                      <CountUp
+                        to={stat.to}
+                        prefix={stat.prefix ?? ""}
+                        suffix={stat.suffix}
+                        duration={2.2}
+                      />
+                    </p>
+                    <p className="text-brand-muted text-xs uppercase tracking-[0.18em] font-medium">
                       {stat.label}
                     </p>
-                    <p className="text-4xl font-black text-white tabular-nums leading-none">
-                      <CountUp to={stat.to} prefix={stat.prefix ?? ""} suffix={stat.suffix} duration={2} />
-                    </p>
-                    <div className="mt-4 h-px bg-white/6 overflow-hidden rounded-full">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-brand-primary to-brand-success"
-                        initial={{ scaleX: 0, originX: 0 }}
-                        whileInView={{ scaleX: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: i * 0.15 + 0.6, duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
-
-                <motion.a
-                  href="/catalog"
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.55, duration: 0.4 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex items-center justify-center gap-2 w-full min-h-[54px] bg-brand-primary
-                             text-white font-black text-sm rounded-2xl
-                             shadow-[0_0_40px_rgba(37,99,235,0.38)] hover:shadow-[0_0_60px_rgba(37,99,235,0.55)]
-                             transition-shadow"
-                >
-                  Reservar ahora
-                  <ArrowRight className="w-4 h-4" />
-                </motion.a>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ==========================================================
-            4 · FLEET — 3D perspective hover cards
-        ========================================================== */}
-        <section id="fleet" className="bg-[#060D18] py-24 px-6 border-t border-white/[0.06]">
-          <div className="max-w-7xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-12 flex items-end justify-between"
-            >
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/25 mb-3">
-                  FLOTA PREMIUM · CMN
-                </p>
-                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
-                  Elige tu coche.
-                </h2>
-              </div>
-              <a
-                href="/catalog"
-                className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-white/35 hover:text-white transition-colors"
-              >
-                Ver todos <ArrowRight className="w-4 h-4" />
-              </a>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {VEHICLES.map((v, i) => (
-                <FleetCard3D key={v.model} vehicle={v} index={i} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ==========================================================
-            5 · WHY — Clean feature strip (light)
-        ========================================================== */}
-        <section id="why" className="bg-white py-20 px-6">
-          <div className="max-w-5xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                {
-                  Icon: Zap,
-                  n: "01",
-                  title: "Solo 10€\npara reservar.",
-                  body: "Bloquea tu coche con una micro-transacción. El resto lo pagas al llegar. Sin cargos ocultos.",
-                  accent: "text-brand-primary",
-                  bg: "bg-brand-primary/5 border-brand-primary/15",
-                },
-                {
-                  Icon: ShieldCheck,
-                  n: "02",
-                  title: "Check-in 100%\ndigital.",
-                  body: "Verifica tu pasaporte antes de aterrizar. Cero burocracia en el mostrador.",
-                  accent: "text-brand-success",
-                  bg: "bg-emerald-50 border-emerald-200/60",
-                },
-                {
-                  Icon: Clock,
-                  n: "03",
-                  title: "3 minutos.\nEn ruta.",
-                  body: "Aterriza · Escanea QR · Conduce. El proceso más rápido de Marruecos.",
-                  accent: "text-amber-500",
-                  bg: "bg-amber-50 border-amber-200/60",
-                },
-              ].map((f, i) => (
-                <motion.div
-                  key={f.n}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ delay: i * 0.12, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className={`rounded-2xl border p-7 ${f.bg}`}
-                >
-                  <div className="flex items-start justify-between mb-5">
-                    <f.Icon className={`w-5 h-5 ${f.accent}`} />
-                    <span className={`font-mono text-[10px] tracking-widest ${f.accent} opacity-40`}>{f.n}</span>
-                  </div>
-                  <h3 className="text-xl font-black text-brand-dark tracking-tight leading-tight mb-3 whitespace-pre-line">
-                    {f.title}
-                  </h3>
-                  <p className="text-sm text-brand-muted leading-relaxed">{f.body}</p>
+                  </SpotlightCard>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ==========================================================
+            4. FEATURES BENTO
+        ========================================================== */}
+        <section className="px-6 pb-24">
+          <div className="max-w-5xl mx-auto">
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              className="text-center mb-12"
+            >
+              <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-medium mb-3">
+                Por qué NEXUS
+              </p>
+              <h2 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight">
+                El alquiler, reinventado.
+              </h2>
+            </motion.div>
+
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-60px" }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-5"
+            >
+              <motion.div variants={fadeUp} className="md:col-span-2">
+                <div className="rounded-2xl bg-brand-dark text-white p-10 flex flex-col md:flex-row items-start md:items-center gap-8">
+                  <div className="w-12 h-12 rounded-xl bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-5 h-5 text-brand-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">Micro-pago</p>
+                    <h3 className="font-black leading-tight mb-3" style={{ fontSize: "clamp(2rem, 5vw, 3rem)" }}>
+                      Solo <span className="text-brand-primary">10€</span> para
+                      <br />
+                      asegurar tu reserva.
+                    </h3>
+                    <p className="text-slate-400 text-sm leading-relaxed max-w-lg">
+                      Bloquea tu vehículo con una micro-transacción. El saldo restante lo
+                      abonas de forma transparente al llegar. Sin cargos ocultos.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div variants={fadeUp}>
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-8 h-full">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center mb-6">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-brand-dark mb-3 leading-tight">
+                    Check-in 100% Digital.
+                  </h3>
+                  <p className="text-brand-muted text-sm leading-relaxed">
+                    Verifica tu pasaporte desde casa antes de aterrizar. Cero burocracia
+                    en el mostrador. Solo recibes tu llave.
+                  </p>
+                </div>
+              </motion.div>
+
+              <motion.div variants={fadeUp}>
+                <div className="rounded-2xl bg-blue-50 border border-blue-200 p-8 h-full">
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center mb-6">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-brand-dark mb-3 leading-tight">
+                    3 minutos. Listo para conducir.
+                  </h3>
+                  <p className="text-brand-muted text-sm leading-relaxed">
+                    Aterriza · Escanea QR · Conduce. Nuestro proceso elimina las colas y
+                    te pone en ruta en tiempo récord.
+                  </p>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ==========================================================
+            5. FLEET
+        ========================================================== */}
+        <section id="fleet" className="bg-white border-t border-slate-200 py-24 px-6">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              className="text-center mb-14"
+            >
+              <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-medium mb-4">
+                Flota Premium
+              </p>
+              <h2 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight mb-4">
+                Elige tu coche.
+              </h2>
+              <p className="text-brand-muted text-base max-w-md mx-auto leading-relaxed">
+                Cada vehículo incluye SIM 5G, Tag Jawaz para peajes y seguro a todo
+                riesgo. Sin costes extra.
+              </p>
+            </motion.div>
+
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+            >
+              {VEHICLES.map((v) => (
+                <motion.div
+                  key={v.model}
+                  variants={fadeUp}
+                  className="rounded-brand-card overflow-hidden"
+                >
+                  <TrustCard
+                    model={v.model}
+                    totalPrice={`${v.totalPrice}€`}
+                    imageUrl={v.imageUrl}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
         </section>
 
       </div>
     </>
-  );
-}
-
-// ── 3D Fleet Card ─────────────────────────────────────────────
-
-function FleetCard3D({
-  vehicle,
-  index,
-}: {
-  vehicle: (typeof VEHICLES)[0];
-  index: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const sx = useSpring(x, { stiffness: 180, damping: 28 });
-  const sy = useSpring(y, { stiffness: 180, damping: 28 });
-  const rotX = useTransform(sy, [-0.5, 0.5], [7, -7]);
-  const rotY = useTransform(sx, [-0.5, 0.5], [-7, 7]);
-  const glowX = useTransform(sx, [-0.5, 0.5], [15, 85]);
-  const glowY = useTransform(sy, [-0.5, 0.5], [15, 85]);
-  const glow = useMotionTemplate`radial-gradient(320px at ${glowX}% ${glowY}%, rgba(37,99,235,0.2), transparent 80%)`;
-
-  function onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-    x.set((e.clientX - rect.left) / rect.width - 0.5);
-    y.set((e.clientY - rect.top) / rect.height - 0.5);
-  }
-  function onMouseLeave() {
-    x.set(0);
-    y.set(0);
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.1, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      style={{ perspective: "1000px" }}
-    >
-      <motion.div
-        ref={ref}
-        style={{ rotateX: rotX, rotateY: rotY, transformStyle: "preserve-3d" }}
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
-        className="relative rounded-2xl overflow-hidden bg-[#0A1628] border border-white/8
-                   cursor-pointer group hover:border-brand-primary/25 transition-colors"
-      >
-        {/* Spotlight following cursor */}
-        <motion.div
-          className="absolute inset-0 z-10 pointer-events-none"
-          style={{ background: glow }}
-        />
-
-        {/* Vehicle image */}
-        <div className="relative aspect-[16/10] overflow-hidden">
-          <img
-            src={vehicle.imageUrl}
-            alt={vehicle.model}
-            className="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1628] via-[#0A1628]/10 to-transparent" />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 p-6">
-          <p className="text-white font-black text-lg tracking-tight mb-0.5">{vehicle.model}</p>
-          <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/25 mb-5">
-            DISPONIBLE · CMN T1 &amp; T2
-          </p>
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-[9px] text-white/30 font-mono uppercase tracking-wider mb-1">desde</p>
-              <p className="text-3xl font-black text-white tabular-nums leading-none">
-                {vehicle.pricePerDay}
-                <span className="text-base font-medium text-white/40">€</span>
-                <span className="text-xs font-normal text-white/25">/día</span>
-              </p>
-            </div>
-            <motion.a
-              href="/catalog"
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-4 py-2.5 bg-brand-primary text-white text-xs font-black rounded-full
-                         shadow-[0_0_20px_rgba(37,99,235,0.45)] hover:shadow-[0_0_32px_rgba(37,99,235,0.65)]
-                         transition-shadow"
-            >
-              Reservar →
-            </motion.a>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
