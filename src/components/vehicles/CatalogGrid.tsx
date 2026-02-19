@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Calendar } from "lucide-react";
+import { Calendar, SlidersHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import FilterBar, { type SortMode } from "@/components/vehicles/FilterBar";
 import VehicleCard from "@/components/vehicles/VehicleCard";
+import VehicleCardSkeleton from "@/components/vehicles/VehicleCardSkeleton";
 import { useVehicleFilters } from "@/hooks/useVehicleFilters";
 import { MOCK_VEHICLES } from "@/lib/mock-data";
 import { useBookingStore } from "@/stores/useBookingStore";
@@ -14,10 +15,16 @@ import { useBookingStore } from "@/stores/useBookingStore";
 export default function CatalogGrid() {
   const [category, setCategory] = useState("ALL");
   const [sort, setSort] = useState<SortMode>("default");
-  const { pickupDate, returnDate, pickupTime, returnTime } = useBookingStore();
+  const [loading, setLoading] = useState(true);
+  const { pickupDate, returnDate } = useBookingStore();
+
+  // Simulate initial load
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 700);
+    return () => clearTimeout(t);
+  }, []);
 
   const filtered = useVehicleFilters(MOCK_VEHICLES, { category, sort });
-
   const hasDates = pickupDate && returnDate;
 
   return (
@@ -45,12 +52,10 @@ export default function CatalogGrid() {
               <strong>
                 {format(new Date(pickupDate!), "d MMM", { locale: es })}
               </strong>
-              {pickupTime && <span className="text-brand-muted"> · {pickupTime}</span>}
               {" "}al{" "}
               <strong>
                 {format(new Date(returnDate!), "d MMM yyyy", { locale: es })}
               </strong>
-              {returnTime && <span className="text-brand-muted"> · {returnTime}</span>}
             </p>
           </div>
         </div>
@@ -59,7 +64,19 @@ export default function CatalogGrid() {
       {/* Vehicle grid */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         <AnimatePresence mode="popLayout">
-          {filtered.length > 0 ? (
+          {loading ? (
+            <motion.div
+              key="skeletons"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8"
+            >
+              {Array.from({ length: 6 }).map((_, i) => (
+                <VehicleCardSkeleton key={i} />
+              ))}
+            </motion.div>
+          ) : filtered.length > 0 ? (
             <motion.div
               key={`${category}-${sort}`}
               className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8"
@@ -74,17 +91,25 @@ export default function CatalogGrid() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
-              className="flex flex-col items-center justify-center py-20 text-center"
+              className="flex flex-col items-center justify-center py-24 text-center"
             >
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                <span className="text-2xl">🚗</span>
+              <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-5">
+                <SlidersHorizontal className="w-8 h-8 text-slate-300" />
               </div>
-              <h3 className="text-lg font-bold text-brand-dark mb-1">
-                Sin resultados
+              <h3 className="text-lg font-bold text-brand-dark mb-2">
+                No hay coches disponibles
               </h3>
-              <p className="text-sm text-brand-muted max-w-xs">
-                No hay coches disponibles para esta categoría. Prueba con otro filtro.
+              <p className="text-sm text-brand-muted max-w-xs mb-6">
+                No encontramos vehículos para estas fechas y filtros. Prueba cambiando la categoría.
               </p>
+              <button
+                type="button"
+                onClick={() => setCategory("ALL")}
+                className="min-h-[44px] px-6 bg-brand-primary text-white text-sm font-bold rounded-full
+                           hover:bg-brand-primary/90 transition-colors"
+              >
+                Ver todos los coches
+              </button>
             </motion.div>
           )}
         </AnimatePresence>

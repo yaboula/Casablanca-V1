@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
+  Check,
   Clock,
+  Copy,
   MessageCircle,
   Sparkles,
   Wallet,
@@ -108,6 +110,14 @@ export default function SmartTicketClient({ reservationId }: Props) {
     toast.info("Apple Wallet / Google Wallet — Próximamente disponible");
   }, []);
 
+  // ── Copy reservation ID ───────────────────────────────────
+  const [copied, setCopied] = useState(false);
+  const handleCopyId = useCallback(() => {
+    navigator.clipboard.writeText(reservationId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [reservationId]);
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center py-8 md:py-12 px-4">
       {/* ── Boarding Pass Card ──────────────────────────────── */}
@@ -168,6 +178,40 @@ export default function SmartTicketClient({ reservationId }: Props) {
           <p className="text-xs text-brand-muted mt-3 font-medium">
             Muestra este código al operario
           </p>
+          {/* Reservation ID with copy button */}
+          <button
+            type="button"
+            onClick={handleCopyId}
+            className="mt-3 flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50
+                       border border-slate-200 hover:border-brand-primary/40 transition-colors group"
+          >
+            <span className="text-[11px] font-mono font-semibold text-brand-muted group-hover:text-brand-dark">
+              #{reservationId}
+            </span>
+            <AnimatePresence mode="wait" initial={false}>
+              {copied ? (
+                <motion.span
+                  key="check"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Check className="w-3 h-3 text-brand-success" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="copy"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Copy className="w-3 h-3 text-brand-muted" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
         </div>
 
         <Perforation />
@@ -189,14 +233,20 @@ export default function SmartTicketClient({ reservationId }: Props) {
                 {isNow ? "Tu operario te espera" : "Tiempo hasta recogida"}
               </span>
             </div>
-            <motion.span
-              key={countdown}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`text-base font-black ${isNow ? "text-brand-success" : "text-brand-dark"}`}
-            >
-              {countdown}
-            </motion.span>
+            {pickupDate ? (
+              <motion.span
+                key={countdown}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`text-base font-black ${isNow ? "text-brand-success" : "text-brand-dark"}`}
+              >
+                {countdown}
+              </motion.span>
+            ) : (
+              <Link href="/catalog" className="text-xs font-bold text-brand-primary hover:underline">
+                Completar reserva
+              </Link>
+            )}
           </div>
         </div>
 

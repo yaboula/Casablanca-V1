@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /catalog
+Allow: /catalog/
+
+Disallow: /check-in
+Disallow: /waiting-room
+Disallow: /smart-ticket
+Disallow: /operator/
+Disallow: /api/
+Disallow: /book/
+
+Sitemap: https://nexus-cmn.vercel.app/sitemap.xml
