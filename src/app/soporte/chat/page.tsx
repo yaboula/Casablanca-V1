@@ -150,9 +150,9 @@ export default function ChatPage() {
   const messageGroups = groupByDate(messages);
 
   return (
-    <div className="flex flex-col h-dvh bg-[#ECE5DD]">
-      {/* ── Header (WhatsApp-style) ──────────────────── */}
-      <header className="bg-[#075E54] shrink-0 safe-area-top">
+    <div className="flex flex-col h-dvh bg-slate-100">
+      {/* ── Header ───────────────────────────────────── */}
+      <header className="bg-gradient-to-r from-blue-600 to-blue-700 shrink-0 safe-area-top">
         <div className="flex items-center gap-3 px-2 py-2.5">
           <Link
             href="/soporte"
@@ -164,7 +164,7 @@ export default function ChatPage() {
           </Link>
 
           {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
             <span className="text-sm font-bold text-white">{OPERATOR_AVATAR}</span>
           </div>
 
@@ -175,7 +175,7 @@ export default function ChatPage() {
             </p>
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              <span className="text-[11px] text-emerald-200 font-medium">
+              <span className="text-[11px] text-blue-100 font-medium">
                 En línea · Respuesta en minutos
               </span>
             </div>
@@ -209,8 +209,8 @@ export default function ChatPage() {
       >
         {/* End-to-end encryption notice */}
         <div className="flex justify-center mb-4">
-          <div className="bg-[#FFF3C4]/90 rounded-lg px-4 py-2 shadow-sm max-w-[340px]">
-            <p className="text-[11px] text-center text-amber-800 leading-relaxed">
+          <div className="bg-blue-50/90 rounded-lg px-4 py-2 shadow-sm max-w-[340px]">
+            <p className="text-[11px] text-center text-blue-700 leading-relaxed">
               🔒 Tus mensajes llegan directamente a nuestro equipo de soporte.
               Responderemos aquí lo antes posible.
             </p>
@@ -239,8 +239,8 @@ export default function ChatPage() {
 
       {/* ── Info banner (first time) ─────────────────── */}
       {messages.length <= 2 && (
-        <div className="shrink-0 bg-[#DCF8C6]/50 border-t border-[#d4e9bf] px-4 py-2">
-          <p className="text-[11px] text-[#075E54] text-center leading-relaxed">
+        <div className="shrink-0 bg-blue-50 border-t border-blue-100 px-4 py-2">
+          <p className="text-[11px] text-blue-700 text-center leading-relaxed">
             💡 ¿No tienes WhatsApp? No hay problema. Escribe aquí y nuestro equipo
             real te responde directamente. Sin bots.
           </p>
@@ -248,14 +248,14 @@ export default function ChatPage() {
       )}
 
       {/* ── Input bar ────────────────────────────────── */}
-      <div className="shrink-0 bg-[#F0F0F0] px-2 py-2 flex items-end gap-1.5 safe-area-bottom">
+      <div className="shrink-0 bg-white border-t border-slate-200 px-2 py-2 flex items-end gap-1.5 safe-area-bottom">
         {/* Emoji button */}
         <button
           className="w-10 h-10 rounded-full flex items-center justify-center
-                     hover:bg-slate-200 transition-colors shrink-0"
+                     hover:bg-slate-100 transition-colors shrink-0"
           aria-label="Emoji"
         >
-          <Smile className="w-6 h-6 text-[#54656F]" />
+          <Smile className="w-6 h-6 text-slate-500" />
         </button>
 
         {/* Input container */}
@@ -276,7 +276,7 @@ export default function ChatPage() {
                        focus:outline-none resize-none min-h-[24px] max-h-[120px] py-1 leading-snug"
           />
           <button
-            className="shrink-0 ml-1 text-[#54656F] hover:text-slate-900 transition-colors"
+            className="shrink-0 ml-1 text-slate-400 hover:text-slate-700 transition-colors"
             aria-label="Adjuntar"
           >
             <Paperclip className="w-5 h-5 rotate-45" />
@@ -291,8 +291,8 @@ export default function ChatPage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             whileTap={{ scale: 0.9 }}
-            className="w-12 h-12 rounded-full bg-[#075E54] flex items-center justify-center shrink-0
-                       hover:bg-[#064e46] active:scale-95 transition-all disabled:opacity-50
+            className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center shrink-0
+                       hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50
                        shadow-md"
             aria-label="Enviar"
           >
@@ -300,8 +300,8 @@ export default function ChatPage() {
           </motion.button>
         ) : (
           <button
-            className="w-12 h-12 rounded-full bg-[#075E54] flex items-center justify-center shrink-0
-                       hover:bg-[#064e46] transition-all shadow-md"
+            className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center shrink-0
+                       hover:bg-blue-700 transition-all shadow-md"
             aria-label="Imagen"
           >
             <ImageIcon className="w-5 h-5 text-white" />
@@ -347,7 +347,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div
         className={`relative max-w-[80%] sm:max-w-[65%] px-3 py-1.5 shadow-sm ${
           isUser
-            ? "bg-[#DCF8C6] rounded-2xl rounded-tr-md"
+            ? "bg-blue-100 rounded-2xl rounded-tr-md"
             : "bg-white rounded-2xl rounded-tl-md"
         }`}
       >
@@ -355,7 +355,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         <div
           className={`absolute top-0 w-3 h-3 ${
             isUser
-              ? "right-[-5px] bg-[#DCF8C6]"
+              ? "right-[-5px] bg-blue-100"
               : "left-[-5px] bg-white"
           }`}
           style={{
@@ -367,7 +367,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
         {/* Operator name */}
         {!isUser && (
-          <p className="text-[12px] font-bold text-[#075E54] mb-0.5">
+          <p className="text-[12px] font-bold text-blue-600 mb-0.5">
             {OPERATOR_NAME}
           </p>
         )}
