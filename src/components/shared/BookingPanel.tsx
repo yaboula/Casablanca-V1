@@ -1,113 +1,226 @@
 ﻿"use client";
 
-import { useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowRight, MapPin } from "lucide-react";
-import DualTimelineSlider, { DateRange } from "@/components/shared/DualTimelineSlider";
+import { ArrowRight, MapPin, Minus, Plus, Calendar, ChevronRight } from "lucide-react";
+import { format, addDays } from "date-fns";
+import { es } from "date-fns/locale";
 import Price from "@/components/shared/Price";
 import { useBookingStore } from "@/stores/useBookingStore";
 import { PICKUP_LOCATION_LABELS, DEPOSIT_AMOUNT_EUR } from "@/lib/constants";
 import type { PickupLocation } from "@/types";
 
-//  Step definitions 
-
-type Step = 1 | 2;
-
-const STEP_LABELS: Record<Step, string> = {
-  1: "¿Cuándo llegas?",
-  2: "Confirmar reserva",
-};
-
-//  Animation variants 
-
-const stepVariants = {
-  enter: { opacity: 0, x: 20 },
-  center: { opacity: 1, x: 0, transition: { duration: 0.22, ease: "easeOut" as const } },
-  exit: { opacity: 0, x: -20, transition: { duration: 0.18, ease: "easeIn" as const } },
-};
-
-//  Locations 
+//  Constants 
 
 const LOCATIONS: PickupLocation[] = ["CMN_T1", "CMN_T2"];
+const MIN_DAYS = 1;
+const MAX_DAYS = 30;
+const DEFAULT_PRICE_PER_DAY = 160; // EUR, shown before vehicle selection
 
-//  Step 1: Dates + Location 
+//  Stepper button 
+
+function Stepper({
+  value,
+  min,
+  max,
+  onChange,
+  label,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+  label: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
+        {label}
+      </span>
+      <div className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2">
+        <button
+          type="button"
+          aria-label="Menos días"
+          onClick={() => onChange(Math.max(min, value - 1))}
+          disabled={value <= min}
+          className="w-11 h-11 rounded-lg flex items-center justify-center
+                     bg-white border border-slate-200 text-brand-dark shadow-sm
+                     hover:bg-brand-primary hover:text-white hover:border-brand-primary
+                     disabled:opacity-30 disabled:cursor-not-allowed
+                     transition-all active:scale-95"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+
+        <div className="flex flex-col items-center flex-1">
+          <span className="text-2xl font-black text-brand-dark leading-none tabular-nums">
+            {value}
+          </span>
+          <span className="text-[11px] text-brand-muted mt-0.5">
+            {value === 1 ? "día" : "días"}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          aria-label="Más días"
+          onClick={() => onChange(Math.min(max, value + 1))}
+          disabled={value >= max}
+          className="w-11 h-11 rounded-lg flex items-center justify-center
+                     bg-white border border-slate-200 text-brand-dark shadow-sm
+                     hover:bg-brand-primary hover:text-white hover:border-brand-primary
+                     disabled:opacity-30 disabled:cursor-not-allowed
+                     transition-all active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Quick pills */}
+      <div className="flex gap-1.5 flex-wrap">
+        {[3, 7, 14].map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => onChange(d)}
+            className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
+              value === d
+                ? "bg-brand-primary text-white border-brand-primary"
+                : "bg-white text-brand-muted border-slate-200 hover:border-brand-primary hover:text-brand-primary"
+            }`}
+          >
+            {d} días
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+//  Step 1: Location + Date + Duration 
 
 function StepDates({ onNext }: { onNext: () => void }) {
-  const { pickupLocation, totalDays, totalPriceEUR, setDates, setLocation } =
-    useBookingStore();
+  const { pickupLocation, setDates, setLocation } = useBookingStore();
 
-  const handleDatesChange = useCallback(
-    (range: DateRange) => setDates(range.pickup.getTime(), range.return.getTime()),
-    [setDates]
-  );
+  // Local state  sync to store on "next"
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  }, []);
+
+  const [arrivalDate, setArrivalDate] = useState(todayStr);
+  const [days, setDays] = useState(3);
+
+  const totalPrice = days * DEFAULT_PRICE_PER_DAY;
+
+  const returnDateLabel = useMemo(() => {
+    const base = new Date(arrivalDate + "T12:00:00");
+    return format(addDays(base, days), "d MMM yyyy", { locale: es });
+  }, [arrivalDate, days]);
+
+  const arrivalDateLabel = useMemo(() => {
+    const base = new Date(arrivalDate + "T12:00:00");
+    return format(base, "d MMM yyyy", { locale: es });
+  }, [arrivalDate]);
+
+  function handleNext() {
+    const pickup = new Date(arrivalDate + "T12:00:00");
+    const ret = addDays(pickup, days);
+    setDates(pickup.getTime(), ret.getTime());
+    onNext();
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Location toggle */}
+    <div className="flex flex-col gap-5">
+      {/* 1  Terminal */}
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
+        <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
           Terminal de recogida
-        </label>
-        <div className="flex gap-2">
+        </span>
+        <div className="grid grid-cols-2 gap-2">
           {LOCATIONS.map((loc) => (
             <button
               key={loc}
               type="button"
               onClick={() => setLocation(loc)}
-              className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+              className={`min-h-[48px] px-3 py-3 rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2 ${
                 pickupLocation === loc
                   ? "bg-brand-primary text-white border-brand-primary shadow-sm"
-                  : "bg-white text-brand-muted border-slate-200 hover:border-brand-primary"
+                  : "bg-slate-50 text-brand-muted border-slate-200 hover:border-brand-primary hover:text-brand-dark"
               }`}
             >
-              <MapPin className="w-3.5 h-3.5" />
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
               {PICKUP_LOCATION_LABELS[loc]}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Timeline slider */}
+      {/* 2  Arrival date */}
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
-          Fechas de alquiler
+        <label htmlFor="arrival" className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
+          Fecha de llegada
         </label>
-        <DualTimelineSlider onDatesChange={handleDatesChange} />
-      </div>
-
-      {/* Summary + CTA */}
-      <div className="flex flex-col gap-3 pt-2 border-t border-slate-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-brand-muted">
-              {totalDays ? `${totalDays} días` : "Selecciona fechas"}
-            </p>
-            {totalPriceEUR ? (
-              <Price amount={totalPriceEUR} size="lg" animated className="text-brand-dark" />
-            ) : (
-              <span className="text-base font-bold text-brand-muted"> €</span>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-brand-muted">Solo pagas ahora</p>
-            <Price amount={DEPOSIT_AMOUNT_EUR} size="md" className="text-brand-primary" />
-          </div>
+        <div className="relative">
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted pointer-events-none" />
+          <input
+            id="arrival"
+            type="date"
+            value={arrivalDate}
+            min={todayStr}
+            onChange={(e) => setArrivalDate(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white
+                       text-brand-dark font-semibold text-sm
+                       focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary
+                       transition-all cursor-pointer"
+          />
         </div>
-
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={!totalDays}
-          className="w-full min-h-[52px] bg-brand-primary disabled:bg-slate-200 disabled:text-slate-400
-                     text-white font-bold rounded-full flex items-center justify-center gap-2
-                     transition-all hover:bg-brand-primary-hover
-                     shadow-[0_4px_20px_rgba(37,99,235,0.25)] hover:shadow-[0_6px_28px_rgba(37,99,235,0.35)]"
-        >
-          Ver coches disponibles
-          <ArrowRight className="w-4 h-4" />
-        </button>
       </div>
+
+      {/* 3  Days stepper */}
+      <Stepper
+        value={days}
+        min={MIN_DAYS}
+        max={MAX_DAYS}
+        onChange={setDays}
+        label="¿Cuántos días necesitas?"
+      />
+
+      {/* 4  Summary bar */}
+      <div className="bg-brand-primary/5 border border-brand-primary/15 rounded-xl p-4 flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5 text-xs text-brand-muted leading-snug min-w-0">
+          <span>
+            <span className="font-semibold text-brand-dark">{arrivalDateLabel}</span>
+            {"  "}
+            <span className="font-semibold text-brand-dark">{returnDateLabel}</span>
+          </span>
+          <span>{days} {days === 1 ? "día" : "días"} · desde {DEFAULT_PRICE_PER_DAY}€/día</span>
+        </div>
+        <div className="shrink-0 text-right">
+          <Price amount={totalPrice} size="md" animated className="text-brand-dark" />
+          <p className="text-[10px] text-brand-muted">estimado</p>
+        </div>
+      </div>
+
+      {/* 5  CTA */}
+      <button
+        type="button"
+        onClick={handleNext}
+        className="w-full min-h-[54px] bg-brand-primary text-white font-bold text-sm rounded-full
+                   flex items-center justify-center gap-2
+                   hover:bg-brand-primary-hover active:scale-[0.98]
+                   shadow-[0_4px_20px_rgba(37,99,235,0.28)] hover:shadow-[0_6px_28px_rgba(37,99,235,0.38)]
+                   transition-all duration-200"
+      >
+        Ver coches disponibles
+        <ArrowRight className="w-4 h-4" />
+      </button>
+
+      {/* Deposit note */}
+      <p className="text-center text-[11px] text-brand-muted">
+        Solo <span className="text-brand-dark font-semibold">10€</span> para confirmar · Resto al recoger
+      </p>
     </div>
   );
 }
@@ -115,49 +228,68 @@ function StepDates({ onNext }: { onNext: () => void }) {
 //  Step 2: Confirmation 
 
 function StepConfirm({ onBack }: { onBack: () => void }) {
-  const { totalDays, totalPriceEUR, pickupLocation } = useBookingStore();
+  const { totalDays, pickupLocation, pickupDate, returnDate } = useBookingStore();
   const router = useRouter();
+
+  const estimatedTotal = totalDays ? totalDays * DEFAULT_PRICE_PER_DAY : null;
+
+  const fmt = (ts: number | null) => {
+    if (!ts) return "";
+    return format(new Date(ts), "d MMM yyyy", { locale: es });
+  };
+
+  const rows = [
+    { label: "Terminal", value: PICKUP_LOCATION_LABELS[pickupLocation] },
+    { label: "Llegada", value: fmt(pickupDate) },
+    { label: "Salida", value: fmt(returnDate) },
+    { label: "Duración", value: `${totalDays} ${totalDays === 1 ? "día" : "días"}` },
+  ];
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 flex flex-col gap-3">
-        <div className="flex justify-between text-sm">
-          <span className="text-brand-muted">Terminal</span>
-          <span className="font-semibold text-brand-dark">
-            {PICKUP_LOCATION_LABELS[pickupLocation]}
-          </span>
+      {/* Summary card */}
+      <div className="rounded-xl bg-slate-50 border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+        {rows.map((r) => (
+          <div key={r.label} className="flex justify-between items-center px-4 py-3 text-sm">
+            <span className="text-brand-muted">{r.label}</span>
+            <span className="font-semibold text-brand-dark">{r.value}</span>
+          </div>
+        ))}
+        {estimatedTotal && (
+          <div className="flex justify-between items-center px-4 py-3">
+            <span className="font-semibold text-brand-dark text-sm">Total estimado</span>
+            <Price amount={estimatedTotal} size="md" animated className="text-brand-dark" />
+          </div>
+        )}
+      </div>
+
+      {/* Deposit highlight */}
+      <div className="flex items-center gap-3 bg-brand-primary/5 border border-brand-primary/15 rounded-xl p-4">
+        <div className="w-10 h-10 rounded-xl bg-brand-primary flex items-center justify-center shrink-0">
+          <span className="text-white font-black text-sm">€</span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-brand-muted">Duración</span>
-          <span className="font-semibold text-brand-dark">
-            {totalDays} {totalDays === 1 ? "día" : "días"}
-          </span>
-        </div>
-        <div className="border-t border-slate-200 pt-3 flex justify-between">
-          <span className="font-semibold text-brand-dark">Total estimado</span>
-          {totalPriceEUR && (
-            <Price amount={totalPriceEUR} size="md" animated className="text-brand-dark" />
-          )}
-        </div>
-        <div className="flex justify-between text-xs text-brand-muted">
-          <span>Pagas ahora (depósito)</span>
-          <Price amount={DEPOSIT_AMOUNT_EUR} size="sm" className="text-brand-primary" />
+        <div>
+          <p className="text-sm font-bold text-brand-dark">Pagas ahora: 10€</p>
+          <p className="text-xs text-brand-muted">El resto lo abonas al recoger el vehículo</p>
         </div>
       </div>
 
+      {/* CTA */}
       <button
         type="button"
         onClick={() => router.push("/catalog")}
-        className="w-full min-h-[52px] bg-brand-primary text-white font-bold rounded-full
-                   flex items-center justify-center gap-2 transition-all hover:bg-brand-primary-hover"
+        className="w-full min-h-[54px] bg-brand-primary text-white font-bold text-sm rounded-full
+                   flex items-center justify-center gap-2
+                   hover:bg-brand-primary-hover active:scale-[0.98] transition-all"
       >
-        Elegir mi coche <ArrowRight className="w-4 h-4" />
+        Elegir mi coche
+        <ChevronRight className="w-4 h-4" />
       </button>
 
       <button
         type="button"
         onClick={onBack}
-        className="text-xs text-brand-muted text-center hover:text-brand-dark transition-colors"
+        className="text-xs text-brand-muted text-center hover:text-brand-dark transition-colors py-1"
       >
          Cambiar fechas
       </button>
@@ -167,18 +299,18 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
 
 //  Step indicator 
 
-function StepIndicator({ current, total }: { current: number; total: number }) {
+function StepDots({ current }: { current: number }) {
   return (
     <div className="flex gap-1.5">
-      {Array.from({ length: total }).map((_, i) => (
+      {[1, 2].map((n) => (
         <motion.div
-          key={i}
-          className="h-1 rounded-full"
+          key={n}
+          className="h-1.5 rounded-full"
           animate={{
-            width: i === current - 1 ? 24 : 8,
-            backgroundColor: i < current ? "#2563EB" : "#E2E8F0",
+            width: n === current ? 20 : 6,
+            backgroundColor: n <= current ? "#2563EB" : "#E2E8F0",
           }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.25 }}
         />
       ))}
     </div>
@@ -187,11 +319,19 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 
 //  Main export 
 
-export default function BookingPanel() {
-  const [step, setStep] = useState<Step>(1);
+const stepVariants = {
+  enter: { opacity: 0, x: 16 },
+  center: { opacity: 1, x: 0, transition: { duration: 0.2, ease: "easeOut" as const } },
+  exit: { opacity: 0, x: -16, transition: { duration: 0.15, ease: "easeIn" as const } },
+};
 
-  const goNext = useCallback(() => setStep(2), []);
-  const goBack = useCallback(() => setStep(1), []);
+const STEP_TITLES: Record<number, string> = {
+  1: "Reserva tu coche",
+  2: "Confirmar reserva",
+};
+
+export default function BookingPanel() {
+  const [step, setStep] = useState(1);
 
   return (
     <motion.div
@@ -200,39 +340,29 @@ export default function BookingPanel() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Panel header */}
-      <div className="flex items-center justify-between mb-5">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-[10px] uppercase tracking-widest text-brand-muted font-medium">
-            Paso {step} de 2
+            CMN · Aeropuerto Mohammed V
           </p>
-          <h3 className="text-base font-bold text-brand-dark">{STEP_LABELS[step]}</h3>
+          <h3 className="text-base font-bold text-brand-dark mt-0.5">
+            {STEP_TITLES[step]}
+          </h3>
         </div>
-        <StepIndicator current={step} total={2} />
+        <StepDots current={step} />
       </div>
 
-      {/* Step content */}
+      {/* Steps */}
       <AnimatePresence mode="wait">
         {step === 1 && (
-          <motion.div
-            key="step1"
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-          >
-            <StepDates onNext={goNext} />
+          <motion.div key="s1" variants={stepVariants} initial="enter" animate="center" exit="exit">
+            <StepDates onNext={() => setStep(2)} />
           </motion.div>
         )}
         {step === 2 && (
-          <motion.div
-            key="step2"
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-          >
-            <StepConfirm onBack={goBack} />
+          <motion.div key="s2" variants={stepVariants} initial="enter" animate="center" exit="exit">
+            <StepConfirm onBack={() => setStep(1)} />
           </motion.div>
         )}
       </AnimatePresence>
