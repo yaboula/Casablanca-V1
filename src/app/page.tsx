@@ -129,61 +129,59 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
   return (
     <motion.div
       className="fixed inset-0 z-[200] overflow-hidden flex flex-col items-center justify-center"
-      style={{ background: "#F8FAFC" }}
+      style={{ background: "#080F1E" }}
       exit={{
         y: "-100%",
-        transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] as const },
+        transition: { duration: 0.85, ease: [0.76, 0, 0.24, 1] as const },
       }}
     >
-      {/* ── Background — exact match of hero page ── */}
-      {/* Dot grid */}
+      {/* ── Noise grain texture ── */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none opacity-[0.035]"
         style={{
-          backgroundImage: "radial-gradient(circle, #94A3B8 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-          opacity: 0.75,
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
         }}
       />
-      {/* Blue radial — top right */}
+      {/* ── Deep blue glow — top center ── */}
       <div
         aria-hidden
-        className="absolute top-0 right-0 w-[700px] h-[700px] pointer-events-none"
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[480px] pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at top right, rgba(37,99,235,0.10) 0%, transparent 62%)",
+            "radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.28) 0%, transparent 70%)",
         }}
       />
-      {/* Emerald radial — bottom left */}
+      {/* ── Thin top border glow ── */}
       <div
         aria-hidden
-        className="absolute bottom-0 left-0 w-[500px] h-[500px] pointer-events-none"
+        className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.07) 0%, transparent 60%)",
+            "linear-gradient(to right, transparent, rgba(37,99,235,0.7) 30%, rgba(99,179,237,0.9) 50%, rgba(37,99,235,0.7) 70%, transparent)",
         }}
       />
 
-      {/* ── Blue accent chip above logo ── */}
+      {/* ── Location badge ── */}
       <motion.div
-        className="relative z-10 flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-brand-primary/20 bg-brand-primary/5 mb-7"
-        initial={{ opacity: 0, y: 10 }}
+        className="relative z-10 flex items-center gap-2 px-4 py-1.5 rounded-full mb-8"
+        style={{ border: "1px solid rgba(37,99,235,0.3)", background: "rgba(37,99,235,0.08)" }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] as const, delay: 0.05 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const, delay: 0.08 }}
       >
-        {/* Live dot */}
         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-70 animate-ping" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-brand-primary" />
+          <span className="absolute inline-flex h-full w-full rounded-full bg-[#3B82F6] opacity-75 animate-ping" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#3B82F6]" />
         </span>
-        <span className="text-[0.62rem] font-semibold text-brand-primary tracking-[0.22em] uppercase">
-          CMN · Aeropuerto Mohammed V
+        <span className="text-[0.58rem] font-semibold tracking-[0.26em] uppercase" style={{ color: "#93C5FD" }}>
+          CMN &middot; Aeropuerto Mohammed V
         </span>
       </motion.div>
 
       {/* ── NEXUS. logotype ── */}
-      <div className="relative z-10 flex flex-col items-center gap-4 select-none">
+      <div className="relative z-10 flex flex-col items-center gap-5 select-none">
         <motion.div
           variants={introLetterContainer}
           initial="hidden"
@@ -194,7 +192,7 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
             <span key={i} className="overflow-hidden inline-block">
               <motion.span
                 variants={introLetterItem}
-                className="inline-block font-black text-brand-dark leading-none"
+                className="inline-block font-black leading-none text-white"
                 style={{ fontSize: "clamp(4rem,12vw,7.5rem)", letterSpacing: "0.12em" }}
               >
                 {char}
@@ -204,21 +202,34 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
           <span className="overflow-hidden inline-block">
             <motion.span
               variants={introLetterItem}
-              className="inline-block font-black text-brand-primary leading-none"
-              style={{ fontSize: "clamp(4rem,12vw,7.5rem)", letterSpacing: "0.12em" }}
+              className="inline-block font-black leading-none"
+              style={{ fontSize: "clamp(4rem,12vw,7.5rem)", letterSpacing: "0.12em", color: "#3B82F6" }}
             >
               .
             </motion.span>
           </span>
         </motion.div>
 
+        {/* Separator */}
+        <motion.div
+          style={{
+            height: "1px",
+            width: "220px",
+            background: "linear-gradient(to right, transparent, rgba(59,130,246,0.6), transparent)",
+          }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: 0.55 }}
+        />
+
         {/* Tagline */}
         <div className="overflow-hidden">
           <motion.p
-            className="text-[0.7rem] font-medium text-brand-muted tracking-[0.28em] uppercase"
+            className="text-[0.68rem] font-medium tracking-[0.3em] uppercase"
+            style={{ color: "#475569" }}
             initial={{ y: "100%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const, delay: 0.58 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const, delay: 0.64 }}
           >
             Tu coche. Al instante.
           </motion.p>
@@ -227,18 +238,31 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
 
       {/* ── Progress bar ── */}
       <motion.div
-        className="relative z-10 mt-14 w-48 h-[2px] rounded-full overflow-hidden bg-slate-200"
-        initial={{ opacity: 0, scaleX: 0.5 }}
-        animate={{ opacity: 1, scaleX: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
+        className="relative z-10 mt-14 w-52 h-[1.5px] rounded-full overflow-hidden"
+        style={{ background: "rgba(255,255,255,0.07)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.22 }}
       >
         <motion.div
-          className="absolute inset-y-0 left-0 rounded-full bg-brand-primary"
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ background: "linear-gradient(90deg, #1D4ED8, #3B82F6)" }}
           initial={{ width: "0%" }}
           animate={{ width: "100%" }}
-          transition={{ duration: 2.3, ease: [0.22, 1, 0.36, 1] as const, delay: 0.28 }}
+          transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] as const, delay: 0.3 }}
         />
       </motion.div>
+
+      {/* ── Bottom corner stamp ── */}
+      <motion.p
+        className="absolute bottom-6 right-7 font-mono tracking-widest uppercase"
+        style={{ fontSize: "0.5rem", color: "#1E3A5F" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2 }}
+      >
+        CMN &middot; 2026
+      </motion.p>
     </motion.div>
   );
 }
