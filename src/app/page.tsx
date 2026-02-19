@@ -105,143 +105,48 @@ const stagger = {
 };
 
 /* ==========================================================================
-   CAR SILHOUETTE — premium sedan side profile facing right
+   INTRO SPLASH — Airport Beacon · NEXUS
    ========================================================================== */
-function CarSilhouette() {
-  const spokeAngles = [0, 60, 120, 180, 240, 300];
-  return (
-    <svg width="440" height="130" viewBox="0 0 440 130" fill="none" aria-hidden>
-      {/* Body lower */}
-      <path
-        d="M26 98 Q40 104 64 104 L376 104 Q398 104 410 94 L420 80 Q396 74 374 52 Q336 16 272 12 L168 12 Q104 16 66 52 Q44 74 26 80 Z"
-        fill="url(#bodyGrad)"
-      />
-      {/* Roof */}
-      <path
-        d="M168 12 L272 12 Q336 16 364 50 Q328 45 266 43 L174 43 Q112 45 76 50 Q104 16 168 12 Z"
-        fill="#162232"
-      />
-      {/* Windshield tint */}
-      <path
-        d="M179 43 L261 43 Q298 44 322 52 Q288 48 260 47 L180 47 Q152 48 118 52 Q142 44 179 43 Z"
-        fill="#93C5FD"
-        opacity="0.18"
-      />
-      {/* Rear window */}
-      <rect x="136" y="48" width="61" height="26" rx="4" fill="#7DD3FC" opacity="0.13" />
-      {/* Mid window */}
-      <rect x="203" y="48" width="53" height="26" rx="4" fill="#7DD3FC" opacity="0.10" />
-      {/* Front window */}
-      <rect x="262" y="48" width="44" height="25" rx="4" fill="#93C5FD" opacity="0.09" />
-      {/* Door lines */}
-      <line x1="199" y1="48" x2="199" y2="98" stroke="#1E3448" strokeWidth="1.5" />
-      <line x1="258" y1="48" x2="258" y2="98" stroke="#1E3448" strokeWidth="1.5" />
-      {/* Door handles */}
-      <rect x="218" y="74" width="18" height="4" rx="2" fill="#253D55" />
-      <rect x="278" y="74" width="18" height="4" rx="2" fill="#253D55" />
-      {/* Sill */}
-      <rect x="48" y="97" width="344" height="7" rx="3" fill="#0A1620" />
-      {/* Rear wheel */}
-      <circle cx="110" cy="104" r="27" fill="#060E18" />
-      <circle cx="110" cy="104" r="17" fill="#0C1B28" />
-      <circle cx="110" cy="104" r="9" fill="#162232" />
-      <circle cx="110" cy="104" r="3.5" fill="#2563EB" opacity="0.85" />
-      {spokeAngles.map((deg) => (
-        <line
-          key={`rs-${deg}`}
-          x1={110 + 9 * Math.cos((deg * Math.PI) / 180)}
-          y1={104 + 9 * Math.sin((deg * Math.PI) / 180)}
-          x2={110 + 16 * Math.cos((deg * Math.PI) / 180)}
-          y2={104 + 16 * Math.sin((deg * Math.PI) / 180)}
-          stroke="#1E3448"
-          strokeWidth="2"
-        />
-      ))}
-      {/* Front wheel */}
-      <circle cx="330" cy="104" r="27" fill="#060E18" />
-      <circle cx="330" cy="104" r="17" fill="#0C1B28" />
-      <circle cx="330" cy="104" r="9" fill="#162232" />
-      <circle cx="330" cy="104" r="3.5" fill="#2563EB" opacity="0.85" />
-      {spokeAngles.map((deg) => (
-        <line
-          key={`fs-${deg}`}
-          x1={330 + 9 * Math.cos((deg * Math.PI) / 180)}
-          y1={104 + 9 * Math.sin((deg * Math.PI) / 180)}
-          x2={330 + 16 * Math.cos((deg * Math.PI) / 180)}
-          y2={104 + 16 * Math.sin((deg * Math.PI) / 180)}
-          stroke="#1E3448"
-          strokeWidth="2"
-        />
-      ))}
-      {/* Ground shadow */}
-      <ellipse cx="220" cy="126" rx="180" ry="6" fill="#000" opacity="0.5" />
-      {/* Roof specular */}
-      <path d="M185 20 Q220 13 255 20" stroke="#3B82F6" strokeWidth="1.2" opacity="0.22" strokeLinecap="round" fill="none" />
-      {/* Headlight */}
-      <path d="M406 78 Q414 74 420 78 Q414 84 406 84 Z" fill="#DBEAFE" opacity="0.9" />
-      <ellipse cx="416" cy="80" rx="4" ry="3" fill="#FFFFFF" opacity="0.8" />
-      {/* Headlight beam */}
-      <path d="M414 74 L440 62 L440 98 L414 86 Z" fill="url(#beamGrad)" opacity="0.10" />
-      {/* Tail light bar */}
-      <rect x="24" y="78" width="14" height="8" rx="3" fill="#EF4444" opacity="0.9" />
-      <rect x="24" y="78" width="6" height="8" rx="3" fill="#FCA5A5" opacity="0.5" />
-      <defs>
-        <linearGradient id="bodyGrad" x1="0" y1="40" x2="0" y2="104" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#1E3448" />
-          <stop offset="100%" stopColor="#0A1824" />
-        </linearGradient>
-        <linearGradient id="beamGrad" x1="414" y1="80" x2="440" y2="80" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#93C5FD" />
-          <stop offset="100%" stopColor="#93C5FD" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
-/* ==========================================================================
-   INTRO SPLASH — premium cinematic vehicle entrance · NEXUS
-   ========================================================================== */
+const PING_RINGS = [0, 1, 2];
+const STATIC_RINGS: Array<{ size: number; opacity: number; delay: number }> = [
+  { size: 420, opacity: 0.06, delay: 0.0 },
+  { size: 300, opacity: 0.10, delay: 0.1 },
+  { size: 195, opacity: 0.16, delay: 0.2 },
+  { size: 108, opacity: 0.24, delay: 0.3 },
+];
+
+const introLetterContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.075, delayChildren: 0.25 } },
+};
+const introLetterItem = {
+  hidden: { y: "115%", opacity: 0 },
+  visible: {
+    y: "0%",
+    opacity: 1,
+    transition: { duration: 0.72, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
 function IntroSplash({ onDone }: { onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 3000);
+    const t = setTimeout(onDone, 3400);
     return () => clearTimeout(t);
   }, [onDone]);
 
-  /* Letter stagger for "NEXUS" */
-  const letterContainer = {
-    hidden: {},
-    visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
-  };
-  const letterItem = {
-    hidden: { y: "110%", opacity: 0 },
-    visible: {
-      y: "0%",
-      opacity: 1,
-      transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const },
-    },
-  };
-
-  const roadDashes = [0, 1, 2, 3, 4, 5];
-  const speedLines = [
-    { top: "55%", delay: 0.70, w: "45%", op: 0.22 },
-    { top: "59%", delay: 0.63, w: "68%", op: 0.32 },
-    { top: "61%", delay: 0.67, w: "74%", op: 0.26 },
-    { top: "63%", delay: 0.65, w: "52%", op: 0.18 },
-  ];
-
   return (
     <motion.div
-      className="fixed inset-0 z-[200] overflow-hidden bg-[#060C18]"
-      style={{ transformOrigin: "top" }}
-      initial={{ scaleY: 1 }}
+      className="fixed inset-0 z-[200] overflow-hidden flex items-center justify-center"
+      style={{ background: "#060C18" }}
       exit={{
-        scaleY: 0,
-        transition: { duration: 0.72, ease: [0.76, 0, 0.24, 1] as const },
+        opacity: 0,
+        filter: "blur(12px)",
+        scale: 1.06,
+        transition: { duration: 0.75, ease: [0.4, 0, 0.2, 1] as const },
       }}
     >
-      {/* ── BACKGROUND — exact mirror of hero page ── */}
-      {/* Dot grid */}
+      {/* ── Hero-mirror background ── */}
       <div
         aria-hidden
         className="absolute inset-0 pointer-events-none"
@@ -251,208 +156,181 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
           opacity: 0.38,
         }}
       />
-      {/* Blue radial top-right */}
       <div
         aria-hidden
         className="absolute top-0 right-0 w-[800px] h-[800px] pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at top right, rgba(37,99,235,0.24) 0%, transparent 65%)",
+          background:
+            "radial-gradient(ellipse at top right, rgba(37,99,235,0.22) 0%, transparent 65%)",
         }}
       />
-      {/* Emerald radial bottom-left */}
       <div
         aria-hidden
         className="absolute bottom-0 left-0 w-[650px] h-[650px] pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.13) 0%, transparent 65%)",
+          background:
+            "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.12) 0%, transparent 65%)",
         }}
       />
-      {/* Bottom veil — fades toward the light hero bg for seamless exit */}
-      <motion.div
-        aria-hidden
-        className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.0, delay: 2.0 }}
-        style={{ background: "linear-gradient(to top, rgba(248,250,252,0.05) 0%, transparent 100%)" }}
-      />
 
-      {/* ── NEXUS LOGOTYPE — upper center ── */}
-      <div className="absolute inset-x-0 top-[18%] flex flex-col items-center gap-3 z-10" aria-label="NEXUS">
-        {/* Letter-by-letter clip reveal */}
+      {/* ── Airport Beacon ── */}
+      <div
+        aria-hidden
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+      >
+        {/* Sonar ping rings — 3 pulses offset by 1.1s */}
+        {PING_RINGS.map((i) => (
+          <motion.div
+            key={`ping-${i}`}
+            className="absolute rounded-full"
+            style={{
+              width: 96,
+              height: 96,
+              border: "1.5px solid rgba(37,99,235,0.8)",
+            }}
+            animate={{ scale: [0.3, 4.8], opacity: [0.75, 0] }}
+            transition={{
+              duration: 3.3,
+              delay: 0.4 + i * 1.1,
+              repeat: Infinity,
+              ease: [0.15, 0.8, 0.35, 1] as const,
+            }}
+          />
+        ))}
+
+        {/* Static concentric rings — scale-in then breathe */}
+        {STATIC_RINGS.map(({ size, opacity, delay }) => (
+          <motion.div
+            key={`ring-${size}`}
+            className="absolute rounded-full"
+            style={{
+              width: size,
+              height: size,
+              border: `1px solid rgba(37,99,235,${opacity})`,
+            }}
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: [0, opacity * 6, opacity * 4.5] }}
+            transition={{
+              scale: { duration: 1.1, delay, ease: [0.22, 1, 0.36, 1] as const },
+              opacity: { duration: 1.4, delay, ease: "easeOut" },
+            }}
+          />
+        ))}
+
+        {/* Center orb */}
         <motion.div
-          variants={letterContainer}
+          className="absolute rounded-full"
+          style={{ width: 12, height: 12, background: "#2563EB" }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{
+            scale: 1,
+            opacity: 1,
+            boxShadow: [
+              "0 0 16px 5px rgba(37,99,235,0.45), 0 0 55px 20px rgba(37,99,235,0.18)",
+              "0 0 32px 12px rgba(37,99,235,0.82), 0 0 90px 36px rgba(37,99,235,0.34)",
+              "0 0 16px 5px rgba(37,99,235,0.45), 0 0 55px 20px rgba(37,99,235,0.18)",
+            ],
+          }}
+          transition={{
+            scale: { duration: 0.8, delay: 0.2, ease: [0.34, 1.56, 0.64, 1] as const },
+            opacity: { duration: 0.5, delay: 0.2 },
+            boxShadow: { duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: 0.6 },
+          }}
+        />
+
+        {/* Inner orb halo ring */}
+        <motion.div
+          className="absolute rounded-full"
+          style={{ width: 36, height: 36, border: "1px solid rgba(37,99,235,0.5)" }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [0, 1.1, 1], opacity: [0, 0.9, 0.55] }}
+          transition={{ duration: 0.9, delay: 0.28, ease: [0.22, 1, 0.36, 1] as const }}
+        />
+      </div>
+
+      {/* ── NEXUS logotype + tagline — centered ── */}
+      <div className="relative z-10 flex flex-col items-center gap-3 select-none" aria-label="NEXUS">
+        {/* Letter stagger */}
+        <motion.div
+          variants={introLetterContainer}
           initial="hidden"
           animate="visible"
-          className="flex items-end select-none"
+          className="flex items-end"
         >
           {"NEXUS".split("").map((char, i) => (
             <span key={i} className="overflow-hidden inline-block">
               <motion.span
-                variants={letterItem}
+                variants={introLetterItem}
                 className="inline-block font-black text-white leading-none"
-                style={{ fontSize: "clamp(3.5rem,10vw,6.5rem)", letterSpacing: "0.14em" }}
+                style={{ fontSize: "clamp(3.8rem,11vw,7rem)", letterSpacing: "0.15em" }}
               >
                 {char}
               </motion.span>
             </span>
           ))}
-          {/* Brand dot */}
           <span className="overflow-hidden inline-block ml-0.5">
             <motion.span
-              variants={letterItem}
+              variants={introLetterItem}
               className="inline-block font-black text-brand-primary leading-none"
-              style={{ fontSize: "clamp(3.5rem,10vw,6.5rem)", letterSpacing: "0.14em" }}
+              style={{ fontSize: "clamp(3.8rem,11vw,7rem)", letterSpacing: "0.15em" }}
             >
               .
             </motion.span>
           </span>
         </motion.div>
 
-        {/* Separator — draws from center outward */}
+        {/* Separator — draws outward from center */}
         <motion.div
           className="rounded-full"
           style={{
             height: "1px",
-            width: "240px",
-            background: "linear-gradient(to right, transparent, rgba(37,99,235,0.75), transparent)",
+            width: "260px",
+            background:
+              "linear-gradient(to right, transparent, rgba(37,99,235,0.8), transparent)",
           }}
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] as const, delay: 0.56 }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] as const, delay: 0.62 }}
         />
 
         {/* Tagline */}
         <div className="overflow-hidden">
           <motion.p
-            className="text-[0.65rem] font-semibold text-slate-500 tracking-[0.3em] uppercase"
+            className="text-[0.63rem] font-semibold text-slate-500 tracking-[0.34em] uppercase"
             initial={{ y: "100%", opacity: 0 }}
             animate={{ y: "0%", opacity: 1 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const, delay: 0.64 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] as const, delay: 0.72 }}
           >
             Airport Mobility &middot; CMN
           </motion.p>
         </div>
       </div>
 
-      {/* ── ROAD SCENE — occupies lower 40% ── */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 pointer-events-none"
-        style={{ top: "60%", bottom: 0 }}
-      >
-        {/* Horizon line */}
-        <div
-          className="absolute left-0 right-0 h-[1px]"
-          style={{
-            background:
-              "linear-gradient(to right, transparent, rgba(51,65,85,0.75) 15%, rgba(51,65,85,0.75) 85%, transparent)",
-          }}
-        />
-        {/* Road surface gradient */}
-        <div
-          className="absolute left-0 right-0 bottom-0"
-          style={{
-            top: "1px",
-            background: "linear-gradient(to bottom, rgba(15,23,42,0.6) 0%, rgba(6,12,24,0.9) 100%)",
-          }}
-        />
-        {/* Moving center dashes */}
-        {roadDashes.map((i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-slate-600"
-            style={{ top: "36%", height: "2px", width: "38px", left: `${6 + i * 16}%` }}
-            animate={{ x: ["0%", "-960%"], opacity: [0, 0.55, 0.55, 0] }}
-            transition={{
-              duration: 1.5,
-              delay: 0.38 + i * 0.06,
-              repeat: Infinity,
-              ease: "linear" as const,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* ── SPEED LINES ── */}
-      <div aria-hidden className="absolute inset-0 pointer-events-none">
-        {speedLines.map((l, i) => (
-          <motion.div
-            key={i}
-            className="absolute h-[1px] left-0"
-            style={{
-              top: l.top,
-              width: l.w,
-              background:
-                "linear-gradient(to right, transparent, rgba(37,99,235,0.85), transparent)",
-            }}
-            animate={{ opacity: [0, l.op, l.op, 0], scaleX: [0.15, 1, 1, 0.65] }}
-            transition={{
-              duration: 1.7,
-              delay: l.delay,
-              ease: "easeInOut" as const,
-              times: [0, 0.15, 0.72, 1],
-            }}
-          />
-        ))}
-      </div>
-
-      {/* ── CAR SWEEP ── */}
-      <div
-        aria-hidden
-        className="absolute pointer-events-none"
-        style={{ top: "42%", left: 0, right: 0, perspective: "1400px" }}
-      >
+      {/* ── Loading bar ── */}
+      <div className="absolute bottom-[10%] left-0 right-0 flex flex-col items-center gap-2.5 z-10">
         <motion.div
-          style={{ willChange: "transform, filter" }}
-          initial={{ x: -560, scale: 0.2, rotateY: -18 }}
-          animate={{
-            x: [-560, -180, 55, 1200],
-            scale: [0.2, 0.82, 2.15, 0.4],
-            rotateY: [-18, -8, 0, 11],
-            filter: [
-              "blur(0px) brightness(1.0)",
-              "blur(2px) brightness(1.1)",
-              "blur(13px) brightness(1.45)",
-              "blur(7px) brightness(0.75)",
-            ],
-          }}
-          transition={{
-            duration: 1.85,
-            delay: 0.4,
-            ease: [0.11, 0, 0.5, 0] as const,
-            times: [0, 0.3, 0.6, 1],
-          }}
-        >
-          <CarSilhouette />
-        </motion.div>
-      </div>
-
-      {/* ── LOADING BAR ── */}
-      <div className="absolute bottom-[11%] left-0 right-0 flex flex-col items-center gap-2 z-10">
-        <motion.div
-          className="relative w-52 h-[2px] rounded-full overflow-hidden"
-          style={{ background: "rgba(30,52,72,0.9)" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.28 }}
+          className="relative w-56 h-[2px] rounded-full overflow-hidden"
+          style={{ background: "rgba(20,36,55,0.95)" }}
+          initial={{ opacity: 0, scaleX: 0.6 }}
+          animate={{ opacity: 1, scaleX: 1 }}
+          transition={{ duration: 0.55, delay: 0.3 }}
         >
           <motion.div
             className="absolute inset-y-0 left-0 rounded-full"
             style={{
-              background: "linear-gradient(to right, rgba(37,99,235,0.5), #2563EB)",
-              boxShadow: "0 0 10px rgba(37,99,235,0.9)",
+              background: "linear-gradient(90deg, rgba(37,99,235,0.4) 0%, #2563EB 100%)",
+              boxShadow: "0 0 12px 3px rgba(37,99,235,0.85)",
             }}
             initial={{ width: "0%" }}
             animate={{ width: "100%" }}
-            transition={{ duration: 2.4, ease: [0.22, 1, 0.36, 1] as const, delay: 0.35 }}
+            transition={{ duration: 2.8, ease: [0.22, 1, 0.36, 1] as const, delay: 0.38 }}
           />
         </motion.div>
         <motion.p
-          className="text-[0.58rem] font-medium tracking-[0.32em] uppercase text-slate-600"
+          className="text-[0.56rem] font-medium tracking-[0.35em] uppercase text-slate-700"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.5 }}
         >
           Iniciando&hellip;
         </motion.p>
@@ -460,10 +338,10 @@ function IntroSplash({ onDone }: { onDone: () => void }) {
 
       {/* Corner badge */}
       <motion.p
-        className="absolute bottom-5 right-5 text-[0.52rem] font-mono tracking-widest uppercase text-slate-700"
+        className="absolute bottom-5 right-6 text-[0.5rem] font-mono tracking-widest uppercase text-slate-700"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.9 }}
+        transition={{ delay: 1.0 }}
       >
         CMN &middot; 2026
       </motion.p>
