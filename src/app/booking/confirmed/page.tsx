@@ -39,7 +39,7 @@ function ConfirmedContent() {
     ts ? format(new Date(ts), "EEE d MMM · HH:mm", { locale: es }) : "—";
 
   return (
-    <main className="min-h-screen bg-brand-bg flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
 
         {/* Success animation */}
@@ -146,7 +146,7 @@ function ConfirmedContent() {
           </Link>
         </p>
       </div>
-    </main>
+    </div>
   );
 }
 

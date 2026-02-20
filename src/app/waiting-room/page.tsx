@@ -2,8 +2,8 @@
 import WaitingRoomClient from "@/components/customer/WaitingRoomClient";
 
 export const metadata: Metadata = {
-  title: "Verificacion · NEXUS.",
-  description: "Tus documentos estan siendo verificados por nuestro equipo.",
+  title: "Verificación · NEXUS.",
+  description: "Tus documentos están siendo verificados por nuestro equipo.",
 };
 
 interface Props {

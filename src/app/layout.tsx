@@ -13,7 +13,6 @@ export const metadata: Metadata = {
       "Reserva tu coche al llegar al Aeropuerto Mohammed V. Rápido, seguro, sin sorpresas.",
     url: "https://nexus-cmn.vercel.app",
     siteName: "NEXUS.",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "NEXUS. Alquiler CMN" }],
     locale: "es_ES",
     type: "website",
   },
@@ -21,12 +20,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "NEXUS. — Alquiler de Coches Aeropuerto Casablanca",
     description: "Reserva tu coche al llegar al Aeropuerto Mohammed V.",
-    images: ["/og-image.png"],
   },
   manifest: "/manifest.json",
-  icons: {
-    apple: "/apple-touch-icon.png",
-  },
 };
 
 export default function RootLayout({

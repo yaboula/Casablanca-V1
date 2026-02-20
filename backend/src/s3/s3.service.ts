@@ -1,0 +1,83 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { DocumentType } from '../documents/reservation-document.entity';
+
+@Injectable()
+export class S3Service {
+  private readonly s3: S3Client;
+  private readonly bucket: string;
+  private readonly uploadExpiry: number;
+  private readonly readExpiry = 300; // 5 minutes for download URLs
+  private readonly logger = new Logger(S3Service.name);
+
+  constructor(private readonly config: ConfigService) {
+    this.s3 = new S3Client({
+      region: this.config.get<string>('AWS_REGION', 'eu-west-3'),
+      credentials: {
+        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID')!,
+        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY')!,
+      },
+    });
+    this.bucket = this.config.get<string>('AWS_S3_BUCKET', 'nexus-documents');
+    this.uploadExpiry = Number(
+      this.config.get<string>('AWS_S3_PRESIGN_EXPIRES_SECONDS', '900'),
+    );
+  }
+
+  /**
+   * Generates a presigned PUT URL so the frontend can upload directly to S3.
+   * The fileKey encodes userId/reservationId/type to prevent path traversal.
+   */
+  async generatePresignedUpload(
+    userId: string,
+    reservationId: string,
+    type: DocumentType,
+  ): Promise<{ uploadUrl: string; fileKey: string; expiresIn: number }> {
+    const fileKey = `docs/${userId}/${reservationId}/${type}-${Date.now()}.jpg`;
+
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: fileKey,
+      ContentType: 'image/jpeg',
+      Metadata: { userId, reservationId, type },
+    });
+
+    const uploadUrl = await getSignedUrl(this.s3, command, {
+      expiresIn: this.uploadExpiry,
+    });
+
+    return { uploadUrl, fileKey, expiresIn: this.uploadExpiry };
+  }
+
+  /**
+   * Generates a short-lived presigned GET URL for operator or customer to view a document.
+   * Never returns the raw file key.
+   */
+  async generatePresignedRead(fileKey: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: fileKey,
+    });
+    return getSignedUrl(this.s3, command, { expiresIn: this.readExpiry });
+  }
+
+  /**
+   * Deletes an S3 object — used by document-cleanup BullMQ job.
+   */
+  async deleteObject(fileKey: string): Promise<void> {
+    try {
+      await this.s3.send(
+        new DeleteObjectCommand({ Bucket: this.bucket, Key: fileKey }),
+      );
+    } catch (err) {
+      this.logger.error(`Failed to delete S3 object ${fileKey}`, err);
+    }
+  }
+}

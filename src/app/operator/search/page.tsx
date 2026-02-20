@@ -19,6 +19,7 @@ export default function OperatorSearchPage() {
     const matches = MOCK_DELIVERIES.filter(
       (d) =>
         d.customerName?.toLowerCase().includes(q) ||
+        d.customerPhone?.replace(/[\s]/g, "").includes(q.replace(/[\s]/g, "")) ||
         d.id.toLowerCase().includes(q) ||
         d.vehicle.brand.toLowerCase().includes(q) ||
         d.vehicle.model.toLowerCase().includes(q)
@@ -42,7 +43,7 @@ export default function OperatorSearchPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder="Nombre, matrícula o ID..."
+          placeholder="Nombre, teléfono o ID de reserva..."
           className="flex-1 min-h-[48px] px-4 bg-white border border-slate-200 rounded-xl
                      text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none shadow-sm"
         />

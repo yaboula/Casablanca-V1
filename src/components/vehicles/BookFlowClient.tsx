@@ -102,7 +102,7 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
     cvc.length >= 3;
 
   return (
-    <main className="min-h-screen bg-brand-bg">
+    <div className="min-h-screen bg-brand-bg">
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-4 md:px-8 py-3">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
@@ -366,7 +366,7 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
           </motion.div>
         </AnimatePresence>
       </div>
-    </main>
+    </div>
   );
 }
 
