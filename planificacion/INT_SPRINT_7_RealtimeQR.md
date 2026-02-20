@@ -30,7 +30,68 @@ Eventos emitidos por el backend:
 
 ## Tareas
 
-### T7-1 — Conectar `WaitingRoomClient` al SSE real
+### T7-1 — Proxy SSE en Next.js (`src/app/api/sse/proxy/route.ts`)
+
+> **Decisión de arquitectura**: `EventSource` del browser no permite headers `Authorization`. Pasar el JWT como `?token=` en la URL es una vulnerabilidad crítica (CWE-317) — queda expuesto en logs de Nginx/Vercel/CloudFront e historial del browser. **NestJS no debe aceptar tokens por URL nunca.** La solución correcta es un Route Handler de Next.js que actúa como proxy en streaming.
+
+```
+Browser → GET /api/sse/proxy   (sin token en URL, cookie HttpOnly automática)
+               ↓
+    Next.js Route Handler   (lee nexus_token de cookie, inyecta Authorization header)
+               ↓  Authorization: Bearer <token>
+    NestJS GET /api/v1/sse/user/:userId  (token siempre por header)
+               ↓  text/event-stream pipe
+    Browser   (recibe eventos normalmente con EventSource estándar)
+```
+
+**Crear** `src/app/api/sse/proxy/route.ts`:
+
+```typescript
+import { cookies } from 'next/headers';
+import { NextRequest } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('nexus_token')?.value;
+  if (!token) return new Response('Unauthorized', { status: 401 });
+
+  // Decodificar payload para obtener userId (sin verificar firma — solo routing)
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  const userId = payload.sub;
+
+  // Abrir conexión con NestJS inyectando el header — el token NUNCA va en la URL
+  const upstreamRes = await fetch(
+    `${process.env.API_URL}/sse/user/${userId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      },
+      // @ts-expect-error — Node 18+ fetch soporta duplex
+      duplex: 'half',
+    },
+  );
+
+  if (!upstreamRes.ok || !upstreamRes.body) {
+    return new Response('SSE upstream error', { status: 502 });
+  }
+
+  // Pipe el ReadableStream de NestJS directamente al browser
+  return new Response(upstreamRes.body, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no', // deshabilitar buffer en Nginx
+    },
+  });
+}
+```
+
+### T7-2 — Conectar `WaitingRoomClient` al SSE via Proxy
 
 `src/components/customer/WaitingRoomClient.tsx`:
 
@@ -43,71 +104,41 @@ useEffect(() => {
 }, []);
 ```
 
-**Reemplazar por:**
+**Reemplazar por** (el cliente conecta al proxy interno, sin token visible):
 ```typescript
 useEffect(() => {
-  // Leer userId de la cookie nexus_user (no HttpOnly)
-  const user = getUserFromCookie(); // helper de src/lib/auth.ts
-  if (!user || !reservationId) return;
+  if (!reservationId) return;
 
-  const token = getTokenFromCookie();
-  const evtSource = new EventSource(
-    `${process.env.NEXT_PUBLIC_API_URL}/sse/user/${user.id}`,
-    // EventSource no soporta headers nativos → JWT via query param (excepción controlada)
-    // O usar polyfill con fetch streaming
-  );
+  // La URL del EventSource no contiene ningún token — la cookie se envía automáticamente
+  const evtSource = new EventSource('/api/sse/proxy');
 
   evtSource.addEventListener('document.approved', (e) => {
     const data = JSON.parse(e.data);
     if (data.reservationId !== reservationId) return;
-    setDocStatus(prev => ({
-      ...prev,
-      [data.documentType.toLowerCase()]: 'APPROVED',
-    }));
-    // Si ambos APPROVED → navegar a /smart-ticket
-    if (bothApproved(updatedStatus)) {
-      router.push(`/smart-ticket?reservationId=${reservationId}`);
-    }
+    setDocStatus(prev => {
+      const updated = { ...prev, [data.documentType.toLowerCase()]: 'APPROVED' as const };
+      if (updated.passport === 'APPROVED' && updated.license === 'APPROVED') {
+        router.push(`/smart-ticket?reservationId=${reservationId}`);
+      }
+      return updated;
+    });
   });
 
   evtSource.addEventListener('document.rejected', (e) => {
     const data = JSON.parse(e.data);
     if (data.reservationId !== reservationId) return;
-    setDocStatus(prev => ({
-      ...prev,
-      [data.documentType.toLowerCase()]: 'REJECTED',
-    }));
+    setDocStatus(prev => ({ ...prev, [data.documentType.toLowerCase()]: 'REJECTED' as const }));
     toast.error(`Documento rechazado: ${data.reason}`);
-    // Ofrecer re-upload → back to /check-in
   });
 
+  evtSource.onerror = () => setConnectionStatus('error');
+  evtSource.onopen = () => setConnectionStatus('connected');
+
   return () => evtSource.close();
-}, [reservationId]);
+}, [reservationId, router]);
 ```
 
-> **Nota técnica**: `EventSource` del browser no permite headers personalizados. Estrategias:
-> - **Opción A (recomendada)**: El JWT se envía como query param `?token=XXX` — el backend lo acepta en la ruta SSE como excepción controlada (short-lived, HTTPS only).
-> - **Opción B**: Polyfill `eventsource` o `fetch` streaming con `ReadableStream` para adjuntar header.
-
-### T7-2 — Modificar backend SSE para aceptar token por query param
-
-En `backend/src/sse/sse.controller.ts`:
-
-```typescript
-@Get('user/:userId')
-@Sse()
-async stream(
-  @Param('userId') userId: string,
-  @Query('token') queryToken: string,  // ← nuevo
-  @Req() req: Request,
-) {
-  // Aceptar token del header Authorization: Bearer XXX O del query param ?token=XXX
-  const token = queryToken || extractBearerToken(req);
-  const payload = await this.jwtService.verifyAsync(token);
-  if (payload.sub !== userId) throw new ForbiddenException();
-  // ...
-}
-```
+> **Sin cambios en NestJS**: el `SseController` sigue aceptando solo `Authorization` header. El proxy lo gestiona.
 
 ### T7-3 — Smart Ticket QR real (`/smart-ticket`)
 
@@ -177,19 +208,23 @@ Tras escanear correctamente, mostrar modal con:
 
 ### T7-6 — Reconexión automática del SSE
 
-La conexión SSE puede perderse (timeout, red). Implementar reconexión exponencial:
+La conexión SSE puede perderse (timeout, red). `EventSource` tiene reconexión automática built-in, pero implementar reconexión exponencial controlada como backup:
 
 ```typescript
-function createSSEConnection(userId: string, token: string, handlers: SSEHandlers) {
+// El EventSource nativo ya reintenta automáticamente.
+// Para control fino, cerrar y reabrir con backoff:
+function createSSEConnection(onEvent: SSEHandlers) {
   let retries = 0;
-  
+
   function connect() {
-    const es = new EventSource(`${API}/sse/user/${userId}?token=${token}`);
+    // La URL interna del proxy NUNCA contiene token — cookie se envía automáticamente
+    const es = new EventSource('/api/sse/proxy');
     es.onerror = () => {
       es.close();
       const delay = Math.min(1000 * 2 ** retries++, 30000);
       setTimeout(connect, delay);
     };
+    es.onopen = () => { retries = 0; }; // reset backoff al reconectar
     // ... attach handlers
     return es;
   }
@@ -236,11 +271,10 @@ Eliminar:
 
 | Archivo | Crear |
 |---|---|
-| `src/lib/sse.ts` | Helper de conexión SSE con reconexión automática |
+| `src/app/api/sse/proxy/route.ts` | **Proxy SSE de Next.js** — inyecta Authorization header, protege el JWT |
+| `src/lib/sse.ts` | Helper de reconexión con backoff exponencial |
 
-| Cambio backend | Razón |
-|---|---|
-| `SseController` — aceptar `?token=` query param | EventSource browser no permite headers |
+> **Sin cambios en NestJS**: el `SseController` **no** acepta `?token=` — el proxy gestiona la autenticación.
 
 ---
 
@@ -254,9 +288,10 @@ Eliminar:
 
 ## Notas de Seguridad
 
-El JWT en query param (`?token=`) es una excepción aceptable únicamente cuando:
-1. La conexión es HTTPS (no funciona en HTTP en producción)
-2. El token tiene vida corta (15min o menos) — si el actual es de 24h, reducirlo para SSE
-3. El backend limpia el token del log de acceso (configurar exclusión en el logger)
+**JWT en URL descartado definitivamente (CWE-317)**. Con el proxy Next.js:
+- El JWT viaja en la cookie `nexus_token` (HttpOnly, Secure, SameSite=Strict) — nunca en URLs
+- Los logs de Nginx/Vercel/CloudFront no capturan el token
+- El historial del browser no contiene el token
+- NestJS solo acepta `Authorization: Bearer` header — sin excepciones
 
-Alternativa más segura para producción: ticket de un solo uso (exchange el JWT por un SSE-ticket de 60s).
+**Para producción con alta carga**: considerar un ticket SSE de un solo uso (90s TTL) emitido por un endpoint `POST /api/v1/sse/ticket` y consumido por el proxy, para evitar que el JWT de larga vida circule en peticiones de larga duración (la conexión SSE puede durar horas).

@@ -124,11 +124,49 @@ export function getDeliveryUrgency(arrivalTime: string): 'critical' | 'warning' 
 }
 ```
 
-### T6-4 — Cola de Documentos (`/operator/documents`)
+### T6-4 — Cola de Documentos con Server Actions (`/operator/documents`)
 
+> **Decisión de arquitectura**: las mutaciones del operador (aprobar/rechazar) deben usar **Server Actions** en lugar de `apiFetch` cliente + `router.refresh()`. Razón: `router.refresh()` puede devolver caché obsoleta en Next.js 15 si el fetch del Server Component tiene directivas de caché no `no-store`. `revalidatePath()` dentro de un Server Action hace un **cache purge determinista** — el operador nunca verá un documento ya aprobado en la lista.
+
+**Crear** `src/app/operator/documents/actions.ts`:
+```typescript
+'use server';
+import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+
+async function getOperatorToken() {
+  const token = (await cookies()).get('nexus_token')?.value;
+  if (!token) throw new Error('Unauthorized');
+  return token;
+}
+
+export async function approveDocument(docId: string) {
+  const token = await getOperatorToken();
+  const res = await fetch(`${process.env.API_URL}/operator/documents/${docId}/approve`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Approve failed');
+  revalidatePath('/operator/documents');  // purge garantizado y determinista
+}
+
+export async function rejectDocument(docId: string, reason: string) {
+  const token = await getOperatorToken();
+  const res = await fetch(`${process.env.API_URL}/operator/documents/${docId}/reject`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) throw new Error('Reject failed');
+  revalidatePath('/operator/documents');
+}
+```
+
+**`DocumentsPage`** — Server Component con fetch:
 ```typescript
 // src/app/operator/documents/page.tsx
 import { serverFetch } from '@/lib/server-api';
+import DocumentReviewList from './_components/DocumentReviewList';
 
 export default async function DocumentsPage() {
   const pending = await serverFetch<PendingDocument[]>('/operator/documents/pending');
@@ -136,20 +174,27 @@ export default async function DocumentsPage() {
 }
 ```
 
-**`DocumentReviewList`** — Client Component con las acciones:
+**`DocumentReviewList`** — Client Component que llama al Server Action (sin `apiFetch`, sin `router.refresh()`):
 ```typescript
-async function approve(docId: string) {
-  await apiFetch(`/operator/documents/${docId}/approve`, { method: 'PATCH', auth: true });
-  router.refresh(); // re-fetch server component
-}
+'use client';
+import { approveDocument, rejectDocument } from '../actions';
+import { toast } from 'sonner';
 
-async function reject(docId: string, reason: string) {
-  await apiFetch(`/operator/documents/${docId}/reject`, {
-    method: 'PATCH',
-    auth: true,
-    body: JSON.stringify({ reason }),
-  });
-  router.refresh();
+export default function DocumentReviewList({ documents }: { documents: PendingDocument[] }) {
+  async function handleApprove(docId: string) {
+    try {
+      await approveDocument(docId); // Server Action → revalidatePath automático
+      toast.success('Documento aprobado.');
+    } catch { toast.error('Error al aprobar.'); }
+  }
+
+  async function handleReject(docId: string, reason: string) {
+    try {
+      await rejectDocument(docId, reason);
+      toast.success('Documento rechazado.');
+    } catch { toast.error('Error al rechazar.'); }
+  }
+  // ...
 }
 ```
 
@@ -172,19 +217,45 @@ async function search(q: string) {
 
 El backend busca por: nombre del cliente, ID de reserva (parcial), matrícula del vehículo.
 
-### T6-6 — Detalle de entrega y acción de Check-in
+### T6-6 — Check-in con Server Action
 
-En el dashboard, cuando el operador hace click en una reserva para ver el detalle:
+La misma arquitectura que T6-4 — todas las mutaciones del operador van vía Server Actions:
 
+**Crear** `src/app/operator/dashboard/actions.ts`:
 ```typescript
-// Acción de check-in (marcar como IN_PROGRESS)
-async function handleCheckin(reservationId: string) {
-  await apiFetch(`/operator/reservations/${reservationId}/checkin`, {
-    method: 'PATCH',
-    auth: true,
-  });
-  toast.success('Check-in registrado.');
-  router.refresh();
+'use server';
+import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+
+export async function checkinReservation(reservationId: string) {
+  const token = (await cookies()).get('nexus_token')?.value;
+  const res = await fetch(
+    `${process.env.API_URL}/operator/reservations/${reservationId}/checkin`,
+    { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error('Checkin failed');
+  revalidatePath('/operator/dashboard'); // la lista del dashboard se purga y recarga
+}
+
+export async function completeReservation(reservationId: string) {
+  const token = (await cookies()).get('nexus_token')?.value;
+  const res = await fetch(
+    `${process.env.API_URL}/operator/reservations/${reservationId}/complete`,
+    { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error('Complete failed');
+  revalidatePath('/operator/dashboard');
+}
+```
+
+El componente cliente llama directamente al Server Action — sin `apiFetch`, sin `router.refresh()`:
+```typescript
+// En DeliveryCard (Client Component)
+async function handleCheckin() {
+  try {
+    await checkinReservation(delivery.id);
+    toast.success('Check-in registrado.');
+  } catch { toast.error('Error al registrar check-in.'); }
 }
 ```
 

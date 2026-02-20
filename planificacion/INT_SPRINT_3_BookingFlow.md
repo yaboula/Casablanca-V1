@@ -205,22 +205,86 @@ function handlePaymentSuccess() {
 }
 ```
 
-> **Nota crítica**: el `payment_intent.succeeded` llega al webhook del backend de forma async. El frontend NO debe esperar al webhook. Lo que hace es mostrar la pantalla de confirmación inmediatamente — el backend actualizará el estado cuando reciba el webhook.
+> **Timing importante**: `stripe.confirmCardPayment()` confirma el pago en Stripe, pero la actualización del estado en el backend ocurre vía Webhook, que es **asíncrono** (puede tardar 200ms–2s). La página `/booking/confirmed` NO puede asumir que la reserva está en `CONFIRMED` al hacer fetch inmediatamente.
 
-### T3-6 — Página `/booking/confirmed` — limpiar mock
+### T3-6 — Página `/booking/confirmed` con polling anti-race
 
-`src/app/booking/confirmed/page.tsx` actualmente usa:
+**El problema de concurrencia**:
+```
+t=0ms    stripe.confirmCardPayment() → éxito en browser
+t=50ms   Frontend redirige → /booking/confirmed, hace fetch de la reserva
+t=50ms   Backend: reserva todavía en PENDING_DEPOSIT  ← el fetch llega aquí
+t=800ms  Webhook de Stripe llega al backend → reserva pasa a CONFIRMED
+```
+Sin manejo correcto, el usuario ve `PENDING_DEPOSIT` tras haber pagado — experiencia catástrofica.
+
+**Solución: polling con estados transicionales**
+
 ```typescript
+// src/app/booking/confirmed/page.tsx — lógica de polling
+'use client';
+
+type ConfirmationStatus = 'polling' | 'confirmed' | 'timeout' | 'error';
+
+const MAX_ATTEMPTS = 10;
+const POLL_INTERVAL_MS = 2000;
+
+export default function ConfirmedPage() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
+  const [status, setStatus] = useState<ConfirmationStatus>('polling');
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+
+  useEffect(() => {
+    if (!id) { setStatus('error'); return; }
+    let attempt = 0;
+    let timer: ReturnType<typeof setTimeout>;
+
+    async function poll() {
+      try {
+        const res = await apiFetch<Reservation>(`/reservations/${id}`, { auth: true });
+        if (res.status === 'CONFIRMED' || res.status === 'IN_PROGRESS') {
+          setReservation(res);
+          setStatus('confirmed');
+        } else if (res.status === 'CANCELLED') {
+          setStatus('error'); // pago fallido post-confirmación
+        } else {
+          // PENDING_DEPOSIT — el webhook aún no llegó
+          attempt++;
+          if (attempt >= MAX_ATTEMPTS) {
+            setStatus('timeout'); // 20s sin confirmación → mostrar mensaje de espera
+          } else {
+            timer = setTimeout(poll, POLL_INTERVAL_MS);
+          }
+        }
+      } catch {
+        setStatus('error');
+      }
+    }
+
+    poll();
+    return () => clearTimeout(timer);
+  }, [id]);
+
+  if (status === 'polling') return <PollingScreen />; // spinner + "Confirmando con el banco..."
+  if (status === 'timeout') return <TimeoutScreen id={id} />; // "Tu pago está siendo procesado. Recibirás un email."
+  if (status === 'error') return <ErrorScreen id={id} />; // "Algo fue mal. Contacta soporte."
+  return <SuccessScreen reservation={reservation!} />; // pantalla actual de éxito
+}
+```
+
+**Estados de UI requeridos**:
+- `polling` → spinner animado + `"Confirmando tu pago con el banco..."` (no mostrar error)
+- `confirmed` → pantalla de éxito actual con QR y resumen
+- `timeout` → `"Tu pago está siendo procesado. Te enviaremos confirmación por email en los próximos minutos."` + botón "Ver mis reservas"
+- `error` → `"Algo fue mal. Referencia: {id}. Contacta soporte."` + WhatsApp FAB
+
+**El mock a eliminar**:
+```typescript
+// Eliminar:
 const vehicle = MOCK_VEHICLES.find((v) => v.id === selectedVehicleId);
 ```
-
-Cambiar por un fetch real del vehículo (ya disponible tras INT-SPRINT 2):
-```typescript
-// Server Component o Client Component con SWR
-const reservation = await apiFetch<Reservation>(`/reservations/${id}`, { auth: true });
-```
-
-O bien, pasar los datos necesarios desde el store (ya tiene `selectedVehicleId`, fechas, precio) y mostrar confirmación sin fetch adicional — suficiente para el MVP.
+El vehículo se obtiene de `reservation.vehicle` (populado en INT-4 T4-3) o del store.
 
 ### T3-7 — Manejo de error: usuario no autenticado
 
@@ -243,6 +307,10 @@ Deshabilitar el botón "Continuar al pago" tras el primer click hasta recibir re
 - [ ] La pantalla de confirmación muestra el ID real de reserva (UUID)
 - [ ] Mock `setTimeout + ID fake` eliminado completamente
 - [ ] Double-submit prevenido en UI
+- [ ] `/booking/confirmed` muestra spinner mientras la reserva está en `PENDING_DEPOSIT`
+- [ ] Polling máx 10 intentos × 2s = 20s antes de mostrar estado `timeout`
+- [ ] Estado `timeout` no muestra error — muestra mensaje de "confirmación en proceso"
+- [ ] Estado `error` muestra referencia del ID y enlace a soporte
 
 ---
 
