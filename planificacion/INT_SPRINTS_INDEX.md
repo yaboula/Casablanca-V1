@@ -107,7 +107,20 @@ src/lib/mock-data.ts                 ← tras INT-2 (eliminar MOCK_VEHICLES)
 NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_XXXX
 
-# Server-only — solo Server Components / API Routes
+# Server-only — solo Server Components / Route Handlers (Node.js process)
+# ATENCIÓN — comportamiento diferente por entorno:
+#
+#   Desarrollo local:
+#     API_URL=http://localhost:3001/api/v1
+#
+#   Producción / Docker:
+#     API_URL=http://backend-nexus:3001/api/v1   ← DNS interno del contenedor
+#
+#   NUNCA usar localhost en Docker — "localhost" dentro del contenedor de Next.js
+#   apunta al propio contenedor, no al backend → ECONNREFUSED en SSR (INT-2, INT-4)
+#
+# En Vercel:
+#     API_URL=https://api.nexus.ma/api/v1        ← dominio público del backend
 API_URL=http://localhost:3001/api/v1
 ```
 
@@ -119,8 +132,9 @@ API_URL=http://localhost:3001/api/v1
 |---|---|
 | `ReservationsService.findMy()` — hacer JOIN con `vehicle` | INT-4 |
 | `ReservationsService.findMy()` — incluir `documents[]` agrupados | INT-4 |
-| `SseController` — aceptar JWT via `?token=` query param | INT-7 |
+| ~~`SseController` — aceptar JWT via `?token=` query param~~ **ELIMINADO** — Next.js SSE Proxy Route (ver INT-7) | — |
 | Seed de vehículos ejecutado (`vehicles.seed.ts`) | INT-2 |
+| Política CORS configurada en bucket S3 (`PUT` + `Content-Type` desde orígenes frontend) | INT-5 |
 
 ---
 

@@ -70,6 +70,38 @@ Step 3 (Pago)        →
 
 ## Tareas
 
+### T3-0 — Guardia defensiva: Zustand vacío en enlace compartido
+
+**El problema**: El `useBookingStore` persiste en `localStorage` del dispositivo. Si un usuario copia la URL `/book/abc-123` y la comparte, el destinatario abrirá esa ruta con `pickupDate = null` y `returnDate = null`. El `new Date(pickupDate!)` lanzará un error en runtime, y el backend recibirá fechas inválidas.
+
+**Solución requerida en `src/app/book/[vehicleId]/page.tsx`** (Server Component que renderiza `BookFlowClient`):
+
+```typescript
+// src/app/book/[vehicleId]/page.tsx
+import { redirect } from 'next/navigation';
+
+// Esta comprobación ocurre en BookFlowClient.tsx (Client Component), no en el Server Component,
+// porque el store es cliente. Usar un useEffect de guardia al montar:
+```
+
+```typescript
+// src/components/vehicles/BookFlowClient.tsx — añadir al inicio del componente
+useEffect(() => {
+  const { pickupDate, returnDate } = useBookingStore.getState();
+  const isValidDate = (d: unknown) =>
+    typeof d === 'string' && !isNaN(Date.parse(d as string));
+
+  if (!isValidDate(pickupDate) || !isValidDate(returnDate)) {
+    // El store está vacío (enlace compartido, sesión expirada o recarga)
+    router.replace('/catalog?error=select-dates');
+  }
+}, [router]);
+```
+
+En `src/app/catalog/page.tsx`, leer el param `error=select-dates` y mostrar un toast: _"Por favor, selecciona tus fechas primero."_
+
+> **Nota**: El `useCallback` de `handleContactNext` ya usa `pickupDate!` — si la guardia no se ejecuta antes, Next.js puede renderizar el componente sin fechas. La guardia en `useEffect` previene esto limpiamente.
+
 ### T3-1 — Instalar Stripe.js en el frontend
 
 ```bash
@@ -307,6 +339,7 @@ Deshabilitar el botón "Continuar al pago" tras el primer click hasta recibir re
 - [ ] La pantalla de confirmación muestra el ID real de reserva (UUID)
 - [ ] Mock `setTimeout + ID fake` eliminado completamente
 - [ ] Double-submit prevenido en UI
+- [ ] Si `pickupDate`/`returnDate` son nulos al montar → `router.replace('/catalog?error=select-dates')` (nunca `pickupDate!` sin validar)
 - [ ] `/booking/confirmed` muestra spinner mientras la reserva está en `PENDING_DEPOSIT`
 - [ ] Polling máx 10 intentos × 2s = 20s antes de mostrar estado `timeout`
 - [ ] Estado `timeout` no muestra error — muestra mensaje de "confirmación en proceso"

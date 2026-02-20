@@ -36,6 +36,33 @@ POST /api/v1/documents/confirm
 
 ---
 
+## Prerequisito de infraestructura — Política CORS en AWS S3
+
+> **Bloqueante real**: Aunque NestJS genere la Presigned URL correctamente, el **navegador bloqueará el `PUT` directo a S3** con un error CORS, porque el origen (`localhost:3000` o `nexus.ma`) es distinto al bucket (`bucket.s3.amazonaws.com`).
+
+**Configuración requerida en el bucket de S3** (tarea de DevOps/configuración AWS, no de código):
+
+```json
+[
+  {
+    "AllowedHeaders": ["Content-Type", "Content-Length"],
+    "AllowedMethods": ["PUT"],
+    "AllowedOrigins": [
+      "http://localhost:3000",
+      "https://nexus.ma"
+    ],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+**Dónde aplicarlo**: AWS Console → S3 → Bucket → Permissions → Cross-origin resource sharing (CORS) → Edit → pegar el JSON anterior.
+
+> Sin esta configuración, `T5-3` fallará 100% en el navegador aunque todo el código sea correcto. Verificar con `curl -X OPTIONS <presignedUrl> -H "Origin: http://localhost:3000"` antes de integrar.
+
+---
+
 ## Flujo objetivo
 
 ```
@@ -181,8 +208,25 @@ useEffect(() => {
 
 ---
 
+## Archivos huérfanos en S3 — estado actual y gap identificado
+
+**El escenario no cubierto**: El usuario obtiene la Presigned URL (`/documents/presign`), hace `PUT` exitoso a S3, pero pierde conexión **antes** de llamar a `/documents/confirm`. El archivo existe en S3 pero **no hay registro en PostgreSQL** → archivo huérfano indefinido.
+
+**El processor existente** (`document-cleanup.processor.ts`) cubre un caso **diferente**: limpieza de archivos con estado `REJECTED` en BD, con un delay de 24h gestionado por BullMQ (triggered cuando el operador rechaza un doc). No hace scan periódico de S3.
+
+**Acción requerida** (no MVP — documentar como tarea de mantenimiento):
+- Implementar un job de BullMQ repetible (`repeat: { cron: '0 3 * * *' }`) que:
+  1. Liste todos los `fileKey` en S3 con prefijo `docs/`
+  2. Cruce contra `reservation_documents` en PostgreSQL
+  3. Elimine de S3 cualquier clave con más de 24h que no tenga registro en BD
+
+Esto **no bloquea el MVP** — los archivos huérfanos son escasos (pérdida de conexión mid-upload) y el coste de storage es mínimo. Registrar como deuda técnica post-lanzamiento.
+
+---
+
 ## Criterios de aceptación
 
+- [ ] Política CORS configurada en el bucket S3 (verificada con curl antes de integrar)
 - [ ] El pasaporte se sube a S3 real vía Presigned URL
 - [ ] La licencia de conducir se sube a S3 real vía Presigned URL
 - [ ] El backend registra ambos documentos como `PENDING_REVIEW`
@@ -206,5 +250,6 @@ useEffect(() => {
 ## Dependencias
 - **Requiere**: INT-SPRINT 1 (JWT para llamar a `/documents/presign`)
 - **Requiere**: INT-SPRINT 3 (reservationId UUID real en el store)
-- **Requiere en backend**: `.env` con `AWS_S3_BUCKET` configurado y bucket accesible
+- **Requiere en backend**: `.env` con `AWS_S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` configurados
+- **Requiere en AWS**: Política CORS en el bucket (sin esto el `PUT` del navegador falla — ver sección de prerequisito)
 - **Bloquea**: INT-SPRINT 7 (SSE reemplaza el polling de waiting-room)
