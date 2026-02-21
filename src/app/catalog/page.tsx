@@ -28,7 +28,7 @@ async function getVehicles(params: SearchParams): Promise<Vehicle[]> {
   const url = `${API_URL}/vehicles${qs.toString() ? `?${qs}` : ""}`;
 
   try {
-    const res = await fetch(url, { next: { revalidate: 60 } });
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return [];
     const json = await res.json();
     return (json.data ?? []).map(mapApiVehicle);

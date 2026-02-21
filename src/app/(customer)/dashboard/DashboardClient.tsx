@@ -527,6 +527,7 @@ function ActiveReservationHero({
 
   return (
     <motion.div
+      data-testid="reservation-card"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 }}
@@ -535,6 +536,7 @@ function ActiveReservationHero({
       {/* Top bar with status + countdown */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <span
+          data-testid="reservation-status"
           className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase px-2.5 py-1 rounded-full ${config.bg} ${config.text}`}
         >
           <StatusIcon className="w-3 h-3" />
@@ -848,6 +850,7 @@ function PastReservationCard({
 
   return (
     <motion.div
+      data-testid="reservation-card"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06 + 0.3 }}

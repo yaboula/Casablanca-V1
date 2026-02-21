@@ -109,6 +109,7 @@ export default function VehicleCard({ vehicle, index = 0 }: VehicleCardProps) {
         rotateY: hovered ? rotateY : 0,
         transformPerspective: 800,
       }}
+      data-testid="vehicle-card"
       className="group relative bg-white border border-slate-200 rounded-2xl overflow-hidden
                  shadow-[0_4px_24px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.1)]
                  transition-shadow duration-300 will-change-transform"

@@ -67,7 +67,7 @@ export class VehiclesController {
     }
 
     // No dates — return all available (catalog view)
-    const vehicles = await this.vehiclesService.findAll();
+    const vehicles = await this.vehiclesService.findAll(vehicleCategory);
     return { data: vehicles, total: vehicles.length };
   }
 

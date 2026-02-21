@@ -42,8 +42,11 @@ async function bootstrap() {
         'http://localhost:4000',
         'http://localhost:3900',
       ].filter(Boolean) as string[];
-      // In development, allow any localhost origin regardless of port
-      const isLocalhost = !origin || /^http:\/\/localhost:\d+$/.test(origin);
+      // In development, allow any localhost or 127.0.0.1 origin regardless of port
+      const isLocalhost =
+        !origin ||
+        /^http:\/\/localhost:\d+$/.test(origin) ||
+        /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
       if (isLocalhost || allowed.includes(origin!)) {
         callback(null, true);
       } else {

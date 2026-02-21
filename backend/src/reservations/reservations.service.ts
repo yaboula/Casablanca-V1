@@ -127,16 +127,26 @@ export class ReservationsService {
 
       // 4. Create Stripe PaymentIntent INSIDE transaction (before commit)
       //    capture_method: 'manual' — only authorizes, does NOT charge yet
-      const paymentIntent = await this.stripeService.createPaymentIntent(
-        DEPOSIT_EUR_CENTS,
-        // Temporary ID placeholder — will be updated after save with real UUID
-        `temp-${user.id}-${Date.now()}`,
-        {
-          userId: user.id,
-          vehicleId: vehicle.id,
-          totalDays: String(totalDays),
-        },
-      );
+      //    In test mode (NODE_ENV=test), skip real Stripe and use mock values
+      let paymentIntent: { id: string; client_secret: string | null };
+      if (process.env.NODE_ENV === 'test') {
+        // E2E / integration test bypass — no real Stripe call
+        paymentIntent = {
+          id: `pi_test_mock_${Date.now()}`,
+          client_secret: `pi_test_mock_secret_${Date.now()}`,
+        };
+      } else {
+        paymentIntent = await this.stripeService.createPaymentIntent(
+          DEPOSIT_EUR_CENTS,
+          // Temporary ID placeholder — will be updated after save with real UUID
+          `temp-${user.id}-${Date.now()}`,
+          {
+            userId: user.id,
+            vehicleId: vehicle.id,
+            totalDays: String(totalDays),
+          },
+        );
+      }
 
       // 5. Persist reservation
       reservation = queryRunner.manager.getRepository(Reservation).create({

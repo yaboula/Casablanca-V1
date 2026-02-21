@@ -1,0 +1,28 @@
+##  docker-compose.e2e.yml
+##
+##  Overlay on top of docker-compose.yml that starts the backend
+##  against nexus_e2e_db instead of nexus_db.
+##
+##  Usage:
+##    docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d postgres redis backend
+##
+##  The postgres service is re-exposed on port 5433 to avoid conflict with
+##  any local PostgreSQL installation running on 5432.
+##  When using this overlay, set E2E_DATABASE_URL in your .env.e2e to:
+##    postgresql://nexus:nexus_secret@localhost:5433/nexus_e2e_db
+
+version: '3.9'
+
+services:
+  postgres:
+    ports:
+      # Expose Docker postgres on a different host port (5433) to avoid
+      # conflict with local postgres on 5432.
+      - '5433:5432'
+
+  backend:
+    container_name: nexus_backend_e2e
+    environment:
+      DATABASE_URL: postgresql://nexus:nexus_secret@postgres:5432/nexus_e2e_db
+      NODE_ENV: test
+      # Keep everything else from the original .env

@@ -59,9 +59,12 @@ export class VehiclesService {
     return vehicle;
   }
 
-  async findAll(): Promise<Vehicle[]> {
+  async findAll(category?: VehicleCategory): Promise<Vehicle[]> {
     return this.vehiclesRepo.find({
-      where: { status: VehicleStatus.AVAILABLE },
+      where: {
+        status: VehicleStatus.AVAILABLE,
+        ...(category ? { category } : {}),
+      },
       order: { pricePerDayEurCents: 'ASC' },
     });
   }
