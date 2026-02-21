@@ -12,5 +12,5 @@ interface Props {
 
 export default async function SmartTicketPage({ searchParams }: Props) {
   const { reservationId } = await searchParams;
-  return <SmartTicketClient reservationId={reservationId ?? "CMN-2026-001"} />;
+  return <SmartTicketClient reservationId={reservationId ?? ""} />;
 }

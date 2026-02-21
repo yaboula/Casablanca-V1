@@ -5,6 +5,9 @@ import {
   Patch,
   Param,
   ParseUUIDPipe,
+  Query,
+  DefaultValuePipe,
+  ParseIntPipe,
   Body,
   UseGuards,
   HttpCode,
@@ -44,9 +47,12 @@ export class ReservationsController {
    * OPERATOR/ADMIN see all reservations.
    */
   @Get('my')
-  async findMy(@CurrentUser() user: User) {
-    const reservations = await this.reservationsService.findMy(user);
-    return { data: reservations, total: reservations.length };
+  async findMy(
+    @CurrentUser() user: User,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.reservationsService.findMy(user, { page, limit });
   }
 
   /**

@@ -20,7 +20,8 @@ import {
   isBefore,
   startOfDay,
 } from "date-fns";
-import { es } from "date-fns/locale";
+import { es as esLocale, fr as frLocale } from "date-fns/locale";
+import { enUS as enUSLocale } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -30,6 +31,7 @@ import {
 import { useBookingStore } from "@/stores/useBookingStore";
 import { PICKUP_LOCATION_LABELS } from "@/lib/constants";
 import type { PickupLocation } from "@/types";
+import { useTranslations, useLocaleStore } from "@/lib/i18n";
 
 //  helpers 
 
@@ -72,10 +74,13 @@ function DateTimeField({
   defaultMonth,
 }: DateTimeFieldProps) {
   const [open, setOpen] = useState(false);
+  const tBooking = useTranslations("booking");
+  const { locale } = useLocaleStore();
+  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
 
   const displayText = date
-    ? format(date, "dd MMM yyyy", { locale: es })
-    : "Seleccionar fecha";
+    ? format(date, "dd MMM yyyy", { locale: dateFnsLocale })
+    : tBooking.selectDate;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -120,7 +125,7 @@ function DateTimeField({
             disabled={(d) =>
               isBefore(startOfDay(d), startOfDay(disabledBefore ?? new Date()))
             }
-            locale={es}
+            locale={dateFnsLocale}
             className="p-4 [--cell-size:--spacing(10)]"
             classNames={{
               day_selected:
@@ -137,11 +142,6 @@ function DateTimeField({
 
 // ── TerminalSelect ──────────────────────────────────────────────────────────
 
-const TERMINAL_META: Record<PickupLocation, { title: string; sub: string }> = {
-  CMN_T1: { title: "Terminal 1", sub: "Vuelos nacionales · Lanzadera incluida" },
-  CMN_T2: { title: "Terminal 2", sub: "Vuelos internacionales · Zona de llegadas" },
-};
-
 function TerminalSelect({
   value,
   onChange,
@@ -150,6 +150,12 @@ function TerminalSelect({
   onChange: (v: PickupLocation) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const tBooking = useTranslations("booking");
+
+  const TERMINAL_META: Record<PickupLocation, { title: string; sub: string }> = {
+    CMN_T1: { title: tBooking.terminal1, sub: tBooking.t1Sub },
+    CMN_T2: { title: tBooking.terminal2, sub: tBooking.t2Sub },
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -173,7 +179,7 @@ function TerminalSelect({
         sideOffset={8}
       >
         <p className="text-[10px] uppercase tracking-wider text-brand-muted font-semibold px-2 pb-2">
-          Elige tu terminal en CMN
+          {tBooking.chooseTerminal}
         </p>
         {LOCATIONS.map((loc) => {
           const active = loc === value;
@@ -273,6 +279,7 @@ function TimeSelect({
 
 function StepDates({ onNext }: { onNext: () => void }) {
   const { pickupLocation, setDates, setLocation } = useBookingStore();
+  const tBooking = useTranslations("booking");
 
   const today = startOfDay(new Date());
 
@@ -315,14 +322,14 @@ function StepDates({ onNext }: { onNext: () => void }) {
       {/* Terminal */}
       <div className="flex flex-col gap-1.5">
         <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
-          Terminal de recogida
+          {tBooking.terminalPickup}
         </span>
         <TerminalSelect value={pickupLocation} onChange={setLocation} />
       </div>
 
       {/* Pickup date + time */}
       <DateTimeField
-        label="Fecha de recogida"
+        label={tBooking.pickupDate}
         date={pickupDate}
         time={pickupTime}
         onDateChange={handlePickupDateChange}
@@ -332,7 +339,7 @@ function StepDates({ onNext }: { onNext: () => void }) {
 
       {/* Return date + time */}
       <DateTimeField
-        label="Fecha de devolución"
+        label={tBooking.returnDate}
         date={returnDate}
         time={returnTime}
         onDateChange={setReturnDate}
@@ -353,7 +360,7 @@ function StepDates({ onNext }: { onNext: () => void }) {
           >
             <span className="text-sm font-bold text-brand-dark">{days}</span>
             <span className="text-sm text-brand-muted">
-              {days === 1 ? "día de alquiler" : "días de alquiler"}
+              {days === 1 ? tBooking.rentalDay : tBooking.rentalDays}
             </span>
           </motion.div>
         )}
@@ -371,13 +378,12 @@ function StepDates({ onNext }: { onNext: () => void }) {
                    shadow-[0_4px_20px_rgba(37,99,235,0.28)]
                    transition-all duration-200"
       >
-        Buscar coches disponibles
+        {tBooking.searchCars}
         <ArrowRight className="w-4 h-4" />
       </button>
 
       <p className="text-center text-[11px] text-brand-muted">
-        Solo <span className="text-brand-dark font-semibold">10€</span> para
-        confirmar · El precio varía según el coche
+        {tBooking.priceNote}
       </p>
     </div>
   );
@@ -388,18 +394,21 @@ function StepDates({ onNext }: { onNext: () => void }) {
 function StepConfirm({ onBack }: { onBack: () => void }) {
   const { totalDays, pickupLocation, pickupDate, returnDate } = useBookingStore();
   const router = useRouter();
+  const tBooking = useTranslations("booking");
+  const { locale } = useLocaleStore();
+  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
 
   const fmt = (ts: number | null) =>
-    ts ? format(new Date(ts), "d MMM yyyy · HH:mm", { locale: es }) : "";
+    ts ? format(new Date(ts), "d MMM yyyy · HH:mm", { locale: dateFnsLocale }) : "";
 
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-2xl bg-slate-50 border border-slate-100 divide-y divide-slate-100 overflow-hidden">
         {[
-          { label: "Terminal",   value: PICKUP_LOCATION_LABELS[pickupLocation] },
-          { label: "Recogida",   value: fmt(pickupDate) },
-          { label: "Devolución", value: fmt(returnDate) },
-          { label: "Duración",   value: `${totalDays} ${totalDays === 1 ? "día" : "días"}` },
+          { label: tBooking.terminal,  value: PICKUP_LOCATION_LABELS[pickupLocation] },
+          { label: tBooking.pickup,    value: fmt(pickupDate) },
+          { label: tBooking.return,    value: fmt(returnDate) },
+          { label: tBooking.duration,  value: `${totalDays} ${totalDays === 1 ? tBooking.day : tBooking.days}` },
         ].map((r) => (
           <div key={r.label} className="flex justify-between items-center px-4 py-3 text-sm">
             <span className="text-brand-muted">{r.label}</span>
@@ -413,9 +422,9 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
           <span className="text-white font-black text-xs">€</span>
         </div>
         <div>
-          <p className="text-sm font-bold text-brand-dark">Pagas ahora: 10€</p>
+          <p className="text-sm font-bold text-brand-dark">{tBooking.payNow}</p>
           <p className="text-xs text-brand-muted mt-0.5">
-            El precio exacto aparece al elegir el vehículo. El depósito se descuenta del total.
+            {tBooking.payNote}
           </p>
         </div>
       </div>
@@ -427,7 +436,7 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
                    flex items-center justify-center gap-2
                    hover:bg-brand-primary-hover active:scale-[0.98] transition-all"
       >
-        Elegir mi coche
+        {tBooking.chooseCar}
         <ChevronRight className="w-4 h-4" />
       </button>
 
@@ -436,7 +445,7 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
         onClick={onBack}
         className="text-xs text-brand-muted text-center hover:text-brand-dark transition-colors py-1"
       >
-         Modificar fechas
+        {tBooking.modifyDates}
       </button>
     </div>
   );
@@ -472,6 +481,7 @@ const stepVariants = {
 
 export default function BookingPanel() {
   const [step, setStep] = useState(1);
+  const tBooking = useTranslations("booking");
 
   return (
     <motion.div
@@ -486,7 +496,7 @@ export default function BookingPanel() {
             CMN · Mohammed V
           </p>
           <h3 className="text-base font-bold text-brand-dark mt-0.5">
-            {step === 1 ? "Reserva tu coche" : "Confirmar reserva"}
+            {step === 1 ? tBooking.reserveTitle : tBooking.confirmTitle}
           </h3>
         </div>
         <StepDots current={step} />

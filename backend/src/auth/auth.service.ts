@@ -15,6 +15,7 @@ const BCRYPT_ROUNDS = 12;
 
 export interface AuthTokenResponse {
   accessToken: string;
+  refreshToken: string;
   expiresIn: string;
   user: Omit<User, 'passwordHash'>;
 }
@@ -60,8 +61,34 @@ export class AuthService {
     return this.buildTokenResponse(user);
   }
 
+  /**
+   * Validates a refresh token and issues a new access + refresh token pair.
+   * Rejects if the token is expired, forged, or signed with the wrong secret.
+   */
+  async refresh(refreshToken: string): Promise<AuthTokenResponse> {
+    const refreshSecret = this.config.get<string>('JWT_REFRESH_SECRET');
+
+    let payload: JwtPayload;
+    try {
+      payload = this.jwtService.verify<JwtPayload>(refreshToken, {
+        secret: refreshSecret,
+      });
+    } catch {
+      throw new UnauthorizedException('Refresh token inválido o expirado.');
+    }
+
+    const user = await this.usersService.findById(payload.sub);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Usuario no válido.');
+    }
+
+    return this.buildTokenResponse(user);
+  }
+
   private buildTokenResponse(user: User): AuthTokenResponse {
     const expiresIn = this.config.get<string>('JWT_EXPIRES_IN', '7d');
+    const refreshExpiresIn = this.config.get<string>('JWT_REFRESH_EXPIRES_IN', '30d');
+    const refreshSecret = this.config.get<string>('JWT_REFRESH_SECRET');
 
     const payload: JwtPayload = {
       sub: user.id,
@@ -70,6 +97,10 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn });
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: refreshSecret,
+      expiresIn: refreshExpiresIn,
+    });
 
     // Strip passwordHash from the response object
     const { passwordHash: _removed, ...safeUser } = user as User & {
@@ -78,6 +109,7 @@ export class AuthService {
 
     return {
       accessToken,
+      refreshToken,
       expiresIn,
       user: safeUser as Omit<User, 'passwordHash'>,
     };

@@ -35,6 +35,16 @@ export class UsersService {
     return this.usersRepo.findOne({ where: { id, isActive: true } });
   }
 
+  async updateMe(
+    id: string,
+    data: { phone?: string | null },
+  ): Promise<User> {
+    await this.usersRepo.update(id, {
+      ...(data.phone !== undefined && { phone: data.phone }),
+    });
+    return this.usersRepo.findOneOrFail({ where: { id } });
+  }
+
   async create(input: CreateUserInput): Promise<User> {
     const existing = await this.usersRepo.findOne({
       where: { email: input.email.toLowerCase().trim() },

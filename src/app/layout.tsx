@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import LayoutShell from "@/components/layout/LayoutShell";
+import HtmlDirSync from "@/components/layout/HtmlDirSync";
 
 export const metadata: Metadata = {
   title: "NEXUS. — Alquiler de Coches Aeropuerto Casablanca CMN",
@@ -35,6 +36,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#2563EB" />
       </head>
       <body className="min-h-screen bg-brand-bg text-brand-dark antialiased flex flex-col">
+        <HtmlDirSync />
         <LayoutShell>{children}</LayoutShell>
       </body>
     </html>

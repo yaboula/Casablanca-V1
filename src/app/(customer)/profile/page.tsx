@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
-  CheckCircle2,
-  Clock,
   FileText,
   CreditCard,
   LogOut,
@@ -20,48 +18,74 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-
-// ── Mock user data ────────────────────────────────────────────
-
-const MOCK_USER = {
-  fullName: "Ahmed Benjelloun",
-  email: "ahmed@example.com",
-  phone: "+212 612 34 56 78",
-};
-
-const MOCK_DOCS = [
-  { type: "Pasaporte", status: "APPROVED" as const, date: "19 Feb 2026" },
-  { type: "Carnet de Conducir", status: "APPROVED" as const, date: "19 Feb 2026" },
-];
+import { useUser } from "@/hooks/useUser";
+import { apiFetch } from "@/lib/api";
+import { useTranslations } from "@/lib/i18n";
 
 // ── Component ─────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const router = useRouter();
+  const user = useUser();
+  const tProfile = useTranslations("profile");
+
   const [loggingOut, setLoggingOut] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: MOCK_USER.fullName,
-    email: MOCK_USER.email,
-    phone: MOCK_USER.phone,
+    fullName: user?.fullName ?? "",
+    email: user?.email ?? "",
+    phone: (user as { phone?: string } | null)?.phone ?? "",
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    toast.success("Perfil actualizado correctamente");
-  };
+  // Sync formData when user cookie resolves (client hydration)
+  useEffect(() => {
+    if (user && !isEditing) {
+      setFormData({
+        fullName: user.fullName ?? "",
+        email: user.email ?? "",
+        phone: (user as { phone?: string })?.phone ?? "",
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
-  const handleCancel = () => {
-    setFormData({ fullName: MOCK_USER.fullName, email: MOCK_USER.email, phone: MOCK_USER.phone });
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      await apiFetch("/users/me", {
+        method: "PATCH",
+        body: JSON.stringify({ phone: formData.phone }),
+        auth: true,
+      });
+      toast.success(tProfile.toastUpdated);
+      setIsEditing(false);
+    } catch {
+      toast.error(tProfile.toastUpdateError);
+    } finally {
+      setSaving(false);
+    }
+  }, [formData.phone]);
+
+  const handleCancel = useCallback(() => {
+    setFormData({
+      fullName: user?.fullName ?? "",
+      email: user?.email ?? "",
+      phone: (user as { phone?: string } | null)?.phone ?? "",
+    });
     setIsEditing(false);
-  };
+  }, [user]);
 
   const handleLogout = useCallback(async () => {
     setLoggingOut(true);
-    // Mock logout
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success("Sesión cerrada correctamente");
-    router.push("/");
+    try {
+      await fetch("/api/auth/session", { method: "DELETE" });
+      toast.success(tProfile.toastLoggedOut);
+      router.push("/login");
+    } catch {
+      toast.error(tProfile.toastLogoutError);
+      setLoggingOut(false);
+    }
   }, [router]);
 
   return (
@@ -73,7 +97,7 @@ export default function ProfilePage() {
           className="inline-flex items-center gap-1.5 text-sm text-brand-muted hover:text-brand-dark transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
-          Mis reservas
+          {tProfile.backToBookings}
         </Link>
 
         {/* Header */}
@@ -88,7 +112,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-brand-dark">{formData.fullName}</h1>
-              <p className="text-sm text-brand-muted">Cliente verificado</p>
+              <p className="text-sm text-brand-muted">{tProfile.verifiedCustomer}</p>
             </div>
           </div>
         </motion.div>
@@ -101,7 +125,7 @@ export default function ProfilePage() {
           className="bg-white border border-slate-200 rounded-2xl p-5 mb-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-brand-dark">Información de contacto</h2>
+            <h2 className="text-sm font-bold text-brand-dark">{tProfile.contactInfo}</h2>
             {!isEditing ? (
               <button
                 type="button"
@@ -109,7 +133,7 @@ export default function ProfilePage() {
                 className="flex items-center gap-1.5 text-xs font-semibold text-brand-primary hover:underline"
               >
                 <Pencil className="w-3.5 h-3.5" />
-                Editar
+                {tProfile.edit}
               </button>
             ) : (
               <div className="flex items-center gap-2">
@@ -119,44 +143,45 @@ export default function ProfilePage() {
                   className="flex items-center gap-1.5 text-xs font-semibold text-brand-muted hover:text-brand-dark"
                 >
                   <X className="w-3.5 h-3.5" />
-                  Cancelar
+                  {tProfile.cancel}
                 </button>
                 <button
                   type="button"
                   onClick={handleSave}
+                  disabled={saving}
                   className="flex items-center gap-1.5 text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary/90
-                             px-3 py-1.5 rounded-full"
+                             px-3 py-1.5 rounded-full disabled:opacity-60"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  Guardar
+                  {saving ? tProfile.saving : tProfile.save}
                 </button>
               </div>
             )}
           </div>
           {!isEditing ? (
             <div className="space-y-3">
-              <InfoRow icon={User} label="Nombre" value={formData.fullName} />
-              <InfoRow icon={Mail} label="Email" value={formData.email} />
-              <InfoRow icon={Phone} label="Teléfono" value={formData.phone} />
+              <InfoRow icon={User} label={tProfile.fullName} value={formData.fullName} />
+              <InfoRow icon={Mail} label={tProfile.email} value={formData.email} />
+              <InfoRow icon={Phone} label={tProfile.phone} value={formData.phone} />
             </div>
           ) : (
             <div className="space-y-3">
               <EditField
                 icon={User}
-                label="Nombre"
+                label={tProfile.fullName}
                 value={formData.fullName}
                 onChange={(v) => setFormData((f) => ({ ...f, fullName: v }))}
               />
               <EditField
                 icon={Mail}
-                label="Email"
+                label={tProfile.email}
                 type="email"
                 value={formData.email}
                 onChange={(v) => setFormData((f) => ({ ...f, email: v }))}
               />
               <EditField
                 icon={Phone}
-                label="Teléfono"
+                label={tProfile.phone}
                 type="tel"
                 value={formData.phone}
                 onChange={(v) => setFormData((f) => ({ ...f, phone: v }))}
@@ -174,31 +199,35 @@ export default function ProfilePage() {
         >
           <h2 className="text-sm font-bold text-brand-dark mb-4 flex items-center gap-2">
             <Shield className="w-4 h-4 text-brand-primary" />
-            Documentos verificados
+            {tProfile.verifiedDocs}
           </h2>
           <div className="space-y-2">
-            {MOCK_DOCS.map((doc) => (
-              <div
-                key={doc.type}
-                className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-4 py-3"
-              >
-                <div className="flex items-center gap-2.5">
-                  {doc.type === "Pasaporte" ? (
-                    <FileText className="w-4 h-4 text-brand-muted" />
-                  ) : (
-                    <CreditCard className="w-4 h-4 text-brand-muted" />
-                  )}
-                  <div>
-                    <p className="text-sm font-semibold text-brand-dark">{doc.type}</p>
-                    <p className="text-[11px] text-brand-muted">{doc.date}</p>
-                  </div>
-                </div>
-                <span className="flex items-center gap-1 text-xs font-bold text-brand-success">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Verificado
-                </span>
+            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+              <FileText className="w-4 h-4 text-brand-muted shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-brand-dark">{tProfile.passportDoc}</p>
+                <p className="text-[11px] text-brand-muted">{tProfile.docRequired}</p>
               </div>
-            ))}
+              <Link
+                href="/dashboard"
+                className="text-xs font-bold text-brand-primary hover:underline"
+              >
+                {tProfile.viewStatus}
+              </Link>
+            </div>
+            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+              <CreditCard className="w-4 h-4 text-brand-muted shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-brand-dark">{tProfile.licenseDoc}</p>
+                <p className="text-[11px] text-brand-muted">{tProfile.docRequired}</p>
+              </div>
+              <Link
+                href="/dashboard"
+                className="text-xs font-bold text-brand-primary hover:underline"
+              >
+                {tProfile.viewStatus}
+              </Link>
+            </div>
           </div>
         </motion.div>
 
@@ -217,7 +246,7 @@ export default function ProfilePage() {
                        disabled:opacity-50"
           >
             <LogOut className="w-4 h-4" />
-            {loggingOut ? "Cerrando sesión…" : "Cerrar sesión"}
+            {loggingOut ? tProfile.loggingOut : tProfile.logout}
           </button>
         </motion.div>
       </div>

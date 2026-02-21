@@ -26,3 +26,32 @@ export const PICKUP_LOCATION_LABELS: Record<string, string> = {
   CMN_T1: "CMN · Terminal 1",
   CMN_T2: "CMN · Terminal 2",
 };
+
+// ── Vehicle catalog ──────────────────────────────────────────
+
+/** Category display labels */
+export const CATEGORY_LABELS: Record<string, string> = {
+  ALL: "Todos",
+  SEDAN: "Sedán",
+  SUV: "SUV",
+  LUXURY: "Lujo",
+  COMPACT: "Compacto",
+};
+
+/** Vehicle categories in display order */
+export const CATEGORIES = ["ALL", "SEDAN", "SUV", "LUXURY", "COMPACT"] as const;
+
+/**
+ * Generates stable pseudo-random occupancy heat values for a vehicle.
+ * Seeded from the vehicleId string so the same vehicle always renders
+ * the same heat bar — no React hydration mismatch.
+ */
+export function getOccupancyHeat(vehicleId: string | undefined | null): number[] {
+  if (!vehicleId) return Array(7).fill(0.3);
+  let seed = 0;
+  for (let i = 0; i < vehicleId.length; i++) seed += vehicleId.charCodeAt(i);
+  return Array.from({ length: 7 }, (_, i) => {
+    const x = Math.sin(seed * (i + 1)) * 10_000;
+    return Math.abs(x - Math.floor(x));
+  });
+}

@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Mail, MapPin, Phone, Plane } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 export default function Footer() {
+  const tF = useTranslations("footer");
+
   return (
     <footer>
       {/* ── Pre-footer CTA banner ──────────────────────── */}
@@ -10,21 +15,20 @@ export default function Footer() {
           <div className="inline-flex items-center gap-2 bg-white/15 px-3 py-1.5 rounded-full mb-6">
             <Plane className="w-3.5 h-3.5 text-white" />
             <span className="text-white/90 text-xs font-semibold tracking-wide uppercase">
-              Aeropuerto Mohammed V · CMN
+              {tF.airportLabel}
             </span>
           </div>
           <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight">
-            ¿Aterrizas pronto? Tu coche te espera.
+            {tF.ctaTitle}
           </h3>
           <p className="text-white/70 text-sm mb-8 max-w-md mx-auto leading-relaxed">
-            Reserva en 2 minutos desde el móvil. Solo 10€ para asegurar tu
-            vehículo. Sin colas, sin burocracia.
+            {tF.ctaDesc}
           </p>
           <Link
             href="/catalog"
             className="inline-flex items-center gap-2 bg-white text-brand-primary font-bold text-sm px-8 py-3.5 rounded-full hover:shadow-lg hover:shadow-white/20 transition-all duration-200 min-h-[48px]"
           >
-            Reservar ahora <ArrowRight className="w-4 h-4" />
+            {tF.ctaButton} <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
@@ -39,12 +43,11 @@ export default function Footer() {
                 NEXUS<span className="text-brand-primary">.</span>
               </span>
               <p className="text-sm leading-relaxed text-white/40 max-w-xs">
-                Alquiler de coches premium en el Aeropuerto Mohammed V.
-                Tecnología que simplifica tu llegada a Marruecos.
+                {tF.brandTagline}
               </p>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs text-white/40">Disponible 24/7 · Terminales 1 & 2</span>
+                <span className="text-xs text-white/40">{tF.brandAvailable}</span>
               </div>
 
               {/* Social links */}
@@ -74,13 +77,13 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* Flota */}
+            {/* Fleet */}
             <div className="space-y-3">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30">
-                Flota
+                {tF.colFleet}
               </h3>
               <ul className="space-y-2.5 text-sm">
-                {["Compactos", "SUV", "Premium", "Berlinas"].map((item) => (
+                {[tF.fleet0, tF.fleet1, tF.fleet2, tF.fleet3].map((item) => (
                   <li key={item}>
                     <Link href="/catalog" className="hover:text-white transition-colors">
                       {item}
@@ -90,19 +93,19 @@ export default function Footer() {
               </ul>
             </div>
 
-            {/* Empresa */}
+            {/* Company */}
             <div className="space-y-3">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30">
-                Empresa
+                {tF.colCompany}
               </h3>
               <ul className="space-y-2.5 text-sm">
                 {[
-                  { label: "Cómo funciona", href: "/#fleet" },
-                  { label: "Preguntas frecuentes", href: "/faq" },
-                  { label: "Términos de uso", href: "/terms" },
-                  { label: "Privacidad", href: "/privacy" },
+                  { label: tF.company0, href: "/#fleet" },
+                  { label: tF.company1, href: "/faq" },
+                  { label: tF.company2, href: "/terms" },
+                  { label: tF.company3, href: "/privacy" },
                 ].map((item) => (
-                  <li key={item.label}>
+                  <li key={item.href}>
                     <Link href={item.href} className="hover:text-white transition-colors">
                       {item.label}
                     </Link>
@@ -111,10 +114,10 @@ export default function Footer() {
               </ul>
             </div>
 
-            {/* Contacto */}
+            {/* Contact */}
             <div className="space-y-3">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30">
-                Contacto
+                {tF.colContact}
               </h3>
               <ul className="space-y-2.5 text-sm">
                 <li>
@@ -136,7 +139,9 @@ export default function Footer() {
                 </li>
                 <li className="flex items-start gap-2 text-white/40 text-xs pt-1">
                   <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                  <span>Aeropuerto Mohammed V<br />Terminal 1 & 2, Casablanca</span>
+                  <span>{tF.contactAddress.split("\n").map((line, i) => (
+                    <span key={i}>{line}{i === 0 && <br />}</span>
+                  ))}</span>
                 </li>
               </ul>
             </div>
@@ -145,7 +150,7 @@ export default function Footer() {
           {/* ── Bottom bar ─────────────────────────────── */}
           <div className="mt-12 pt-6 border-t border-white/8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-[11px] text-white/25">
-              © 2026 NEXUS. · Todos los derechos reservados · 🇲🇦 Casablanca, Marruecos
+              {tF.copyright}
             </p>
             <div className="flex items-center gap-3 text-[11px] text-white/25">
               <button className="hover:text-white/50 transition-colors" title="Idioma">

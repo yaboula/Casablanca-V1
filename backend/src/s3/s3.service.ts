@@ -39,13 +39,15 @@ export class S3Service {
     userId: string,
     reservationId: string,
     type: DocumentType,
+    mimeType = 'image/jpeg',
   ): Promise<{ uploadUrl: string; fileKey: string; expiresIn: number }> {
-    const fileKey = `docs/${userId}/${reservationId}/${type}-${Date.now()}.jpg`;
+    const ext = S3Service.mimeToExtension(mimeType);
+    const fileKey = `docs/${userId}/${reservationId}/${type}-${Date.now()}.${ext}`;
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: fileKey,
-      ContentType: 'image/jpeg',
+      ContentType: mimeType,
       Metadata: { userId, reservationId, type },
     });
 
@@ -54,6 +56,16 @@ export class S3Service {
     });
 
     return { uploadUrl, fileKey, expiresIn: this.uploadExpiry };
+  }
+
+  /** Maps a MIME type to a file extension for the S3 key. */
+  private static mimeToExtension(mimeType: string): string {
+    const map: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'application/pdf': 'pdf',
+    };
+    return map[mimeType] ?? 'bin';
   }
 
   /**

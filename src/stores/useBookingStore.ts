@@ -119,17 +119,22 @@ export const useBookingStore = create<BookingState & BookingActions>()(
 
 interface CurrencyState {
   currency: "EUR" | "MAD";
+  /** Live EUR → MAD exchange rate. Default 10.8, updated on mount via useExchangeRate. */
+  madRate: number;
   toggleCurrency: () => void;
   setCurrency: (c: "EUR" | "MAD") => void;
+  setMadRate: (rate: number) => void;
 }
 
 export const useCurrencyStore = create<CurrencyState>()(
   persist(
     (set) => ({
       currency: "EUR",
+      madRate: 10.8,
       toggleCurrency: () =>
         set((s) => ({ currency: s.currency === "EUR" ? "MAD" : "EUR" })),
       setCurrency: (c) => set({ currency: c }),
+      setMadRate: (rate) => set({ madRate: rate }),
     }),
     { name: "nexus-currency", storage: createJSONStorage(() => localStorage) }
   )

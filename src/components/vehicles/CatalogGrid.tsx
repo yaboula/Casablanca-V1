@@ -1,30 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, SlidersHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import FilterBar, { type SortMode } from "@/components/vehicles/FilterBar";
 import VehicleCard from "@/components/vehicles/VehicleCard";
-import VehicleCardSkeleton from "@/components/vehicles/VehicleCardSkeleton";
 import { useVehicleFilters } from "@/hooks/useVehicleFilters";
-import { MOCK_VEHICLES } from "@/lib/mock-data";
 import { useBookingStore } from "@/stores/useBookingStore";
+import type { Vehicle } from "@/types";
+import { useTranslations } from "@/lib/i18n";
 
-export default function CatalogGrid() {
+interface Props {
+  vehicles: Vehicle[];
+  pickupDate?: string | null;
+  returnDate?: string | null;
+}
+
+export default function CatalogGrid({ vehicles, pickupDate: pickupProp, returnDate: returnProp }: Props) {
   const [category, setCategory] = useState("ALL");
   const [sort, setSort] = useState<SortMode>("default");
-  const [loading, setLoading] = useState(true);
-  const { pickupDate, returnDate } = useBookingStore();
+  const store = useBookingStore();
+  const tCatalog = useTranslations("catalog");
 
-  // Simulate initial load
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 700);
-    return () => clearTimeout(t);
-  }, []);
+  // Prefer server-supplied dates (from URL searchParams), fall back to store
+  const pickupDate = pickupProp ?? store.pickupDate ?? null;
+  const returnDate = returnProp ?? store.returnDate ?? null;
 
-  const filtered = useVehicleFilters(MOCK_VEHICLES, { category, sort });
+  const filtered = useVehicleFilters(vehicles, { category, sort });
   const hasDates = pickupDate && returnDate;
 
   return (
@@ -48,13 +52,13 @@ export default function CatalogGrid() {
           <div className="flex items-center gap-2.5 bg-brand-primary/5 border border-brand-primary/20 rounded-2xl px-4 py-3">
             <Calendar className="w-4 h-4 text-brand-primary shrink-0" />
             <p className="text-sm text-brand-dark">
-              Disponibilidad del{" "}
+              {tCatalog.availabilityFrom}{" "}
               <strong>
-                {format(new Date(pickupDate!), "d MMM", { locale: es })}
+                {format(new Date(pickupDate as string), "d MMM", { locale: es })}
               </strong>
-              {" "}al{" "}
+              {" "}{tCatalog.availabilityTo}{" "}
               <strong>
-                {format(new Date(returnDate!), "d MMM yyyy", { locale: es })}
+                {format(new Date(returnDate as string), "d MMM yyyy", { locale: es })}
               </strong>
             </p>
           </div>
@@ -64,19 +68,7 @@ export default function CatalogGrid() {
       {/* Vehicle grid */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         <AnimatePresence mode="popLayout">
-          {loading ? (
-            <motion.div
-              key="skeletons"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8"
-            >
-              {Array.from({ length: 6 }).map((_, i) => (
-                <VehicleCardSkeleton key={i} />
-              ))}
-            </motion.div>
-          ) : filtered.length > 0 ? (
+          {filtered.length > 0 ? (
             <motion.div
               key={`${category}-${sort}`}
               className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8"
@@ -97,10 +89,10 @@ export default function CatalogGrid() {
                 <SlidersHorizontal className="w-8 h-8 text-slate-300" />
               </div>
               <h3 className="text-lg font-bold text-brand-dark mb-2">
-                No hay coches disponibles
+                {tCatalog.noResults}
               </h3>
               <p className="text-sm text-brand-muted max-w-xs mb-6">
-                No encontramos vehículos para estas fechas y filtros. Prueba cambiando la categoría.
+                {tCatalog.noResultsDesc}
               </p>
               <button
                 type="button"
@@ -108,7 +100,7 @@ export default function CatalogGrid() {
                 className="min-h-[44px] px-6 bg-brand-primary text-white text-sm font-bold rounded-full
                            hover:bg-brand-primary/90 transition-colors"
               >
-                Ver todos los coches
+                {tCatalog.viewAll}
               </button>
             </motion.div>
           )}

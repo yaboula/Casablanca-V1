@@ -4,31 +4,34 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
-import { MOCK_DELIVERIES } from "@/lib/mock-operator-data";
+import { apiFetch } from "@/lib/api";
+import type { OperatorDelivery } from "@/types";
 
 export default function OperatorSearchPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<typeof MOCK_DELIVERIES>([]);
+  const [results, setResults] = useState<OperatorDelivery[]>([]);
   const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = useCallback(() => {
-    const q = query.trim().toLowerCase();
+  const handleSearch = useCallback(async () => {
+    const q = query.trim();
     if (!q) return;
 
-    const matches = MOCK_DELIVERIES.filter(
-      (d) =>
-        d.customerName?.toLowerCase().includes(q) ||
-        d.customerPhone?.replace(/[\s]/g, "").includes(q.replace(/[\s]/g, "")) ||
-        d.id.toLowerCase().includes(q) ||
-        d.vehicle.brand.toLowerCase().includes(q) ||
-        d.vehicle.model.toLowerCase().includes(q)
-    );
-    setResults(matches);
-    setSearched(true);
-
-    if (matches.length === 0) {
-      toast.error("Sin resultados");
+    setLoading(true);
+    try {
+      const res = await apiFetch<{ data: OperatorDelivery[]; total: number }>(
+        `/operator/search?q=${encodeURIComponent(q)}`,
+        { auth: true }
+      );
+      const data = res.data ?? [];
+      setResults(data);
+      setSearched(true);
+      if (data.length === 0) toast.error("Sin resultados");
+    } catch {
+      toast.error("Error al buscar. Inténtalo de nuevo.");
+    } finally {
+      setLoading(false);
     }
   }, [query]);
 
@@ -49,10 +52,15 @@ export default function OperatorSearchPage() {
         />
         <button
           onClick={handleSearch}
+          disabled={loading}
           className="min-h-[48px] px-4 bg-blue-600 text-white rounded-xl font-bold
-                     hover:bg-blue-700 transition-colors shadow-sm"
+                     hover:bg-blue-700 disabled:opacity-60 transition-colors shadow-sm"
         >
-          <Search className="w-5 h-5" />
+          {loading ? (
+            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+          ) : (
+            <Search className="w-5 h-5" />
+          )}
         </button>
       </div>
 

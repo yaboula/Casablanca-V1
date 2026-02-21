@@ -61,6 +61,33 @@ export class OperatorService {
   // ── QR Scan ──────────────────────────────────────────────────
 
   /**
+   * Manual check-in: marks CONFIRMED → IN_PROGRESS without QR hash verification.
+   * Used by operators for manual override (e.g. customer forgot phone).
+   */
+  async manualCheckin(reservationId: string): Promise<Reservation> {
+    const reservation = await this.reservationsRepo.findOne({
+      where: { id: reservationId },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva no encontrada.');
+    }
+
+    if (reservation.status === ReservationStatus.IN_PROGRESS) {
+      return reservation; // idempotent
+    }
+
+    if (reservation.status !== ReservationStatus.CONFIRMED) {
+      throw new ConflictException(
+        `No se puede hacer check-in de una reserva en estado ${reservation.status}.`,
+      );
+    }
+
+    reservation.status = ReservationStatus.IN_PROGRESS;
+    return this.reservationsRepo.save(reservation);
+  }
+
+  /**
    * Verifies the QR hash and marks the reservation as IN_PROGRESS.
    * Idempotent: a second scan returns 409 (not 500).
    */

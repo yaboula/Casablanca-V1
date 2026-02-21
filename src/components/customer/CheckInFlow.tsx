@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 import CheckInProgressBar from "./CheckInProgressBar";
 import DocumentUploadStep from "./DocumentUploadStep";
+import { useTranslations } from "@/lib/i18n";
 
 // ── Slide variants ────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ interface Props {
 
 export default function CheckInFlow({ reservationId }: Props) {
   const router = useRouter();
+  const tCheckin = useTranslations("checkin");
   const [step, setStep] = useState<1 | 2>(1);
   const [direction, setDirection] = useState(1);
 
@@ -46,9 +48,9 @@ export default function CheckInFlow({ reservationId }: Props) {
             <ShieldCheck className="w-5 h-5 text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-brand-dark">Check-in de seguridad</h1>
+            <h1 className="text-lg font-bold text-brand-dark">{tCheckin.title}</h1>
             <p className="text-xs text-brand-muted">
-              {reservationId ? `Reserva #${reservationId}` : "Verifica tu identidad"}
+              {reservationId ? `${tCheckin.reservationLabel}${reservationId}` : tCheckin.verifyIdentity}
             </p>
           </div>
         </div>
@@ -71,14 +73,14 @@ export default function CheckInFlow({ reservationId }: Props) {
             >
               <div>
                 <p className="text-sm font-semibold text-brand-primary tracking-wider uppercase">
-                  Paso 1 de 2
+                  {tCheckin.step1of2}
                 </p>
-                <h2 className="text-xl font-bold text-brand-dark mt-1">Pasaporte</h2>
+                <h2 className="text-xl font-bold text-brand-dark mt-1">{tCheckin.passport}</h2>
                 <p className="text-sm text-brand-muted mt-1">
-                  Fotografía la página con tu foto. Sin reflejos, buena iluminación.
+                  {tCheckin.passportDesc}
                 </p>
               </div>
-              <DocumentUploadStep type="PASSPORT" onComplete={handlePassportComplete} />
+              <DocumentUploadStep type="PASSPORT" reservationId={reservationId} onComplete={handlePassportComplete} />
             </motion.div>
           ) : (
             <motion.div
@@ -93,14 +95,14 @@ export default function CheckInFlow({ reservationId }: Props) {
             >
               <div>
                 <p className="text-sm font-semibold text-brand-primary tracking-wider uppercase">
-                  Paso 2 de 2
+                  {tCheckin.step2of2}
                 </p>
-                <h2 className="text-xl font-bold text-brand-dark mt-1">Carnet de Conducir</h2>
+                <h2 className="text-xl font-bold text-brand-dark mt-1">{tCheckin.license}</h2>
                 <p className="text-sm text-brand-muted mt-1">
-                  Parte frontal de tu licencia de conducir en vigor.
+                  {tCheckin.licenseDesc}
                 </p>
               </div>
-              <DocumentUploadStep type="DRIVING_LICENSE" onComplete={handleLicenseComplete} />
+              <DocumentUploadStep type="DRIVING_LICENSE" reservationId={reservationId} onComplete={handleLicenseComplete} />
               <button
                 type="button"
                 onClick={() => {
@@ -109,7 +111,7 @@ export default function CheckInFlow({ reservationId }: Props) {
                 }}
                 className="text-sm text-brand-muted hover:text-brand-dark transition-colors text-center"
               >
-                ← Volver al paso anterior
+                {tCheckin.backToStep}
               </button>
             </motion.div>
           )}

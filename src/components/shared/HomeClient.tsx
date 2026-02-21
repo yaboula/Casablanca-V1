@@ -7,142 +7,10 @@ import Link from "next/link";
 import BookingPanel from "@/components/shared/BookingPanel";
 import CountUp from "@/components/ui/CountUp";
 import Marquee from "@/components/ui/Marquee";
+import { useBookingStore, useCurrencyStore } from "@/stores/useBookingStore";
+import { useLocaleStore, useTranslations } from "@/lib/i18n";
 
-// ── Static data ───────────────────────────────────────────────
 
-const MARQUEE_ITEMS = [
-  "Mohammed V Airport",
-  "CMN 24/7",
-  "Flota Premium",
-  "Cero Burocracia",
-  "Reserva por 10€",
-  "Entrega Inmediata",
-  "Check-in Digital",
-  "Sin Colas",
-];
-
-const STEPS = [
-  { n: "1", label: "Aterriza" },
-  { n: "2", label: "Escanea QR" },
-  { n: "3", label: "Conduce", accent: true },
-];
-
-const METRICS: Array<{ to: number; suffix: string; label: string }> = [
-  { to: 3, suffix: " min", label: "Tiempo de recogida" },
-  { to: 10, suffix: "€", label: "Para reservar" },
-  { to: 24, suffix: "/7", label: "Soporte en CMN" },
-  { to: 100, suffix: "%", label: "Check-in digital" },
-];
-
-const PROCESS_STEPS: Array<{
-  Icon: React.ElementType;
-  title: string;
-  description: string;
-}> = [
-  {
-    Icon: Smartphone,
-    title: "Reserva en 2 min",
-    description:
-      "Elige tu categoría y bloquea el coche con solo 10€. Todo desde el móvil, antes de aterrizar.",
-  },
-  {
-    Icon: QrCode,
-    title: "Aterriza y escanea",
-    description:
-      "Al llegar al aeropuerto escaneas el QR de tu ticket. Te identificamos al instante, sin papel.",
-  },
-  {
-    Icon: Car,
-    title: "Conduce",
-    description:
-      "Recoge las llaves y sal a carretera en menos de 3 minutos. Sin colas, sin burocracia.",
-  },
-];
-
-const FLEET_CATEGORIES: Array<{
-  name: string;
-  example: string;
-  fromPrice: number;
-  imageUrl: string;
-  badge: string | null;
-  includes: string[];
-}> = [
-  {
-    name: "Compacto",
-    example: "VW Polo o similar",
-    fromPrice: 45,
-    imageUrl:
-      "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?q=80&w=800&auto=format&fit=crop",
-    badge: "Más económico",
-    includes: ["Seguro básico", "Km ilimitados"],
-  },
-  {
-    name: "SUV",
-    example: "Hyundai Tucson o similar",
-    fromPrice: 85,
-    imageUrl:
-      "https://images.unsplash.com/photo-1519245659620-e859806a8d3b?q=80&w=800&auto=format&fit=crop",
-    badge: "Más popular",
-    includes: ["Seguro total", "Tag Jawaz", "SIM 5G"],
-  },
-  {
-    name: "Premium",
-    example: "Audi A4 o similar",
-    fromPrice: 120,
-    imageUrl:
-      "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?q=80&w=800&auto=format&fit=crop",
-    badge: null,
-    includes: ["Seguro total", "Tag Jawaz", "SIM 5G"],
-  },
-  {
-    name: "Berlina",
-    example: "Mercedes Clase C o similar",
-    fromPrice: 140,
-    imageUrl:
-      "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=800&auto=format&fit=crop",
-    badge: null,
-    includes: ["Seguro total", "Tag Jawaz", "SIM 5G", "Limpieza premium"],
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    name: "Carlos M.",
-    route: "CMN → Casablanca",
-    rating: 5,
-    text: "Aterricé, escaneé el QR de mi ticket y en 3 minutos estaba conduciendo. No lo podía creer.",
-  },
-  {
-    name: "Sophie L.",
-    route: "CMN → Marrakech",
-    rating: 5,
-    text: "Precio claro, sin sorpresas. Lo reservé desde el avión y el coche estaba listo al aterrizar.",
-  },
-  {
-    name: "Ahmed B.",
-    route: "CMN → Rabat",
-    rating: 5,
-    text: "El coche estaba limpio y perfecto. Equipo siempre disponible en el aeropuerto. Muy profesional.",
-  },
-  {
-    name: "Laura G.",
-    route: "CMN → Essaouira",
-    rating: 5,
-    text: "Primera vez alquilando en Marruecos y fue impecable. El check-in digital te ahorra todo el papeleo.",
-  },
-  {
-    name: "Youssef K.",
-    route: "CMN → Fez",
-    rating: 5,
-    text: "Reservé desde España con solo 10€. El coche me esperaba al salir del aeropuerto. Increíble servicio.",
-  },
-  {
-    name: "María T.",
-    route: "CMN → Agadir",
-    rating: 5,
-    text: "El SUV estaba nuevo y limpio. Tag Jawaz incluido para los peajes. No tuve que preocuparme de nada.",
-  },
-];
 
 // ── Animation variants ────────────────────────────────────────
 
@@ -184,19 +52,107 @@ const stagger = {
 
 // ── Component ─────────────────────────────────────────────────
 
-type SessionRole = "USER" | "OPERATOR" | null;
-
-function getSession(): { email: string; role: SessionRole } | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/nexus_session=([^;]+)/);
-  if (!match) return null;
-  try { return JSON.parse(decodeURIComponent(match[1])); } catch { return null; }
-}
+import { readUserCookie } from "@/hooks/useUser";
+import type { NexusUser } from "@/hooks/useUser";
 
 export default function HomeClient() {
-  const [session, setSession] = useState<{ email: string; role: SessionRole } | null>(null);
+  const [session, setSession] = useState<NexusUser | null>(null);
+  const [categoryPrices, setCategoryPrices] = useState<Record<string, number>>({});
+  const { currency, madRate } = useCurrencyStore();
+  const tHome = useTranslations("home");
+  const locale = useLocaleStore((s) => s.locale);
 
-  useEffect(() => { setSession(getSession()); }, []);
+  // Font size for hero headline — FR has longer words so we cap it smaller at every breakpoint
+  const heroFontClass = locale === "fr"
+    ? "text-[3.5rem] md:text-[4.5rem] lg:text-[3.2rem] xl:text-[5rem] 2xl:text-[5rem]"
+    : "text-[3.5rem] md:text-[4.5rem] lg:text-[4rem] xl:text-[6rem] 2xl:text-[6.5rem]";
+
+  // ── Translated static arrays (locale-reactive) ───────────────
+  const MARQUEE_ITEMS = [
+    tHome.marquee0, tHome.marquee1, tHome.marquee2, tHome.marquee3,
+    tHome.marquee4, tHome.marquee5, tHome.marquee6, tHome.marquee7,
+  ];
+  const STEPS = [
+    { n: "1", label: tHome.trustStep1 },
+    { n: "2", label: tHome.trustStep2 },
+    { n: "3", label: tHome.trustStep3, accent: true },
+  ];
+  const METRICS: Array<{ to: number; suffix: string; label: string }> = [
+    { to: 3,   suffix: " min", label: tHome.metricPickup },
+    { to: 10,  suffix: "€",    label: tHome.metricDeposit },
+    { to: 24,  suffix: "/7",   label: tHome.metricSupport },
+    { to: 100, suffix: "%",    label: tHome.metricDigital },
+  ];
+  const PROCESS_STEPS = [
+    { Icon: Smartphone, title: tHome.step1Title, description: tHome.step1Desc },
+    { Icon: QrCode,     title: tHome.step2Title, description: tHome.step2Desc },
+    { Icon: Car,        title: tHome.step3Title, description: tHome.step3Desc },
+  ];
+  const fi = tHome.fleetIncludes;
+  const FLEET_CATEGORIES = [
+    {
+      name: tHome.fleetCat0, apiCategory: "COMPACT", example: "VW Polo o similar",
+      fromPrice: 45,
+      imageUrl: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?q=80&w=800&auto=format&fit=crop",
+      badge: tHome.fleetCat0Badge, includes: [fi.basicInsurance, fi.unlimitedKm],
+    },
+    {
+      name: tHome.fleetCat1, apiCategory: "SUV", example: "Hyundai Tucson o similar",
+      fromPrice: 85,
+      imageUrl: "https://images.unsplash.com/photo-1519245659620-e859806a8d3b?q=80&w=800&auto=format&fit=crop",
+      badge: tHome.fleetCat1Badge, includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g],
+    },
+    {
+      name: tHome.fleetCat2, apiCategory: "LUXURY", example: "Audi A4 o similar",
+      fromPrice: 120,
+      imageUrl: "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?q=80&w=800&auto=format&fit=crop",
+      badge: null, includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g],
+    },
+    {
+      name: tHome.fleetCat3, apiCategory: "SEDAN", example: "Mercedes Clase C o similar",
+      fromPrice: 140,
+      imageUrl: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=800&auto=format&fit=crop",
+      badge: null, includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g, fi.premiumCleaning],
+    },
+  ];
+  const TESTIMONIALS = [
+    { name: "Carlos M.",  route: "CMN → Casablanca", rating: 5, text: tHome.testimonial0 },
+    { name: "Sophie L.",  route: "CMN → Marrakech",  rating: 5, text: tHome.testimonial1 },
+    { name: "Ahmed B.",   route: "CMN → Rabat",      rating: 5, text: tHome.testimonial2 },
+    { name: "Laura G.",   route: "CMN → Essaouira",  rating: 5, text: tHome.testimonial3 },
+    { name: "Youssef K.", route: "CMN → Fez",        rating: 5, text: tHome.testimonial4 },
+    { name: "María T.",   route: "CMN → Agadir",     rating: 5, text: tHome.testimonial5 },
+  ];
+
+  useEffect(() => { setSession(readUserCookie()); }, []);
+
+  // Fetch real min prices per category from API
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3900/api/v1";
+    fetch(`${base}/vehicles`)
+      .then((r) => r.json())
+      .then((json) => {
+        const vehicles: Array<{ category: string; pricePerDayEurCents: number }> =
+          json.data ?? [];
+        const prices: Record<string, number> = {};
+        for (const v of vehicles) {
+          const eur = v.pricePerDayEurCents / 100;
+          if (!prices[v.category] || eur < prices[v.category]) prices[v.category] = eur;
+        }
+        setCategoryPrices(prices);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Build catalog URL with date params from booking store (if dates are set)
+  const { pickupDate, returnDate } = useBookingStore();
+  const catalogUrl = (() => {
+    const qs = new URLSearchParams();
+    if (pickupDate) qs.set("pickupDate", new Date(pickupDate).toISOString());
+    if (returnDate) qs.set("returnDate", new Date(returnDate).toISOString());
+    const q = qs.toString();
+    return q ? `/catalog?${q}` : "/catalog";
+  })();
 
   // Mouse spotlight
   const mouseX = useMotionValue(0);
@@ -264,7 +220,7 @@ export default function HomeClient() {
 
           {/* ── Floating badges (desktop) ─────────────── */}
           <motion.div
-            className="absolute top-[22%] left-[2%] xl:left-[2.5%] hidden lg:block z-10"
+            className="absolute top-[22%] left-[2%] xl:left-[2.5%] hidden min-[1500px]:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -278,14 +234,14 @@ export default function HomeClient() {
                 €
               </span>
               <div>
-                <p className="text-brand-dark font-bold text-sm leading-none">Solo 10€</p>
-                <p className="text-brand-muted text-[10px] mt-0.5">Para reservar</p>
+                <p className="text-brand-dark font-bold text-sm leading-none">{tHome.badge10eur}</p>
+                <p className="text-brand-muted text-[10px] mt-0.5">{tHome.badge10eurSub}</p>
               </div>
             </motion.div>
           </motion.div>
 
           <motion.div
-            className="absolute top-[18%] right-[2%] xl:right-[2.5%] hidden lg:block z-10"
+            className="absolute top-[18%] right-[2%] xl:right-[2.5%] hidden min-[1500px]:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -302,13 +258,13 @@ export default function HomeClient() {
               </div>
               <div>
                 <p className="text-brand-dark font-bold text-sm leading-none">4.9 / 5</p>
-                <p className="text-brand-muted text-[10px] mt-0.5">Primeras reservas</p>
+                <p className="text-brand-muted text-[10px] mt-0.5">{tHome.badgeRating}</p>
               </div>
             </motion.div>
           </motion.div>
 
           <motion.div
-            className="absolute bottom-[28%] left-[2%] xl:left-[2.5%] hidden lg:block z-10"
+            className="absolute bottom-[28%] left-[2%] xl:left-[2.5%] hidden min-[1500px]:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.8, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -322,14 +278,14 @@ export default function HomeClient() {
                 <Zap className="w-4 h-4 text-white" />
               </span>
               <div>
-                <p className="text-brand-dark font-bold text-sm leading-none">3 minutos</p>
-                <p className="text-brand-muted text-[10px] mt-0.5">Tiempo de recogida</p>
+                <p className="text-brand-dark font-bold text-sm leading-none">{tHome.badge3min}</p>
+                <p className="text-brand-muted text-[10px] mt-0.5">{tHome.badge3minSub}</p>
               </div>
             </motion.div>
           </motion.div>
 
           <motion.div
-            className="absolute bottom-[30%] right-[2%] xl:right-[2.5%] hidden lg:block z-10"
+            className="absolute bottom-[30%] right-[2%] xl:right-[2.5%] hidden min-[1500px]:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 1.0, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
@@ -343,8 +299,8 @@ export default function HomeClient() {
                 <Clock className="w-4 h-4 text-brand-dark" />
               </span>
               <div>
-                <p className="text-brand-dark font-bold text-sm leading-none">24/7 CMN</p>
-                <p className="text-brand-muted text-[10px] mt-0.5">Soporte en aeropuerto</p>
+                <p className="text-brand-dark font-bold text-sm leading-none">{tHome.badge24h}</p>
+                <p className="text-brand-muted text-[10px] mt-0.5">{tHome.badge24hSub}</p>
               </div>
             </motion.div>
           </motion.div>
@@ -353,7 +309,7 @@ export default function HomeClient() {
           <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 w-full max-w-7xl mx-auto flex-1 min-h-[80vh]">
 
             {/* Center content */}
-            <div className="flex flex-col items-center text-center lg:items-start lg:text-left w-full max-w-xl flex-1">
+            <div className="flex flex-col items-center text-center lg:items-start lg:text-left w-full max-w-xl xl:max-w-2xl flex-1">
 
               {/* Live availability pill */}
               <motion.div
@@ -366,7 +322,7 @@ export default function HomeClient() {
                   <span className="absolute inline-flex h-full w-full rounded-full bg-brand-success opacity-75 animate-ping" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-success" />
                 </span>
-                Disponible · CMN · Aeropuerto Mohammed V
+                {tHome.heroBadge}
               </motion.div>
 
               {/* Headline */}
@@ -375,11 +331,10 @@ export default function HomeClient() {
                   variants={wordContainer}
                   initial="hidden"
                   animate="visible"
-                  className="flex flex-wrap justify-center lg:justify-start gap-x-[0.28em]"
-                  style={{ fontSize: "clamp(3.5rem, 11vw, 6.5rem)" }}
+                  className={`flex flex-wrap justify-center lg:justify-start gap-x-[0.28em] ${heroFontClass}`}
                 >
-                  {["Tu", "coche."].map((word) => (
-                    <span key={word} className="overflow-hidden inline-block pb-1">
+                  {[tHome.heroWord1, tHome.heroWord2].map((word, i) => (
+                    <span key={i} className="overflow-hidden inline-block pb-1">
                       <motion.span
                         variants={wordItem}
                         className="inline-block font-black tracking-tight leading-[1.05] text-brand-dark"
@@ -391,14 +346,15 @@ export default function HomeClient() {
                 </motion.div>
 
                 <motion.div
+                  key={tHome.heroInstant}
                   variants={charContainer}
                   initial="hidden"
                   animate="visible"
-                  className="flex flex-wrap justify-center lg:justify-start"
-                  style={{ fontSize: "clamp(3.5rem, 11vw, 6.5rem)", perspective: "800px" }}
-                  aria-label="Al instante."
+                  className={`flex flex-wrap justify-center lg:justify-start ${heroFontClass}`}
+                  style={{ perspective: "800px" }}
+                  aria-label={tHome.heroInstant}
                 >
-                  {"Al instante.".split("").map((char, i) => (
+                  {tHome.heroInstant.split("").map((char, i) => (
                     <span key={i} className="overflow-hidden inline-block" style={{ paddingBottom: "0.05em" }}>
                       <motion.span
                         variants={charItem}
@@ -453,7 +409,7 @@ export default function HomeClient() {
                 transition={{ delay: 0.5, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }}
                 className="text-base md:text-lg text-brand-muted max-w-sm mb-10 leading-relaxed"
               >
-                Sin filas. Sin papel. Solo tú y la carretera.
+                {tHome.heroSubtitle}
               </motion.p>
 
               {/* Star rating row */}
@@ -488,24 +444,24 @@ export default function HomeClient() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-brand-dark truncate">
-                        Hola, {session.email.split("@")[0]} 👋
+                        {tHome.sessionGreeting.replace("{name}", session.fullName?.split(" ")[0] ?? session.email.split("@")[0])}
                       </p>
-                      <p className="text-[11px] text-brand-muted">
-                        {session.role === "OPERATOR" ? "Panel de operador" : "Ver tus reservas activas"}
+                      <p className="text-sm text-slate-500">
+                        {session.role === "OPERATOR" || session.role === "ADMIN" ? tHome.sessionOperatorDesc : tHome.sessionCustomerDesc}
                       </p>
                     </div>
                     <Link
-                      href={session.role === "OPERATOR" ? "/operator/dashboard" : "/dashboard"}
+                      href={session.role === "OPERATOR" || session.role === "ADMIN" ? "/operator/dashboard" : "/dashboard"}
                       className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-bold
                                  px-3.5 py-2 rounded-xl hover:bg-blue-700 active:scale-[0.98]
                                  transition-all shrink-0 min-h-[36px]"
                     >
-                      {session.role === "OPERATOR" ? (
+                      {session.role === "OPERATOR" || session.role === "ADMIN" ? (
                         <LayoutDashboard className="w-3.5 h-3.5" />
                       ) : (
                         <QrCode className="w-3.5 h-3.5" />
                       )}
-                      {session.role === "OPERATOR" ? "Panel" : "Mi dashboard"}
+                      {session.role === "OPERATOR" || session.role === "ADMIN" ? tHome.sessionCTAOperator : tHome.sessionCTACustomer}
                     </Link>
                   </div>
                 </motion.div>
@@ -542,9 +498,9 @@ export default function HomeClient() {
               viewport={{ once: true, margin: "-60px" }}
               className="grid grid-cols-2 md:grid-cols-4 gap-6 divide-x divide-slate-100"
             >
-              {METRICS.map((m) => (
+              {METRICS.map((m, i) => (
                 <motion.div
-                  key={m.label}
+                  key={i}
                   variants={fadeUp}
                   className="flex flex-col items-center text-center py-4 px-4"
                 >
@@ -573,10 +529,10 @@ export default function HomeClient() {
               className="text-center mb-16"
             >
               <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-semibold mb-3">
-                Más simple imposible
+                {tHome.howItWorksEyebrow}
               </p>
               <h2 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight">
-                Tu coche en 3 pasos.
+                {tHome.howItWorksTitle}
               </h2>
             </motion.div>
 
@@ -595,7 +551,7 @@ export default function HomeClient() {
 
               {PROCESS_STEPS.map((step, i) => (
                 <motion.div
-                  key={step.title}
+                  key={i}
                   variants={fadeUp}
                   className="relative z-10 flex flex-col items-center text-center"
                 >
@@ -609,7 +565,7 @@ export default function HomeClient() {
                     <step.Icon className="w-6 h-6" />
                   </div>
                   <span className="text-[11px] font-bold text-brand-muted tracking-[0.2em] uppercase mb-2">
-                    Paso {i + 1}
+                    {tHome.stepLabel} {i + 1}
                   </span>
                   <h3 className="text-xl font-bold text-brand-dark mb-3">{step.title}</h3>
                   <p className="text-brand-muted text-sm leading-relaxed max-w-[220px]">
@@ -635,17 +591,17 @@ export default function HomeClient() {
             >
               <div>
                 <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-semibold mb-3">
-                  Flota Premium — CMN
+                  {tHome.fleetEyebrow}
                 </p>
                 <h2 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight">
-                  Elige tu categoría.
+                  {tHome.fleetTitle}
                 </h2>
               </div>
               <a
-                href="/catalog"
+                href={catalogUrl}
                 className="inline-flex items-center gap-2 text-brand-primary text-sm font-semibold hover:gap-3 transition-all duration-200"
               >
-                Ver todos los coches <ArrowRight className="w-4 h-4" />
+                {tHome.fleetViewAll} <ArrowRight className="w-4 h-4" />
               </a>
             </motion.div>
 
@@ -658,8 +614,8 @@ export default function HomeClient() {
             >
               {FLEET_CATEGORIES.map((cat) => (
                 <motion.a
-                  key={cat.name}
-                  href="/catalog"
+                  key={cat.apiCategory}
+                  href={catalogUrl}
                   variants={fadeUp}
                   whileHover={{ y: -6 }}
                   transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] as const }}
@@ -699,9 +655,13 @@ export default function HomeClient() {
 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                       <div>
-                        <span className="text-xs text-brand-muted">Desde </span>
-                        <span className="text-2xl font-black text-brand-primary">{cat.fromPrice}€</span>
-                        <span className="text-xs text-brand-muted">/día</span>
+                        <span className="text-xs text-brand-muted">{tHome.fleetFrom} </span>
+                        <span className="text-2xl font-black text-brand-primary">
+                          {currency === "MAD"
+                            ? Math.round((categoryPrices[cat.apiCategory] ?? cat.fromPrice) * madRate)
+                            : (categoryPrices[cat.apiCategory] ?? cat.fromPrice)}
+                        </span>
+                        <span className="text-xs text-brand-muted">{currency === "MAD" ? " DH" : "€"}{tHome.fleetPerDay}</span>
                       </div>
                       <span className="w-9 h-9 rounded-full bg-brand-primary/10 flex items-center justify-center group-hover:bg-brand-primary group-hover:text-white text-brand-primary transition-colors duration-200">
                         <ArrowRight className="w-4 h-4" />
@@ -720,10 +680,10 @@ export default function HomeClient() {
               viewport={{ once: true }}
               className="mt-8 flex flex-wrap items-center justify-center gap-6 text-brand-muted text-xs font-medium"
             >
-              <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-brand-primary" /> Seguro incluido</span>
-              <span className="flex items-center gap-1.5"><Wifi className="w-3.5 h-3.5 text-brand-primary" /> SIM 5G disponible</span>
-              <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-brand-primary" /> Tag Jawaz peajes</span>
-              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-brand-primary" /> Recogida 24/7</span>
+              <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-brand-primary" /> {tHome.incInsurance}</span>
+              <span className="flex items-center gap-1.5"><Wifi className="w-3.5 h-3.5 text-brand-primary" /> {tHome.incSIM}</span>
+              <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-brand-primary" /> {tHome.incJawaz}</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-brand-primary" /> {tHome.incPickup}</span>
             </motion.div>
           </div>
         </section>
@@ -731,7 +691,11 @@ export default function HomeClient() {
         {/* ==========================================================
             6. TESTIMONIALS — Auto-scroll
         ========================================================== */}
-        <TestimonialsCarousel />
+        <TestimonialsCarousel
+          eyebrow={tHome.testimonialsEyebrow}
+          title={tHome.testimonialsTitle}
+          testimonials={TESTIMONIALS}
+        />
 
       </div>
     </>
@@ -739,7 +703,13 @@ export default function HomeClient() {
 }
 
 /* ── Testimonials carousel component ──────────────────────────── */
-function TestimonialsCarousel() {
+interface TestimonialsCarouselProps {
+  eyebrow: string;
+  title: string;
+  testimonials: Array<{ name: string; route: string; rating: number; text: string }>;
+}
+
+function TestimonialsCarousel({ eyebrow, title, testimonials }: TestimonialsCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -775,7 +745,7 @@ function TestimonialsCarousel() {
   }, []);
 
   // Double testimonials for seamless loop
-  const doubled = [...TESTIMONIALS, ...TESTIMONIALS];
+  const doubled = [...testimonials, ...testimonials];
 
   return (
     <section className="bg-slate-50 border-y border-slate-100 py-24 px-6">
@@ -788,10 +758,10 @@ function TestimonialsCarousel() {
           className="text-center mb-12"
         >
           <p className="text-xs text-brand-muted uppercase tracking-[0.2em] font-semibold mb-3">
-            Clientes reales · Experiencias reales
+            {eyebrow}
           </p>
           <h2 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight">
-            Ellos ya condujeron.
+            {title}
           </h2>
         </motion.div>
       </div>

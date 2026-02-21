@@ -11,6 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -19,7 +20,36 @@ type UploadState = "IDLE" | "CAPTURED" | "UPLOADING" | "UPLOADED" | "ERROR";
 
 interface Props {
   type: "PASSPORT" | "DRIVING_LICENSE";
+  reservationId: string | null;
   onComplete: () => void;
+}
+
+// ── Constants ─────────────────────────────────────────────────
+
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/heic", "application/pdf"];
+
+// ── S3 XHR upload with progress ───────────────────────────────
+
+function uploadToS3WithProgress(
+  url: string,
+  file: File,
+  onProgress: (pct: number) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`S3 upload failed: ${xhr.status}`));
+    });
+    xhr.addEventListener("error", () => reject(new Error("Network error during S3 upload")));
+    xhr.send(file);
+  });
 }
 
 // ── Brightness check ──────────────────────────────────────────
@@ -36,9 +66,19 @@ function getAverageBrightness(canvas: HTMLCanvasElement): number {
   return sum / (data.length / 80);
 }
 
+// ── File validation ───────────────────────────────────────────
+
+function validateFile(file: File): string | null {
+  if (file.size > MAX_FILE_BYTES) return "El archivo supera el límite de 5 MB.";
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return "Formato no permitido. Usa JPG, PNG, HEIC o PDF.";
+  }
+  return null;
+}
+
 // ── Component ─────────────────────────────────────────────────
 
-export default function DocumentUploadStep({ type, onComplete }: Props) {
+export default function DocumentUploadStep({ type, reservationId, onComplete }: Props) {
   const [mode, setMode] = useState<Mode>("camera");
   const [state, setState] = useState<UploadState>("IDLE");
   const [preview, setPreview] = useState<string | null>(null);
@@ -49,6 +89,7 @@ export default function DocumentUploadStep({ type, onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<File | null>(null);
 
   const label = type === "PASSPORT" ? "Pasaporte" : "Carnet de Conducir";
 
@@ -103,10 +144,22 @@ export default function DocumentUploadStep({ type, onComplete }: Props) {
     }
     setLowLight(false);
 
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    setPreview(dataUrl);
-    setState("CAPTURED");
-    stopCamera();
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          toast.error("Error al capturar la imagen. Inténtalo de nuevo.");
+          return;
+        }
+        const file = new File([blob], "document.jpg", { type: "image/jpeg" });
+        fileRef.current = file;
+        const dataUrl = URL.createObjectURL(file);
+        setPreview(dataUrl);
+        setState("CAPTURED");
+        stopCamera();
+      },
+      "image/jpeg",
+      0.85
+    );
   }
 
   // ── Select from gallery ────────────────────────────────────
@@ -114,17 +167,34 @@ export default function DocumentUploadStep({ type, onComplete }: Props) {
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Use object URL for instant preview — no canvas brightness check for gallery files
+
+    const error = validateFile(file);
+    if (error) {
+      toast.error(error);
+      e.target.value = "";
+      return;
+    }
+
+    fileRef.current = file;
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
     setLowLight(false);
     setState("CAPTURED");
-    // Release object URL when component unmounts (handled outside; minimal memory impact)
   }
 
-  // ── Upload (mock) ───────────────────────────────────────────
+  // ── Upload ─────────────────────────────────────────────────
 
   async function handleUpload() {
+    const file = fileRef.current;
+    if (!file) {
+      toast.error("No hay ningún archivo seleccionado.");
+      return;
+    }
+    if (!reservationId) {
+      toast.error("ID de reserva no disponible. Recarga la página.");
+      return;
+    }
+
     setState("UPLOADING");
     setProgress(0);
 
@@ -143,25 +213,46 @@ export default function DocumentUploadStep({ type, onComplete }: Props) {
       const onOnline = async () => {
         toast.success("Conexión restaurada. Subiendo tu foto...");
         window.removeEventListener("online", onOnline);
-        await simulateUpload();
+        await doUpload(file, reservationId);
       };
       window.addEventListener("online", onOnline);
       return;
     }
 
-    await simulateUpload();
+    await doUpload(file, reservationId);
   }
 
-  async function simulateUpload() {
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise((r) => setTimeout(r, 120));
-      setProgress(i);
+  async function doUpload(file: File, resId: string) {
+    try {
+      // Step 1: Get presigned URL
+      const presign = await apiFetch<{ uploadUrl: string; fileKey: string }>(
+        "/documents/presign",
+        {
+          method: "POST",
+          auth: true,
+          body: JSON.stringify({ reservationId: resId, type }),
+        }
+      );
+
+      // Step 2: PUT directly to S3 with progress tracking
+      await uploadToS3WithProgress(presign.uploadUrl, file, setProgress);
+
+      // Step 3: Confirm upload to backend
+      await apiFetch("/documents/confirm", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({ reservationId: resId, type, fileKey: presign.fileKey }),
+      });
+
+      setState("UPLOADED");
+      localStorage.removeItem(`nexus-pending-${type}`);
+      // Auto-advance after brief success state
+      setTimeout(() => onComplete(), 800);
+    } catch (err) {
+      setState("ERROR");
+      const message = err instanceof Error ? err.message : "Error al subir el documento.";
+      toast.error(message);
     }
-    setState("UPLOADED");
-    localStorage.removeItem(`nexus-pending-${type}`);
-    // Auto-advance after brief success state
-    setTimeout(() => onComplete(), 800);
   }
 
   // ── Retry ──────────────────────────────────────────────────
@@ -171,6 +262,7 @@ export default function DocumentUploadStep({ type, onComplete }: Props) {
     setLowLight(false);
     setState("IDLE");
     setProgress(0);
+    fileRef.current = null;
   }
 
   // ── Render ─────────────────────────────────────────────────
@@ -278,13 +370,13 @@ export default function DocumentUploadStep({ type, onComplete }: Props) {
               <p className="text-sm font-semibold text-brand-muted">
                 Toca para subir tu {label.toLowerCase()}
               </p>
-              <p className="text-xs text-brand-muted/60">JPG, PNG · máx 10 MB</p>
+              <p className="text-xs text-brand-muted/60">JPG, PNG, HEIC, PDF · máx 5 MB</p>
             </button>
 
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               className="hidden"
               onChange={handleFileSelect}
             />
@@ -392,6 +484,36 @@ export default function DocumentUploadStep({ type, onComplete }: Props) {
             </motion.div>
             <p className="text-base font-bold text-brand-dark">Documento recibido</p>
             <p className="text-sm text-brand-muted">{label} subido correctamente</p>
+          </motion.div>
+        )}
+
+        {/* ── ERROR: Retry ─────────────────────────────── */}
+        {state === "ERROR" && (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center gap-4 py-8"
+          >
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
+              <RefreshCw className="w-8 h-8 text-red-500" />
+            </div>
+            <p className="text-base font-bold text-brand-dark">Error al subir</p>
+            <p className="text-sm text-brand-muted text-center">
+              No se pudo subir el documento. Comprueba tu conexión e inténtalo de nuevo.
+            </p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="min-h-[48px] px-8 bg-brand-primary text-white font-bold text-sm rounded-full
+                         hover:bg-brand-primary-hover active:scale-[0.98]
+                         shadow-[0_4px_20px_rgba(37,99,235,0.28)] transition-all
+                         flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Reintentar
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

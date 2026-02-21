@@ -11,8 +11,9 @@ import {
 } from "framer-motion";
 import { ArrowRight, Check, Users, Briefcase } from "lucide-react";
 import type { Vehicle } from "@/types";
-import { getOccupancyHeat } from "@/lib/mock-data";
-import { useBookingStore } from "@/stores/useBookingStore";
+import { getOccupancyHeat } from "@/lib/constants";
+import { useBookingStore, useCurrencyStore } from "@/stores/useBookingStore";
+import { useTranslations } from "@/lib/i18n";
 
 // ── Heat bar helpers ──────────────────────────────────────────
 
@@ -20,13 +21,6 @@ function heatColor(v: number) {
   if (v < 0.35) return "bg-emerald-400";
   if (v < 0.7) return "bg-amber-400";
   return "bg-red-400";
-}
-
-function heatLabel(vals: number[]) {
-  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-  if (avg > 0.6) return "Alta demanda esta semana";
-  if (avg > 0.35) return "Demanda media";
-  return "Disponibilidad alta";
 }
 
 // ── Component ─────────────────────────────────────────────────
@@ -41,7 +35,18 @@ export default function VehicleCard({ vehicle, index = 0 }: VehicleCardProps) {
   const [hovered, setHovered] = useState(false);
 
   const { totalDays, setVehicle } = useBookingStore();
+  const { currency, madRate } = useCurrencyStore();
+  const tCatalog = useTranslations("catalog");
+  const displayPrice = currency === "MAD"
+    ? Math.round(vehicle.pricePerDay * madRate)
+    : vehicle.pricePerDay;
+  const priceLabel = currency === "MAD" ? " DH" : "€";
   const totalPrice = totalDays ? totalDays * vehicle.pricePerDay : null;
+  const displayTotal = totalDays
+    ? (currency === "MAD"
+        ? Math.round(totalDays * vehicle.pricePerDay * madRate)
+        : totalDays * vehicle.pricePerDay)
+    : null;
   const heat = getOccupancyHeat(vehicle.id);
 
   // ── 3D parallax ─────────────────────────────────────────────
@@ -76,8 +81,15 @@ export default function VehicleCard({ vehicle, index = 0 }: VehicleCardProps) {
 
   // ── Availability badge ──────────────────────────────────────
   const avgHeat = heat.reduce((a, b) => a + b, 0) / heat.length;
-  const badgeText = avgHeat > 0.65 ? "Últimas unidades" : "Disponible";
+  const badgeText = avgHeat > 0.65 ? tCatalog.lastUnits : tCatalog.available;
   const badgeDot = avgHeat > 0.65 ? "bg-amber-400" : "bg-emerald-400";
+
+  function heatLabel(vals: number[]) {
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    if (avg > 0.6) return tCatalog.heatHigh;
+    if (avg > 0.35) return tCatalog.heatMedium;
+    return tCatalog.heatLow;
+  }
 
   return (
     <motion.div
@@ -142,7 +154,7 @@ export default function VehicleCard({ vehicle, index = 0 }: VehicleCardProps) {
               {vehicle.brand} {vehicle.model}
             </h3>
             <p className="text-xs text-brand-muted mt-0.5 flex items-center gap-1.5">
-              {vehicle.transmission === "AUTOMATIC" ? "Automático" : "Manual"}
+              {vehicle.transmission === "AUTOMATIC" ? tCatalog.transmission.AUTOMATIC : tCatalog.transmission.MANUAL}
               <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />
               <Users className="w-3 h-3" /> {vehicle.seats}
               <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />
@@ -178,12 +190,12 @@ export default function VehicleCard({ vehicle, index = 0 }: VehicleCardProps) {
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-2xl font-black text-brand-dark leading-none">
-              {vehicle.pricePerDay}€
-              <span className="text-sm font-semibold text-brand-muted ml-1">/día</span>
+              {displayPrice}{priceLabel}
+              <span className="text-sm font-semibold text-brand-muted ml-1">{tCatalog.perDayUnit}</span>
             </p>
-            {totalPrice && (
+            {displayTotal && (
               <p className="text-xs text-brand-muted mt-1">
-                {totalPrice}€ total · {totalDays} {totalDays === 1 ? "día" : "días"}
+                {displayTotal}{priceLabel} {tCatalog.totalLabel} · {totalDays} {totalDays === 1 ? tCatalog.day : tCatalog.days}
               </p>
             )}
           </div>
@@ -197,7 +209,7 @@ export default function VehicleCard({ vehicle, index = 0 }: VehicleCardProps) {
                        shadow-[0_4px_16px_rgba(37,99,235,0.25)]
                        transition-all duration-200"
           >
-            Ver
+            {tCatalog.details}
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

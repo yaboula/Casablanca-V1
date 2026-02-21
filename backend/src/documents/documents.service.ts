@@ -80,6 +80,7 @@ export class DocumentsService {
       user.id,
       dto.reservationId,
       dto.type,
+      dto.mimeType ?? 'image/jpeg',
     );
   }
 

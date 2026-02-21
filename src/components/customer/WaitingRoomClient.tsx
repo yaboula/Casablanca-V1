@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -14,9 +14,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 import { OPERATOR_PHONE } from "@/lib/constants";
+import { createSSEConnection, type ConnectionStatus } from "@/lib/sse";
+import { useTranslations } from "@/lib/i18n";
 
-// ── Types ─────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type DocStatus = "PENDING_REVIEW" | "APPROVED" | "REJECTED";
 
@@ -25,102 +28,137 @@ interface LogEntry {
   status: "done" | "pending" | "error";
 }
 
-// ── Mock status simulation ────────────────────────────────────
+interface ApiDocument {
+  type: "PASSPORT" | "DRIVING_LICENSE";
+  status: DocStatus;
+}
 
-const MOCK_APPROVAL_SECONDS = 25;
+interface ApiReservation {
+  id: string;
+  documents?: ApiDocument[];
+}
 
-// ── Component ─────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function getDocStatus(docs: ApiDocument[], type: "PASSPORT" | "DRIVING_LICENSE"): DocStatus {
+  const doc = docs.find((d) => d.type === type);
+  return doc?.status ?? "PENDING_REVIEW";
+}
+
+// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface Props {
-  reservationId: string;
+  reservationId: string | null;
 }
 
 export default function WaitingRoomClient({ reservationId }: Props) {
   const router = useRouter();
 
-  const [docStatus, setDocStatus] = useState<DocStatus>("PENDING_REVIEW");
+  const tWaiting = useTranslations("waitingRoom");
+  const [passportStatus, setPassportStatus] = useState<DocStatus>("PENDING_REVIEW");
+  const [licenseStatus, setLicenseStatus] = useState<DocStatus>("PENDING_REVIEW");
+  const [rejectedType, setRejectedType] = useState<"PASSPORT" | "DRIVING_LICENSE" | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string>(tWaiting.blurryReason);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [logs, setLogs] = useState<LogEntry[]>([
-    { text: "Documentos recibidos en servidor", status: "done" },
+    { text: tWaiting.logReceived, status: "done" },
+    { text: tWaiting.logConnecting, status: "pending" },
   ]);
-  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
-  // ── Simulated polling ───────────────────────────────────────
-
-  useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    timers.push(
-      setTimeout(() => {
-        setLogs((prev) => [...prev, { text: "Iniciando verificación manual", status: "done" }]);
-      }, 3000)
-    );
-
-    timers.push(
-      setTimeout(() => {
-        setLogs((prev) => [...prev, { text: "En cola de revisión (pos. 2)", status: "pending" }]);
-      }, 6000)
-    );
-
-    timers.push(
-      setTimeout(() => {
-        setLogs((prev) => {
-          const updated = [...prev];
-          const idx = updated.findIndex((l) => l.text.includes("pos. 2"));
-          if (idx >= 0) updated[idx] = { text: "En cola de revisión (pos. 1)", status: "pending" };
-          return updated;
-        });
-      }, 12000)
-    );
-
-    timers.push(
-      setTimeout(() => {
-        setLogs((prev) => {
-          const updated = [...prev];
-          const idx = updated.findIndex((l) => l.text.includes("pos."));
-          if (idx >= 0) updated[idx] = { text: "Tu documento está siendo revisado ahora", status: "pending" };
-          return updated;
-        });
-      }, 18000)
-    );
-
-    timers.push(
-      setTimeout(() => {
-        setLogs((prev) => {
-          const updated = [...prev];
-          const queueIdx = updated.findIndex((l) => l.text.includes("cola"));
-          if (queueIdx >= 0) updated[queueIdx] = { ...updated[queueIdx], status: "done" };
-          return [...updated, { text: "Verificación completada", status: "done" }];
-        });
-        setDocStatus("APPROVED");
-      }, MOCK_APPROVAL_SECONDS * 1000)
-    );
-
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
-  // ── Redirect on approval ───────────────────────────────────
+  //  SSE real-time connection + one-time initial REST check 
 
   useEffect(() => {
-    if (docStatus === "APPROVED") {
+    if (!reservationId) return;
+
+    // One-time REST check: sync document status that changed before SSE connected
+    async function initialCheck() {
+      try {
+        const reservations = await apiFetch<ApiReservation[]>("/reservations/my", {
+          auth: true,
+          cache: "no-store",
+        });
+        const reservation = reservations.find((r) => r.id === reservationId);
+        if (!reservation) return;
+        const docs = reservation.documents ?? [];
+        const passport = getDocStatus(docs, "PASSPORT");
+        const license = getDocStatus(docs, "DRIVING_LICENSE");
+        setPassportStatus(passport);
+        setLicenseStatus(license);
+        if (passport === "REJECTED") {
+          setRejectedType("PASSPORT");
+          setRejectionReason(tWaiting.blurryReason);
+        } else if (license === "REJECTED") {
+          setRejectedType("DRIVING_LICENSE");
+          setRejectionReason(tWaiting.blurryReason);
+        }
+      } catch { /* SSE will surface updates */ }
+    }
+    initialCheck();
+
+    // SSE connection  JWT stays in HttpOnly cookie, never in URL
+    const disconnect = createSSEConnection({
+      onStatusChange: (status) => {
+        setConnectionStatus(status);
+        if (status === "connected") {
+          setLogs((prev) => [
+            ...prev.filter((l) => l.text !== tWaiting.logConnecting),
+            { text: tWaiting.logConnected, status: "pending" },
+          ]);
+        }
+        if (status === "error") {
+          setLogs((prev) => [
+            ...prev,
+            { text: tWaiting.logNoConnection, status: "error" },
+          ]);
+        }
+      },
+      onDocumentApproved: (data) => {
+        if (data.reservationId !== reservationId) return;
+        const type = data.documentType as "PASSPORT" | "DRIVING_LICENSE";
+        if (type === "PASSPORT") setPassportStatus("APPROVED");
+        if (type === "DRIVING_LICENSE") setLicenseStatus("APPROVED");
+        const label = type === "PASSPORT" ? tWaiting.passport : tWaiting.license;
+        setLogs((prev) => [...prev, { text: `${label} — ${tWaiting.docApproved}`, status: "done" }]);
+      },
+      onDocumentRejected: (data) => {
+        if (data.reservationId !== reservationId) return;
+        const type = data.documentType as "PASSPORT" | "DRIVING_LICENSE";
+        setRejectedType(type);
+        setRejectionReason(data.reason ?? tWaiting.blurryReason);
+        const label = type === "PASSPORT" ? tWaiting.passport : tWaiting.license;
+        setLogs((prev) => [...prev, { text: `${label} — ${tWaiting.docRejected}`, status: "error" }]);
+      },
+    });
+
+    return disconnect;
+  }, [reservationId]);
+
+  // â”€â”€ Redirect on full approval â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  useEffect(() => {
+    if (passportStatus === "APPROVED" && licenseStatus === "APPROVED") {
       const timer = setTimeout(() => {
         router.push(`/smart-ticket?reservationId=${reservationId}`);
       }, 2000);
       return () => clearTimeout(timer);
     }
-    if (docStatus === "REJECTED") {
-      setRejectionReason("Imagen borrosa o incompleta");
-    }
-  }, [docStatus, router, reservationId]);
+  }, [passportStatus, licenseStatus, router, reservationId]);
 
-  // ── WhatsApp link ──────────────────────────────────────────
+  // â”€â”€ WhatsApp link â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const whatsappUrl = `https://wa.me/${OPERATOR_PHONE}?text=${encodeURIComponent(
-    `Hola, tengo la reserva #${reservationId} y estoy esperando la verificación de mis documentos.`
+    tWaiting.whatsappMsg.replace("{id}", reservationId ?? "")
   )}`;
 
-  // ── Rejected state ─────────────────────────────────────────
+  const allApproved = passportStatus === "APPROVED" && licenseStatus === "APPROVED";
+  const someRejected = rejectedType !== null;
 
-  if (docStatus === "REJECTED") {
+  // â”€â”€ Rejected state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  if (someRejected) {
+    const docLabel = rejectedType === "PASSPORT" ? tWaiting.passport.toLowerCase() : tWaiting.license.toLowerCase();
+    const docParam = rejectedType === "PASSPORT" ? "PASSPORT" : "DRIVING_LICENSE";
+
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-6">
         <motion.div
@@ -132,11 +170,11 @@ export default function WaitingRoomClient({ reservationId }: Props) {
             <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
             </div>
-            <h2 className="text-lg font-bold text-brand-dark">Acción requerida</h2>
+            <h2 className="text-lg font-bold text-brand-dark">{tWaiting.actionRequired}</h2>
           </div>
 
           <p className="text-sm text-brand-muted mb-2">
-            Tu pasaporte no pudo ser verificado.
+            {tWaiting.actionRequiredDoc.replace("{docLabel}", docLabel)}
           </p>
           <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-4">
             <p className="text-sm font-semibold text-amber-700">
@@ -144,19 +182,19 @@ export default function WaitingRoomClient({ reservationId }: Props) {
             </p>
           </div>
           <p className="text-sm text-brand-muted mb-5">
-            No te preocupes, pasa frecuentemente con fotos tomadas con poca luz.
+            {tWaiting.dontWorry}
           </p>
 
           <div className="flex flex-col gap-3">
             <Link
-              href={`/check-in?reservationId=${reservationId}&retry=true`}
+              href={`/check-in?reservationId=${reservationId}&retryType=${docParam}`}
               className="w-full min-h-[50px] bg-brand-primary text-white font-bold text-sm rounded-full
                          flex items-center justify-center gap-2
                          hover:bg-brand-primary-hover active:scale-[0.98]
                          shadow-[0_4px_20px_rgba(37,99,235,0.28)] transition-all"
             >
               <RefreshCw className="w-4 h-4" />
-              Volver a subir pasaporte
+              {tWaiting.reuploadDoc.replace("{docLabel}", docLabel)}
             </Link>
             <a
               href={whatsappUrl}
@@ -166,7 +204,7 @@ export default function WaitingRoomClient({ reservationId }: Props) {
                          flex items-center justify-center gap-2 hover:bg-[#1DA851] transition-colors"
             >
               <MessageCircle className="w-4 h-4" />
-              ¿Necesitas ayuda? WhatsApp
+              {tWaiting.whatsappHelp}
             </a>
           </div>
         </motion.div>
@@ -174,7 +212,7 @@ export default function WaitingRoomClient({ reservationId }: Props) {
     );
   }
 
-  // ── Main waiting state ─────────────────────────────────────
+  // â”€â”€ Main waiting / approved state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-6">
@@ -188,8 +226,10 @@ export default function WaitingRoomClient({ reservationId }: Props) {
         <div className="bg-brand-dark px-5 py-4 flex items-center gap-3">
           <ShieldCheck className="w-5 h-5 text-brand-primary" />
           <div>
-            <h1 className="text-white font-bold text-base">Verificación de Seguridad</h1>
-            <p className="text-slate-400 text-xs">Reserva #{reservationId}</p>
+            <h1 className="text-white font-bold text-base">{tWaiting.title}</h1>
+            <p className="text-slate-400 text-xs">
+              {reservationId ? tWaiting.subtitle.replace("{id}", reservationId) : tWaiting.noReservation}
+            </p>
           </div>
         </div>
 
@@ -197,22 +237,22 @@ export default function WaitingRoomClient({ reservationId }: Props) {
           {/* Documents sent */}
           <div>
             <p className="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">
-              Documentos Enviados
+              {tWaiting.docsSent}
             </p>
             <div className="space-y-2">
-              <DocRow icon={FileText} label="Pasaporte" status="RECEIVED" />
-              <DocRow icon={CreditCard} label="Carnet de Conducir" status="RECEIVED" />
+              <DocRow icon={FileText} label={tWaiting.passport} status={passportStatus} />
+              <DocRow icon={CreditCard} label={tWaiting.license} status={licenseStatus} />
             </div>
           </div>
 
           {/* Status panel */}
           <div>
             <p className="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">
-              Estado de Verificación
+              {tWaiting.status}
             </p>
 
             <AnimatePresence mode="wait">
-              {docStatus === "APPROVED" ? (
+              {allApproved ? (
                 <motion.div
                   key="approved"
                   initial={{ opacity: 0, scale: 0.96 }}
@@ -227,8 +267,8 @@ export default function WaitingRoomClient({ reservationId }: Props) {
                     <CheckCircle2 className="w-8 h-8 text-brand-success" />
                   </motion.div>
                   <div>
-                    <p className="text-sm font-bold text-brand-dark">¡Perfil Verificado!</p>
-                    <p className="text-xs text-brand-muted">Redirigiendo a tu Smart Ticket…</p>
+                    <p className="text-sm font-bold text-brand-dark">{tWaiting.approved}</p>
+                    <p className="text-xs text-brand-muted">{tWaiting.redirecting}</p>
                   </div>
                 </motion.div>
               ) : (
@@ -241,17 +281,23 @@ export default function WaitingRoomClient({ reservationId }: Props) {
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-primary" />
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75
+                        ${connectionStatus === "error" ? "bg-red-500" : connectionStatus === "connecting" ? "bg-amber-400" : "bg-brand-primary"}`} />
+                      <span className={`relative inline-flex rounded-full h-3 w-3
+                        ${connectionStatus === "error" ? "bg-red-500" : connectionStatus === "connecting" ? "bg-amber-400" : "bg-brand-primary"}`} />
                     </span>
-                    <p className="text-sm font-bold text-brand-dark">En Revisión</p>
+                    <p className="text-sm font-bold text-brand-dark">
+                      {connectionStatus === "connecting" ? tWaiting.connecting : tWaiting.reviewing}
+                    </p>
                   </div>
                   <p className="text-sm text-brand-muted">
-                    Nuestro equipo revisa tus documentos manualmente.
+                    {connectionStatus === "error"
+                      ? tWaiting.connectionError
+                      : tWaiting.reviewingLive}
                   </p>
                   <div className="flex items-center gap-2 mt-2 text-xs text-brand-muted">
                     <Clock className="w-3.5 h-3.5" />
-                    Tiempo estimado: &lt; 2 horas
+                    {tWaiting.estimatedTime}
                   </div>
                 </motion.div>
               )}
@@ -261,9 +307,9 @@ export default function WaitingRoomClient({ reservationId }: Props) {
           {/* Terminal-style log feed */}
           <div>
             <p className="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">
-              Feed de Estado
+              {tWaiting.feedTitle}
             </p>
-            <div className="bg-slate-50 rounded-xl p-3 space-y-2 font-mono text-xs">
+            <div className="bg-slate-50 rounded-xl p-3 space-y-2 font-mono text-xs max-h-36 overflow-y-auto">
               {logs.map((log, i) => (
                 <motion.div
                   key={`${log.text}-${i}`}
@@ -295,7 +341,7 @@ export default function WaitingRoomClient({ reservationId }: Props) {
 
           {/* WhatsApp CTA */}
           <div className="pt-1">
-            <p className="text-xs text-brand-muted mb-2">¿Preguntas mientras esperas?</p>
+            <p className="text-xs text-brand-muted mb-2">{tWaiting.questionsWaiting}</p>
             <a
               href={whatsappUrl}
               target="_blank"
@@ -304,7 +350,7 @@ export default function WaitingRoomClient({ reservationId }: Props) {
                          flex items-center justify-center gap-2 hover:bg-[#1DA851] transition-colors"
             >
               <MessageCircle className="w-4 h-4" />
-              WhatsApp con nuestro equipo
+              {tWaiting.whatsappCTA}
             </a>
           </div>
         </div>
@@ -313,7 +359,7 @@ export default function WaitingRoomClient({ reservationId }: Props) {
   );
 }
 
-// ── Doc row helper ───────────────────────────────────────────
+// â”€â”€ Doc row helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function DocRow({
   icon: Icon,
@@ -322,22 +368,34 @@ function DocRow({
 }: {
   icon: React.ElementType;
   label: string;
-  status: "RECEIVED" | "PENDING";
+  status: DocStatus;
 }) {
+  const tWaiting = useTranslations("waitingRoom");
   return (
     <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5">
       <div className="flex items-center gap-2.5">
         <Icon className="w-4 h-4 text-brand-muted" />
         <span className="text-sm font-semibold text-brand-dark">{label}</span>
       </div>
-      {status === "RECEIVED" ? (
+      {status === "APPROVED" && (
         <span className="text-xs font-bold text-brand-success flex items-center gap-1">
           <CheckCircle2 className="w-3.5 h-3.5" />
-          Recibido
+          {tWaiting.docApproved}
         </span>
-      ) : (
-        <span className="text-xs font-semibold text-brand-muted">Pendiente</span>
+      )}
+      {status === "REJECTED" && (
+        <span className="text-xs font-bold text-red-500 flex items-center gap-1">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          {tWaiting.docRejected}
+        </span>
+      )}
+      {status === "PENDING_REVIEW" && (
+        <span className="text-xs font-semibold text-brand-muted flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5" />
+          {tWaiting.docInReview}
+        </span>
       )}
     </div>
   );
 }
+

@@ -31,6 +31,10 @@ const EnvSchema = z.object({
     .string()
     .min(32, { message: 'JWT_SECRET must be at least 32 characters' }),
   JWT_EXPIRES_IN: z.string().default('7d'),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(32, { message: 'JWT_REFRESH_SECRET must be at least 32 characters' }),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
   // Stripe
   STRIPE_SECRET_KEY: z

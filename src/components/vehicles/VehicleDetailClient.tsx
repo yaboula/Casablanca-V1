@@ -20,8 +20,8 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Vehicle } from "@/types";
-import { useBookingStore } from "@/stores/useBookingStore";
-import { getOccupancyHeat } from "@/lib/mock-data";
+import { useBookingStore, useCurrencyStore } from "@/stores/useBookingStore";
+import { getOccupancyHeat } from "@/lib/constants";
 import { PICKUP_LOCATION_LABELS, DEPOSIT_AMOUNT_EUR } from "@/lib/constants";
 
 // ── Heat helpers ──────────────────────────────────────────────
@@ -70,6 +70,16 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
   }
 
   const totalPrice = totalDays ? totalDays * vehicle.pricePerDay : null;
+  const { currency, madRate } = useCurrencyStore();
+  const displayPrice = currency === "MAD"
+    ? Math.round(vehicle.pricePerDay * madRate)
+    : vehicle.pricePerDay;
+  const priceLabel = currency === "MAD" ? " DH" : "€";
+  const displayTotal = totalDays
+    ? (currency === "MAD"
+        ? Math.round(totalDays * vehicle.pricePerDay * madRate)
+        : totalDays * vehicle.pricePerDay)
+    : null;
   const heat = getOccupancyHeat(vehicle.id);
 
   const fmtDate = (ts: number | null) =>
@@ -255,7 +265,7 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
               transition={{ delay: 0.25, duration: 0.5 }}
               className="mt-8"
             >
-              <h2 className="text-base font-bold text-brand-dark mb-3">Demanda esta semana</h2>
+              <h2 className="text-base font-bold text-brand-dark mb-3">Disponibilidad</h2>
               <div className="flex gap-1.5 mb-1.5">
                 {heat.map((v, i) => (
                   <div key={i} className={`h-2.5 flex-1 rounded-full ${heatColor(v)}`} />
@@ -292,10 +302,10 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
               <div className="space-y-2 mb-5">
                 <div className="flex justify-between text-sm">
                   <span className="text-brand-muted">
-                    Alquiler{totalDays ? ` (${totalDays}d × ${vehicle.pricePerDay}€)` : ""}
+                    Alquiler{totalDays ? ` (${totalDays}d × ${displayPrice}${priceLabel})` : ""}
                   </span>
                   <span className="font-bold text-brand-dark">
-                    {totalPrice ? `${totalPrice}€` : `${vehicle.pricePerDay}€/día`}
+                    {displayTotal ? `${displayTotal}${priceLabel}` : `${displayPrice}${priceLabel}/día`}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -310,7 +320,7 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
                 {totalPrice && (
                   <div className="flex justify-between text-sm">
                     <span className="font-bold text-brand-dark">Total</span>
-                    <span className="font-black text-brand-dark text-lg">{totalPrice}€</span>
+                    <span className="font-black text-brand-dark text-lg">{displayTotal}{priceLabel}</span>
                   </div>
                 )}
               </div>
@@ -363,7 +373,7 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
                       p-4 flex items-center justify-between gap-4 lg:hidden z-40">
         <div>
           <p className="text-lg font-black text-brand-dark leading-none">
-            {totalPrice ? `${totalPrice}€` : `${vehicle.pricePerDay}€/día`}
+            {displayTotal ? `${displayTotal}${priceLabel}` : `${displayPrice}${priceLabel}/día`}
           </p>
           {totalDays && (
             <p className="text-xs text-brand-muted mt-0.5">

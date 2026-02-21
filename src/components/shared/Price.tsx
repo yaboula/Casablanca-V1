@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useCurrencyStore } from "@/stores/useBookingStore";
-import { EUR_TO_MAD_RATE } from "@/lib/constants";
+// EUR_TO_MAD_RATE fallback is no longer needed here — madRate comes from the store
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -69,10 +69,11 @@ export default function Price({
   perDay = false,
 }: PriceProps) {
   const globalCurrency = useCurrencyStore((s) => s.currency);
+  const madRate = useCurrencyStore((s) => s.madRate);
   const currency = currencyOverride ?? globalCurrency;
 
   const displayAmount =
-    currency === "MAD" ? Math.round(amount * EUR_TO_MAD_RATE) : amount;
+    currency === "MAD" ? Math.round(amount * madRate) : amount;
 
   const animatedValue = useAnimatedNumber(displayAmount);
 

@@ -63,6 +63,40 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* ── Dark mode overrides ─────────────────────────────────── */
+  html.dark {
+    color-scheme: dark;
+
+    /* Brand tokens */
+    --color-brand-bg:             #0F172A;
+    --color-brand-surface:        #1E293B;
+    --color-brand-dark:           #F1F5F9;
+    --color-brand-muted:          #94A3B8;
+    --color-brand-primary:        #3B82F6;
+    --color-brand-primary-hover:  #2563EB;
+
+    /* Shadcn tokens */
+    --color-background:           #0F172A;
+    --color-foreground:           #F1F5F9;
+    --color-card:                 #1E293B;
+    --color-card-foreground:      #F1F5F9;
+    --color-popover:              #1E293B;
+    --color-popover-foreground:   #F1F5F9;
+    --color-primary:              #3B82F6;
+    --color-primary-foreground:   #FFFFFF;
+    --color-secondary:            #1E293B;
+    --color-secondary-foreground: #F1F5F9;
+    --color-muted:                #1E293B;
+    --color-muted-foreground:     #94A3B8;
+    --color-accent:               #1E3A5F;
+    --color-accent-foreground:    #93C5FD;
+    --color-border:               #334155;
+    --color-input:                #334155;
+    --color-ring:                 #3B82F6;
+    --shadow-card:                0 4px 20px -2px rgba(0, 0, 0, 0.4);
   }
 }
 

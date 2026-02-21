@@ -97,6 +97,7 @@ describe('ReservationsService', () => {
   const mockReservationsRepo = {
     findOne: jest.fn(),
     find: jest.fn(),
+    findAndCount: jest.fn(),
     save: jest.fn(),
     update: jest.fn(),
   };
@@ -364,29 +365,31 @@ describe('ReservationsService', () => {
   describe('findMy()', () => {
     it('should return only the user\'s own reservations for USER role', async () => {
       const reservations = [makeReservation()];
-      mockReservationsRepo.find.mockResolvedValue(reservations);
+      mockReservationsRepo.findAndCount.mockResolvedValue([reservations, 1]);
 
       const user = makeUser();
       const result = await service.findMy(user);
 
-      expect(mockReservationsRepo.find).toHaveBeenCalledWith(
+      expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({ where: { userId: 'user-123' } }),
       );
-      expect(result).toEqual(reservations);
+      expect(result.data).toEqual(reservations);
+      expect(result.total).toBe(1);
     });
 
     it('should return ALL reservations for OPERATOR role', async () => {
       const reservations = [makeReservation(), makeReservation({ id: 'res-888' })];
-      mockReservationsRepo.find.mockResolvedValue(reservations);
+      mockReservationsRepo.findAndCount.mockResolvedValue([reservations, 2]);
 
       const operator = makeUser({ role: UserRole.OPERATOR });
       const result = await service.findMy(operator);
 
       // No userId filter for operators
-      expect(mockReservationsRepo.find).toHaveBeenCalledWith(
+      expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
         expect.not.objectContaining({ where: { userId: expect.anything() } }),
       );
-      expect(result.length).toBe(2);
+      expect(result.data.length).toBe(2);
+      expect(result.total).toBe(2);
     });
   });
 });

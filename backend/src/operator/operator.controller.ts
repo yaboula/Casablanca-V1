@@ -38,6 +38,19 @@ export class OperatorController {
   }
 
   /**
+   * PATCH /api/v1/operator/delivery/:reservationId/checkin
+   * Manual check-in without QR verification — operator override.
+   */
+  @Patch('delivery/:reservationId/checkin')
+  @HttpCode(HttpStatus.OK)
+  async manualCheckin(
+    @Param('reservationId', ParseUUIDPipe) reservationId: string,
+  ) {
+    const reservation = await this.operatorService.manualCheckin(reservationId);
+    return { data: reservation, message: 'Check-in confirmado.' };
+  }
+
+  /**
    * POST /api/v1/operator/delivery/:reservationId/scan-qr
    * Scans the QR code → marks reservation as IN_PROGRESS.
    */

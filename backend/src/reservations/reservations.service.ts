@@ -274,17 +274,29 @@ export class ReservationsService {
    * Returns the authenticated user's own reservations.
    * OPERATOR/ADMIN can see all reservations.
    */
-  async findMy(user: User): Promise<Reservation[]> {
-    if (user.role === UserRole.OPERATOR || user.role === UserRole.ADMIN) {
-      return this.reservationsRepo.find({
-        order: { createdAt: 'DESC' },
-      });
-    }
+  async findMy(
+    user: User,
+    opts: { page: number; limit: number } = { page: 1, limit: 20 },
+  ): Promise<{ data: Reservation[]; total: number; page: number; limit: number }> {
+    const { page, limit } = opts;
+    const skip = (page - 1) * limit;
 
-    return this.reservationsRepo.find({
-      where: { userId: user.id },
-      order: { createdAt: 'DESC' },
-    });
+    const baseOptions = {
+      order: { createdAt: 'DESC' as const },
+      relations: { vehicle: true, documents: true },
+      skip,
+      take: limit,
+    };
+
+    const [data, total] =
+      user.role === UserRole.OPERATOR || user.role === UserRole.ADMIN
+        ? await this.reservationsRepo.findAndCount(baseOptions)
+        : await this.reservationsRepo.findAndCount({
+            ...baseOptions,
+            where: { userId: user.id },
+          });
+
+    return { data, total, page, limit };
   }
 
   /**
@@ -293,7 +305,10 @@ export class ReservationsService {
    * OPERATOR/ADMIN can see any reservation.
    */
   async findById(id: string, user: User): Promise<Reservation> {
-    const reservation = await this.reservationsRepo.findOne({ where: { id } });
+    const reservation = await this.reservationsRepo.findOne({
+      where: { id },
+      relations: { vehicle: true, documents: true },
+    });
 
     if (!reservation) {
       throw new NotFoundException(`Reserva ${id} no encontrada.`);

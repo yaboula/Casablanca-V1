@@ -2,10 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { QrCode, X, Search, Keyboard } from "lucide-react";
+import { QrCode, X, Search, Keyboard, Car, Calendar, UserCheck, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { MOCK_DELIVERIES } from "@/lib/mock-operator-data";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { apiFetch } from "@/lib/api";
+import type { OperatorDelivery } from "@/types";
 
 export default function QRScannerFAB() {
   const [isOpen, setIsOpen] = useState(false);
@@ -39,36 +42,71 @@ function ScannerSheet({ onClose }: { onClose: () => void }) {
   const [mode, setMode] = useState<"scan" | "manual">("scan");
   const [manualQuery, setManualQuery] = useState("");
   const [scanning, setScanning] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [scannedDelivery, setScannedDelivery] = useState<OperatorDelivery | null>(null);
+  const [checkingIn, setCheckingIn] = useState(false);
 
-  // Simulate QR detection after 3 seconds
-  const handleSimulatedScan = useCallback(() => {
+  // Simulate QR detection after tap — navigates to search page
+  const handleSimulatedScan = useCallback(async () => {
     setScanning(false);
-    const delivery = MOCK_DELIVERIES[0];
-    toast.success(`QR válido — ${delivery.customerName}`);
+    toast("Modo demo: usa búsqueda manual para encontrar una reserva.");
     setTimeout(() => {
       onClose();
-      router.push(`/operator/delivery/${delivery.id}`);
+      setMode("manual");
     }, 800);
-  }, [onClose, router]);
+  }, [onClose]);
 
-  const handleManualSearch = useCallback(() => {
-    const query = manualQuery.trim().toLowerCase();
+  const handleManualSearch = useCallback(async () => {
+    const query = manualQuery.trim();
     if (!query) return;
-
-    const match = MOCK_DELIVERIES.find(
-      (d) =>
-        d.customerName?.toLowerCase().includes(query) ||
-        d.id.toLowerCase().includes(query)
-    );
-
-    if (match) {
-      toast.success(`Encontrado — ${match.customerName}`);
-      onClose();
-      router.push(`/operator/delivery/${match.id}`);
-    } else {
-      toast.error("No se encontró ninguna reserva");
+    setSearching(true);
+    try {
+      const res = await apiFetch<{ data: OperatorDelivery[]; total: number }>(
+        `/operator/search?q=${encodeURIComponent(query)}`,
+        { auth: true }
+      );
+      const results = res.data ?? [];
+      if (results.length > 0) {
+        toast.success(`Encontrado — ${results[0].customerName}`);
+        setScannedDelivery(results[0]);
+      } else {
+        toast.error("No se encontró ninguna reserva");
+      }
+    } catch {
+      toast.error("Error al buscar");
+    } finally {
+      setSearching(false);
     }
   }, [manualQuery, onClose, router]);
+
+  const handleCheckin = useCallback(async () => {
+    if (!scannedDelivery) return;
+    setCheckingIn(true);
+    try {
+      await apiFetch(`/operator/delivery/${scannedDelivery.id}/checkin`, {
+        method: "PATCH",
+        auth: true,
+      });
+      toast.success("Check-in confirmado");
+      onClose();
+      router.push(`/operator/delivery/${scannedDelivery.id}`);
+    } catch {
+      toast.error("Error al confirmar check-in");
+    } finally {
+      setCheckingIn(false);
+    }
+  }, [scannedDelivery, onClose, router]);
+
+  if (scannedDelivery) {
+    return (
+      <ScannedDeliveryModal
+        delivery={scannedDelivery}
+        onClose={() => setScannedDelivery(null)}
+        onCheckin={handleCheckin}
+        checkingIn={checkingIn}
+      />
+    );
+  }
 
   return (
     <>
@@ -176,8 +214,9 @@ function ScannerSheet({ onClose }: { onClose: () => void }) {
                   />
                   <button
                     onClick={handleManualSearch}
+                    disabled={searching}
                     className="min-h-[48px] px-4 bg-blue-600 text-white rounded-xl font-bold text-sm
-                               hover:bg-blue-700 transition-colors"
+                               hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
                     <Search className="w-5 h-5" />
                   </button>
@@ -188,5 +227,134 @@ function ScannerSheet({ onClose }: { onClose: () => void }) {
         </div>
       </motion.div>
     </>
+  );
+}
+// ── Scan Result Modal (T7-5) ──────────────────────────────────
+
+function ScannedDeliveryModal({
+  delivery,
+  onClose,
+  onCheckin,
+  checkingIn,
+}: {
+  delivery: OperatorDelivery;
+  onClose: () => void;
+  onCheckin: () => void;
+  checkingIn: boolean;
+}) {
+  const pickupTs =
+    typeof delivery.pickupDate === "string"
+      ? new Date(delivery.pickupDate).getTime()
+      : delivery.pickupDate;
+  const returnTs =
+    typeof delivery.returnDate === "string"
+      ? new Date(delivery.returnDate).getTime()
+      : delivery.returnDate;
+
+  const fmtPickup = pickupTs ? format(new Date(pickupTs), "EEE d MMM · HH:mm", { locale: es }) : "—";
+  const fmtReturn = returnTs ? format(new Date(returnTs), "EEE d MMM", { locale: es }) : "—";
+
+  const allDocsOk  = delivery.documents?.every((d) => d.status === "APPROVED") ?? false;
+  const hasRejected = delivery.documents?.some((d) => d.status === "REJECTED") ?? false;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/70 z-50"
+        onClick={onClose}
+      />
+
+      {/* Sheet */}
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 rounded-t-3xl max-w-lg mx-auto shadow-xl"
+      >
+        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+          <div className="w-10 h-1 bg-slate-300 rounded-full" />
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+          >
+            <X className="w-4 h-4 text-slate-500" />
+          </button>
+        </div>
+
+        <div className="px-5 pb-8 space-y-4">
+          {/* QR validated badge */}
+          <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <p className="text-sm font-bold text-emerald-700">QR Válido — Reserva encontrada</p>
+          </div>
+
+          {/* Customer + vehicle */}
+          <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
+            <ScanRow icon={UserCheck} label="Cliente" value={delivery.customerName} />
+            {delivery.vehicle && (
+              <ScanRow icon={Car} label="Vehículo" value={`${delivery.vehicle.brand} ${delivery.vehicle.model}`} />
+            )}
+            <ScanRow icon={Calendar} label="Recogida" value={fmtPickup} />
+            <ScanRow icon={Calendar} label="Devolución" value={fmtReturn} />
+          </div>
+
+          {/* Doc status */}
+          <div className={`flex items-center gap-2.5 rounded-xl px-4 py-3 border
+            ${hasRejected ? "bg-red-50 border-red-200" : allDocsOk ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}
+          >
+            {hasRejected
+              ? <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+              : allDocsOk
+              ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              : <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+            }
+            <p className={`text-sm font-semibold
+              ${hasRejected ? "text-red-700" : allDocsOk ? "text-emerald-700" : "text-amber-700"}`}
+            >
+              {hasRejected
+                ? "Documentos rechazados — requiere atención"
+                : allDocsOk
+                ? "Documentos aprobados"
+                : "Documentos en revisión"}
+            </p>
+          </div>
+
+          {/* Balance */}
+          <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+            <span className="text-sm font-semibold text-slate-900">Balance a cobrar</span>
+            <span className="text-xl font-black text-blue-600">{delivery.balanceDueEUR}€</span>
+          </div>
+
+          {/* Confirm check-in */}
+          <button
+            onClick={onCheckin}
+            disabled={checkingIn || hasRejected}
+            className="w-full min-h-[52px] bg-blue-600 text-white font-bold text-sm rounded-xl
+                       flex items-center justify-center gap-2 hover:bg-blue-700
+                       disabled:opacity-50 transition-all"
+          >
+            <UserCheck className="w-5 h-5" />
+            {checkingIn ? "Confirmando..." : "Confirmar entrega"}
+          </button>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+function ScanRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <Icon className="w-4 h-4 text-slate-400 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-semibold text-slate-900 truncate">{value}</p>
+      </div>
+    </div>
   );
 }

@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useBookingStore } from "@/stores/useBookingStore";
-import { MOCK_VEHICLES } from "@/lib/mock-data";
 import { PICKUP_LOCATION_LABELS } from "@/lib/constants";
+import { apiFetch } from "@/lib/api";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -16,13 +16,45 @@ import {
   Car,
   ArrowRight,
   Clock,
+  Loader2,
+  AlertCircle,
+  TimerOff,
 } from "lucide-react";
+
+// ── Types ─────────────────────────────────────────────────────
+
+type ConfirmationStatus = "polling" | "confirmed" | "timeout" | "error";
+
+interface ReservationVehicle {
+  brand: string;
+  model: string;
+  imageUrl?: string;
+}
+
+interface Reservation {
+  id: string;
+  status: string;
+  pickupDate: string;
+  returnDate: string;
+  pickupLocation: string;
+  totalDays: number;
+  /** total_price_eur_cents from entity */
+  totalPriceEurCents?: number;
+  /** deposit_eur_cents from entity */
+  depositEurCents?: number;
+  vehicle?: ReservationVehicle;
+}
+
+// ── Constants ─────────────────────────────────────────────────
+
+const MAX_ATTEMPTS = 10;
+const POLL_INTERVAL_MS = 2000;
 
 // ── Inner component (needs searchParams) ──────────────────────
 
 function ConfirmedContent() {
   const searchParams = useSearchParams();
-  const id = searchParams.get("id") ?? "—";
+  const id = searchParams.get("id") ?? null;
 
   const {
     pickupDate,
@@ -30,13 +62,161 @@ function ConfirmedContent() {
     pickupLocation,
     totalDays,
     totalPriceEUR,
-    selectedVehicleId,
   } = useBookingStore();
 
-  const vehicle = MOCK_VEHICLES.find((v) => v.id === selectedVehicleId);
+  const [status, setStatus] = useState<ConfirmationStatus>("polling");
+  const [reservation, setReservation] = useState<Reservation | null>(null);
 
-  const fmtDate = (ts: number | null) =>
+  // T3-6 — Polling loop: wait for Stripe webhook to update reservation status
+  useEffect(() => {
+    if (!id) {
+      setStatus("error");
+      return;
+    }
+    let attempt = 0;
+    let timer: ReturnType<typeof setTimeout>;
+
+    async function poll() {
+      try {
+        const res = await apiFetch<Reservation>(`/reservations/${id}`, {
+          auth: true,
+        });
+        if (res.status === "CONFIRMED" || res.status === "IN_PROGRESS") {
+          setReservation(res);
+          setStatus("confirmed");
+        } else if (res.status === "CANCELLED") {
+          setStatus("error");
+        } else {
+          // PENDING_DEPOSIT — webhook hasn't arrived yet
+          attempt++;
+          if (attempt >= MAX_ATTEMPTS) {
+            setStatus("timeout");
+          } else {
+            timer = setTimeout(poll, POLL_INTERVAL_MS);
+          }
+        }
+      } catch {
+        setStatus("error");
+      }
+    }
+
+    poll();
+    return () => clearTimeout(timer);
+  }, [id]);
+
+  // ── Polling screen ─────────────────────────────────────────
+  if (status === "polling") {
+    return (
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 text-brand-primary animate-spin mx-auto" />
+          <h2 className="text-lg font-bold text-brand-dark">
+            Confirmando tu pago con el banco...
+          </h2>
+          <p className="text-sm text-brand-muted max-w-xs mx-auto">
+            Estamos procesando tu reserva. Esto solo tardará unos segundos.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Timeout screen ─────────────────────────────────────────
+  if (status === "timeout") {
+    return (
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4">
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+            <TimerOff className="w-8 h-8 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-brand-dark">
+              Tu pago está siendo procesado
+            </h2>
+            <p className="text-sm text-brand-muted mt-2 max-w-sm mx-auto">
+              Te enviaremos la confirmación por email y WhatsApp en los próximos
+              minutos. Referencia:{" "}
+              <span className="font-mono font-semibold">#{id ?? "—"}</span>
+            </p>
+          </div>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 min-h-[48px] px-6 bg-brand-primary
+                       text-white font-bold text-sm rounded-full
+                       hover:bg-brand-primary-hover transition-colors"
+          >
+            Ver mis reservas
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error screen ────────────────────────────────────────────
+  if (status === "error") {
+    return (
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4">
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-brand-dark">Algo fue mal</h2>
+            {id && (
+              <p className="text-sm text-brand-muted mt-1">
+                Referencia:{" "}
+                <span className="font-mono font-semibold">#{id}</span>
+              </p>
+            )}
+            <p className="text-sm text-brand-muted mt-2">
+              Contacta con soporte indicando tu referencia de reserva.
+            </p>
+          </div>
+          <a
+            href={`https://wa.me/34600000000?text=Problema%20con%20reserva%20${id ?? ""}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 min-h-[48px] px-6 bg-emerald-500
+                       text-white font-bold text-sm rounded-full
+                       hover:bg-emerald-600 transition-colors"
+          >
+            Contactar por WhatsApp
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Success screen ─────────────────────────────────────────
+  const res = reservation!;
+  const vehicleName = res.vehicle
+    ? `${res.vehicle.brand} ${res.vehicle.model}`
+    : null;
+
+  // Prefer server dates; fall back to Zustand store dates
+  const fmtServerDate = (iso: string) =>
+    format(new Date(iso), "EEE d MMM · HH:mm", { locale: es });
+  const fmtStoreDate = (ts: number | null) =>
     ts ? format(new Date(ts), "EEE d MMM · HH:mm", { locale: es }) : "—";
+
+  const pickupStr = res.pickupDate
+    ? fmtServerDate(res.pickupDate)
+    : fmtStoreDate(pickupDate);
+  const returnStr = res.returnDate
+    ? fmtServerDate(res.returnDate)
+    : fmtStoreDate(returnDate);
+  const locationLabel =
+    PICKUP_LOCATION_LABELS[res.pickupLocation ?? pickupLocation] ??
+    res.pickupLocation ??
+    pickupLocation;
+  const days = res.totalDays ?? totalDays;
+  const depositEur = res.depositEurCents
+    ? res.depositEurCents / 100
+    : 10;
+  const totalEur = res.totalPriceEurCents
+    ? res.totalPriceEurCents / 100
+    : (totalPriceEUR ?? 0);
 
   return (
     <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4 py-12">
@@ -79,35 +259,40 @@ function ConfirmedContent() {
           {/* ID banner */}
           <div className="bg-brand-primary px-5 py-3 flex items-center justify-between">
             <span className="text-white/70 text-xs font-medium">Reserva</span>
-            <span className="text-white font-black tracking-wider text-sm">#{id}</span>
+            <span className="text-white font-black tracking-wider text-sm">
+              #{res.id}
+            </span>
           </div>
 
           <div className="p-5 space-y-3.5">
-            {/* Vehicle */}
-            {vehicle && (
-              <Row icon={Car} label="Vehículo" value={`${vehicle.brand} ${vehicle.model}`} />
+            {vehicleName && (
+              <Row icon={Car} label="Vehículo" value={vehicleName} />
             )}
-            <Row
-              icon={MapPin}
-              label="Terminal"
-              value={PICKUP_LOCATION_LABELS[pickupLocation]}
-            />
-            <Row icon={Calendar} label="Recogida" value={fmtDate(pickupDate)} />
-            <Row icon={Calendar} label="Devolución" value={fmtDate(returnDate)} />
-            {totalDays && (
-              <Row icon={Clock} label="Duración" value={`${totalDays} día${totalDays > 1 ? "s" : ""}`} />
+            <Row icon={MapPin} label="Terminal" value={locationLabel} />
+            <Row icon={Calendar} label="Recogida" value={pickupStr} />
+            <Row icon={Calendar} label="Devolución" value={returnStr} />
+            {days && (
+              <Row
+                icon={Clock}
+                label="Duración"
+                value={`${days} día${days > 1 ? "s" : ""}`}
+              />
             )}
 
             <div className="h-px bg-slate-100" />
 
             <div className="flex justify-between text-sm">
               <span className="text-brand-muted">Señal pagada</span>
-              <span className="font-black text-emerald-600">10 € ✓</span>
+              <span className="font-black text-emerald-600">
+                {depositEur} € ✓
+              </span>
             </div>
-            {totalPriceEUR && (
+            {totalEur > depositEur && (
               <div className="flex justify-between text-sm">
                 <span className="text-brand-muted">Resto al recoger</span>
-                <span className="font-semibold text-brand-dark">{totalPriceEUR - 10} €</span>
+                <span className="font-semibold text-brand-dark">
+                  {(totalEur - depositEur).toFixed(2)} €
+                </span>
               </div>
             )}
           </div>
@@ -121,7 +306,7 @@ function ConfirmedContent() {
           className="space-y-3"
         >
           <Link
-            href={`/check-in?reservationId=${id}`}
+            href={`/check-in?reservationId=${res.id}`}
             className="w-full min-h-[52px] bg-brand-primary text-white font-bold text-sm rounded-full
                        flex items-center justify-center gap-2
                        hover:bg-brand-primary-hover active:scale-[0.98]
@@ -141,7 +326,10 @@ function ConfirmedContent() {
 
         <p className="text-center text-xs text-brand-muted mt-4">
           También puedes acceder desde tu{" "}
-          <Link href="/dashboard" className="text-brand-primary underline underline-offset-2">
+          <Link
+            href="/dashboard"
+            className="text-brand-primary underline underline-offset-2"
+          >
             panel de reservas
           </Link>
         </p>
@@ -181,7 +369,9 @@ function Row({
     <div className="flex items-center gap-3 text-sm">
       <Icon className="w-4 h-4 text-brand-muted shrink-0" />
       <span className="text-brand-muted">{label}</span>
-      <span className="ml-auto font-semibold text-brand-dark text-right">{value}</span>
+      <span className="ml-auto font-semibold text-brand-dark text-right">
+        {value}
+      </span>
     </div>
   );
 }

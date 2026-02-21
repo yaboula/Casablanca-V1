@@ -12,5 +12,5 @@ interface Props {
 
 export default async function WaitingRoomPage({ searchParams }: Props) {
   const { reservationId } = await searchParams;
-  return <WaitingRoomClient reservationId={reservationId ?? "CMN-2026-001"} />;
+  return <WaitingRoomClient reservationId={reservationId ?? null} />;
 }

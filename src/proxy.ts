@@ -4,12 +4,28 @@ import { NextRequest, NextResponse } from "next/server";
 
 type SessionRole = "USER" | "OPERATOR" | "ADMIN" | null;
 
+/**
+ * Reads the `nexus_token` HttpOnly cookie, decodes the JWT payload
+ * **without verifying the signature** (safe here — this is routing
+ * logic only, not authorization).  Actual authorization is enforced
+ * in NestJS via the Bearer token on every API call.
+ */
 function getSessionRole(req: NextRequest): SessionRole {
-  const mockSession = req.cookies.get("nexus_session");
-  if (!mockSession) return null;
+  const token = req.cookies.get("nexus_token")?.value;
+  if (!token) return null;
+
   try {
-    const parsed = JSON.parse(decodeURIComponent(mockSession.value));
-    return parsed.role ?? null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    // base64url → JSON
+    const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
+    const payload = JSON.parse(payloadJson);
+
+    // Reject expired tokens
+    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+
+    return (payload.role as SessionRole) ?? null;
   } catch {
     return null;
   }

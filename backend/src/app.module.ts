@@ -17,6 +17,7 @@ import { S3Module } from './s3/s3.module';
 import { SseModule } from './sse/sse.module';
 import { OperatorModule } from './operator/operator.module';
 import { ChatModule } from './chat/chat.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { ChatModule } from './chat/chat.module';
     SseModule,
     OperatorModule,
     ChatModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

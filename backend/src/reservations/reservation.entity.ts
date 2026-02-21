@@ -5,11 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Vehicle } from '../vehicles/vehicle.entity';
+import { ReservationDocument } from '../documents/reservation-document.entity';
 
 export enum ReservationStatus {
   /** Customer submitted booking, payment intent created but not yet captured */
@@ -139,4 +141,14 @@ export class Reservation {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  // ── Documents (lazy — loaded explicitly when needed) ───────
+
+  /** Uploaded documents for this reservation (passport, driving license). */
+  @OneToMany(
+    () => ReservationDocument,
+    (doc) => doc.reservation,
+    { eager: false, cascade: false },
+  )
+  documents: ReservationDocument[];
 }

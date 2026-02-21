@@ -2,20 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, Phone, Shield, LogOut } from "lucide-react";
+import { User, Mail, Shield, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { useUser } from "@/hooks/useUser";
 
 export default function OperatorProfilePage() {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const user = useUser();
 
-  function handleLogout() {
+  async function handleLogout() {
     setLoggingOut(true);
-    document.cookie = "nexus_session=; path=/; max-age=0";
-    setTimeout(() => {
-      toast.success("Sesión cerrada");
-      router.push("/");
-    }, 500);
+    try {
+      await fetch("/api/auth/session", { method: "DELETE" });
+    } catch {
+      // proceed regardless
+    }
+    toast.success("Sesión cerrada");
+    setLoggingOut(false);
+    router.push("/");
   }
 
   return (
@@ -28,19 +33,18 @@ export default function OperatorProfilePage() {
           <User className="w-7 h-7 text-blue-600" />
         </div>
         <div>
-          <p className="text-base font-bold text-slate-900">Karim Tazi</p>
+          <p className="text-base font-bold text-slate-900">{user?.fullName ?? "Operador"}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <Shield className="w-3 h-3 text-emerald-500" />
-            <span className="text-xs font-semibold text-emerald-500">Operador CMN</span>
+            <span className="text-xs font-semibold text-emerald-500">{user?.role ?? "Operador"}</span>
           </div>
         </div>
       </div>
 
       {/* Info rows */}
       <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-200 mb-5 shadow-sm">
-        <ProfileRow icon={Mail} label="Email" value="karim@nexus.ma" />
-        <ProfileRow icon={Phone} label="Teléfono" value="+212 6 00 00 00 00" />
-        <ProfileRow icon={Shield} label="Rol" value="Operador" />
+        <ProfileRow icon={Mail} label="Email" value={user?.email ?? "—"} />
+        <ProfileRow icon={Shield} label="Rol" value={user?.role ?? "Operador"} />
       </div>
 
       {/* Stats */}

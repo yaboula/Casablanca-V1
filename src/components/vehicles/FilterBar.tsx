@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { SlidersHorizontal } from "lucide-react";
-import { CATEGORIES, CATEGORY_LABELS } from "@/lib/mock-data";
+import { CATEGORIES } from "@/lib/constants";
+import { useTranslations } from "@/lib/i18n";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -18,6 +19,15 @@ interface FilterBarProps {
 
 // ── Component ─────────────────────────────────────────────────
 
+// Maps API category keys to translation namespace keys
+const CAT_KEY_MAP: Record<string, keyof ReturnType<typeof useTranslations<"catalog">>["filters"]> = {
+  ALL: "all",
+  SEDAN: "sedan",
+  SUV: "suv",
+  LUXURY: "luxury",
+  COMPACT: "compact",
+};
+
 export default function FilterBar({
   activeCategory,
   sortMode,
@@ -25,6 +35,8 @@ export default function FilterBar({
   onCategoryChange,
   onSortChange,
 }: FilterBarProps) {
+  const tCatalog = useTranslations("catalog");
+
   return (
     <div className="w-full">
       {/* Pills row */}
@@ -34,6 +46,7 @@ export default function FilterBar({
         {/* Category pills */}
         {CATEGORIES.map((cat) => {
           const active = activeCategory === cat;
+          const label = tCatalog.filters[CAT_KEY_MAP[cat]];
           return (
             <button
               key={cat}
@@ -50,7 +63,7 @@ export default function FilterBar({
                   transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
                 />
               )}
-              <span className="relative z-10">{CATEGORY_LABELS[cat]}</span>
+              <span className="relative z-10">{label}</span>
             </button>
           );
         })}
@@ -69,7 +82,7 @@ export default function FilterBar({
                        : "text-brand-dark hover:bg-slate-100 border border-slate-200"}`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          Precio ↑
+          {tCatalog.sortPriceAsc}
         </button>
 
         <button
@@ -82,14 +95,14 @@ export default function FilterBar({
                        : "text-brand-dark hover:bg-slate-100 border border-slate-200"}`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          Precio ↓
+          {tCatalog.sortPriceDesc}
         </button>
       </div>
 
       {/* Result count */}
       <p className="text-sm text-brand-muted mt-3">
         <span className="font-bold text-brand-dark">{resultCount}</span>{" "}
-        {resultCount === 1 ? "coche disponible" : "coches disponibles"} para tus fechas
+        {resultCount === 1 ? tCatalog.carAvailable : tCatalog.carsAvailable}
       </p>
     </div>
   );

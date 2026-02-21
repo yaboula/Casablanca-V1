@@ -7,9 +7,11 @@ import {
   Logger,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { RawBodyRequest } from '@nestjs/common';
 import { Request } from 'express';
+import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
 import { StripeService } from './stripe.service';
 import { WebhooksService } from './webhooks.service';
 
@@ -20,6 +22,8 @@ import { WebhooksService } from './webhooks.service';
  *  - NO JwtAuthGuard — Stripe calls this from its own servers.
  *  - Authentication is done via Stripe signature verification (HMAC-SHA256).
  *  - If the signature is invalid → 400 (tampered / replay attack).
+ *  - Rate limited: 20 requests/min per IP (‘webhook’ throttle tier)
+ *    prevents DoS flood consuming HMAC verification CPU.
  *
  * Raw body requirement:
  *  - NestFactory.create() must have rawBody: true (already set in main.ts).
@@ -32,6 +36,7 @@ import { WebhooksService } from './webhooks.service';
  *  - Already-processed events return 200 without re-running the handler.
  */
 @Controller('webhooks')
+@UseGuards(ThrottlerGuard)
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
 
@@ -42,6 +47,7 @@ export class WebhooksController {
 
   @Post('stripe')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async handleStripeWebhook(
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,

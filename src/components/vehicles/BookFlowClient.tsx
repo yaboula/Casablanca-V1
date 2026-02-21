@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,17 +11,20 @@ import {
   Calendar,
   Check,
   CreditCard,
-  Lock,
   MapPin,
   ShieldCheck,
   User,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "sonner";
 import type { Vehicle } from "@/types";
 import { useBookingStore } from "@/stores/useBookingStore";
 import { DEPOSIT_AMOUNT_EUR, PICKUP_LOCATION_LABELS } from "@/lib/constants";
 import PhoneInput from "@/components/ui/PhoneInput";
+import { apiFetch, NexusApiError } from "@/lib/api";
+import StripeProvider from "@/components/shared/StripeProvider";
+import PaymentStep from "@/components/vehicles/PaymentStep";
 
 // ── Steps ─────────────────────────────────────────────────────
 
@@ -66,11 +69,21 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // Payment mock
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
+  // Payment state (real)
   const [processing, setProcessing] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [serverReservationId, setServerReservationId] = useState<string | null>(null);
+
+  // T3-0 — Guard: redirect if dates are missing (shared link / expired store)
+  useEffect(() => {
+    const isValidDate = (d: unknown) =>
+      (typeof d === "number" || typeof d === "string") &&
+      !isNaN(new Date(d as number).getTime());
+    const state = useBookingStore.getState();
+    if (!isValidDate(state.pickupDate) || !isValidDate(state.returnDate)) {
+      router.replace("/catalog?error=select-dates");
+    }
+  }, [router]);
 
   const fmtDate = (ts: number | null) =>
     ts ? format(new Date(ts), "EEE d MMM · HH:mm", { locale: es }) : "—";
@@ -85,21 +98,59 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
     setStep((s) => Math.max(s - 1, 1) as Step);
   }, []);
 
-  const handleSubmit = useCallback(async () => {
-    setProcessing(true);
-    // Simulate payment processing
-    await new Promise((r) => setTimeout(r, 2200));
-    // Generate reservation ID
-    const id = "CMN-" + Date.now().toString(36).toUpperCase();
-    setReservationId(id);
-    router.push(`/booking/confirmed?id=${id}`);
-  }, [router, setReservationId]);
-
+  // Validity checks — declared before handleContactNext so closure captures correctly
   const contactValid = name.trim().length >= 2 && phone.replace(/[^\d]/g, "").length >= 8;
-  const cardValid =
-    cardNumber.replace(/\s/g, "").length >= 14 &&
-    expiry.length >= 4 &&
-    cvc.length >= 3;
+
+  // T3-3 — Step 2 → Step 3: create reservation in backend
+  const handleContactNext = useCallback(async () => {
+    if (!contactValid || processing) return;
+    setProcessing(true);
+    try {
+      const res = await apiFetch<{
+        id: string;
+        stripeClientSecret: string;
+        totalPriceEurCents: number;
+      }>("/reservations", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({
+          vehicleId: vehicle.id,
+          pickupDate: new Date(pickupDate!).toISOString(),
+          returnDate: new Date(returnDate!).toISOString(),
+          pickupLocation,
+          customerName: name.trim(),
+          customerPhone: phone,
+        }),
+      });
+      setClientSecret(res.stripeClientSecret);
+      setServerReservationId(res.id);
+      goNext();
+    } catch (err) {
+      if (err instanceof NexusApiError && err.statusCode === 409) {
+        toast.error("Este vehículo ya no está disponible para esas fechas.");
+      } else {
+        toast.error("No se pudo iniciar la reserva. Inténtalo de nuevo.");
+      }
+    } finally {
+      setProcessing(false);
+    }
+  }, [
+    contactValid,
+    processing,
+    vehicle.id,
+    pickupDate,
+    returnDate,
+    pickupLocation,
+    name,
+    phone,
+    goNext,
+  ]);
+
+  // T3-5 — Post-payment success
+  function handlePaymentSuccess() {
+    setReservationId(serverReservationId!);
+    router.push(`/booking/confirmed?id=${serverReservationId}`);
+  }
 
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -265,79 +316,8 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                   </button>
                   <button
                     type="button"
-                    onClick={goNext}
-                    disabled={!contactValid}
-                    className="flex-1 min-h-[50px] bg-brand-primary disabled:bg-slate-200 disabled:text-slate-400
-                               text-white font-bold text-sm rounded-full
-                               flex items-center justify-center gap-2
-                               hover:bg-brand-primary-hover active:scale-[0.98]
-                               shadow-[0_4px_20px_rgba(37,99,235,0.28)] transition-all"
-                  >
-                    Continuar
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ─── Step 3: Payment mock ─────────────────── */}
-            {step === 3 && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-brand-dark mb-1">Pago seguro</h2>
-                <p className="text-sm text-brand-muted mb-5">
-                  Solo {DEPOSIT_AMOUNT_EUR}€ de señal. Resto al recoger el coche.
-                </p>
-
-                <DepositBadge />
-
-                <div className="space-y-4 mt-5">
-                  <Field
-                    label="Número de tarjeta"
-                    value={cardNumber}
-                    onChange={(v) => {
-                      const raw = v.replace(/\D/g, "").slice(0, 16);
-                      const formatted = raw.replace(/(\d{4})(?=\d)/g, "$1 ");
-                      setCardNumber(formatted);
-                    }}
-                    placeholder="4242 4242 4242 4242"
-                  />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field
-                      label="Caducidad"
-                      value={expiry}
-                      onChange={(v) => {
-                        const raw = v.replace(/\D/g, "").slice(0, 4);
-                        setExpiry(raw.length > 2 ? `${raw.slice(0, 2)}/${raw.slice(2)}` : raw);
-                      }}
-                      placeholder="MM/AA"
-                    />
-                    <Field
-                      label="CVC"
-                      value={cvc}
-                      onChange={(v) => setCvc(v.replace(/\D/g, "").slice(0, 4))}
-                      placeholder="123"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-brand-muted mt-4">
-                  <Lock className="w-3.5 h-3.5" />
-                  Protegido con cifrado SSL 256-bit
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <button
-                    type="button"
-                    onClick={goBack}
-                    disabled={processing}
-                    className="min-h-[50px] px-5 bg-slate-100 text-brand-dark font-semibold text-sm rounded-full hover:bg-slate-200 transition-colors disabled:opacity-50"
-                  >
-                    Atrás
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={!cardValid || processing}
+                    onClick={handleContactNext}
+                    disabled={!contactValid || processing}
                     className="flex-1 min-h-[50px] bg-brand-primary disabled:bg-slate-200 disabled:text-slate-400
                                text-white font-bold text-sm rounded-full
                                flex items-center justify-center gap-2
@@ -345,22 +325,51 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                                shadow-[0_4px_20px_rgba(37,99,235,0.28)] transition-all"
                   >
                     {processing ? (
-                      <span className="flex items-center gap-2">
+                      <>
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                           className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
                         />
-                        Procesando…
-                      </span>
+                        Iniciando reserva…
+                      </>
                     ) : (
                       <>
-                        Pagar {DEPOSIT_AMOUNT_EUR}€
-                        <Lock className="w-4 h-4" />
+                        Continuar al pago
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* ─── Step 3: Payment (Stripe) ─────────────── */}
+            {step === 3 && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
+                <h2 className="text-lg font-bold text-brand-dark mb-1">Pago seguro</h2>
+                <p className="text-sm text-brand-muted mb-5">
+                  Solo {DEPOSIT_AMOUNT_EUR}€ de señal. Resto al recoger el coche.
+                </p>
+
+                {clientSecret ? (
+                  <StripeProvider clientSecret={clientSecret}>
+                    <PaymentStep
+                      reservationId={serverReservationId!}
+                      onSuccess={handlePaymentSuccess}
+                      onBack={goBack}
+                    />
+                  </StripeProvider>
+                ) : (
+                  /* Fallback while clientSecret is being set (should be near-instant) */
+                  <div className="flex items-center justify-center py-12">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      className="w-6 h-6 border-2 border-brand-primary/30 border-t-brand-primary rounded-full"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </motion.div>

@@ -82,6 +82,44 @@ export interface User {
   role: UserRole;
 }
 
+// ── Operator types ───────────────────────────────────────────
+
+export interface OperatorDocument {
+  id: string;
+  type: "PASSPORT" | "DRIVING_LICENSE";
+  status: DocumentStatus;
+  fileUrl?: string;
+}
+
+export interface OperatorDelivery {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  vehicleId: string;
+  vehicle: Vehicle;
+  /** ISO8601 — pickup time at the airport */
+  pickupDate: string;
+  returnDate: string;
+  pickupLocation: PickupLocation;
+  totalDays: number;
+  status: ReservationStatus;
+  /** Balance due in EUR (already mapped from cents on the server) */
+  balanceDueEUR: number;
+  documents: OperatorDocument[];
+  qrCodeHash: string | null;
+}
+
+export interface PendingDocument {
+  id: string;
+  type: "PASSPORT" | "DRIVING_LICENSE";
+  status: DocumentStatus;
+  fileUrl: string;
+  reservationId: string;
+  customerName: string;
+  /** Human-readable time since upload, e.g. "8 min" */
+  uploadedAgo?: string;
+}
+
 // ── Booking flow (UI state) ──────────────────────────────────
 
 export interface BookingDraft {

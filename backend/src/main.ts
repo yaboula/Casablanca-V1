@@ -33,11 +33,23 @@ async function bootstrap() {
 
   // ── CORS ───────────────────────────────────────────────────
   app.enableCors({
-    origin: [
-      process.env.FRONTEND_URL ?? 'http://localhost:3000',
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ],
+    origin: (origin, callback) => {
+      const allowed = [
+        process.env.FRONTEND_URL,
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3600',
+        'http://localhost:4000',
+        'http://localhost:3900',
+      ].filter(Boolean) as string[];
+      // In development, allow any localhost origin regardless of port
+      const isLocalhost = !origin || /^http:\/\/localhost:\d+$/.test(origin);
+      if (isLocalhost || allowed.includes(origin!)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

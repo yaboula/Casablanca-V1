@@ -6,9 +6,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { User, Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import PhoneInput from "@/components/ui/PhoneInput";
+import { apiFetch, NexusApiError } from "@/lib/api";
+import type { NexusUser } from "@/hooks/useUser";
+import { useTranslations } from "@/lib/i18n";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const tAuth = useTranslations("auth");
 
   const [form, setForm] = useState({
     name: "",
@@ -27,25 +31,48 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (form.password.length < 8) {
-      toast.error("La contraseña debe tener al menos 8 caracteres.");
+      toast.error(tAuth.passwordMin);
       return;
     }
     setLoading(true);
+    setEmailError("");
 
     try {
-      // TODO: Replace with real auth API call
-      // const res = await fetch("/api/auth/register", { method: "POST", body: JSON.stringify(form) });
-      await new Promise((r) => setTimeout(r, 1400)); // mock delay
+      // Only send phone if user actually typed digits beyond the country code
+      const phoneDigits = form.phone.replace(/\D/g, "");
+      const phoneValue = phoneDigits.length >= 7 ? form.phone : undefined;
 
-      // Mock session after registration
-      document.cookie = `nexus_session=${encodeURIComponent(
-        JSON.stringify({ email: form.email, role: "USER" })
-      )}; path=/; max-age=86400`;
+      const res = await apiFetch<{ accessToken: string; user: NexusUser }>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+          fullName: form.name,
+          ...(phoneValue ? { phone: phoneValue } : {}),
+        }),
+      });
 
-      toast.success("¡Cuenta creada! Bienvenido a NEXUS.");
+      // Store JWT in HttpOnly cookie via Next.js API route
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(res),
+      });
+
+      toast.success(tAuth.toastAccountCreated);
       router.push("/");
-    } catch {
-      toast.error("Error al crear la cuenta. Inténtalo de nuevo.");
+    } catch (err) {
+      if (err instanceof NexusApiError) {
+        if (err.statusCode === 409) {
+          setEmailError(tAuth.emailTaken);
+        } else if (err.statusCode === 422) {
+          toast.error(`${tAuth.toastValidationError}: ${err.message}`);
+        } else {
+          toast.error(tAuth.toastServerError);
+        }
+      } else {
+        toast.error(tAuth.toastConnectionError);
+      }
     } finally {
       setLoading(false);
     }
@@ -60,24 +87,24 @@ export default function RegisterPage() {
   }[] = [
     {
       id: "name",
-      label: "Nombre completo",
+      label: tAuth.fullName,
       type: "text",
-      placeholder: "Ahmed El Fassi",
+      placeholder: tAuth.fullNamePlaceholder,
       icon: <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />,
     },
     {
       id: "email",
-      label: "Correo electrónico",
+      label: tAuth.email,
       type: "email",
-      placeholder: "tu@email.com",
+      placeholder: tAuth.emailPlaceholder,
       icon: <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />,
     },
 
     {
       id: "password",
-      label: "Contraseña",
+      label: tAuth.password,
       type: "password",
-      placeholder: "Mínimo 8 caracteres",
+      placeholder: tAuth.passwordPlaceholder,
       icon: <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />,
     },
   ];
@@ -86,11 +113,11 @@ export default function RegisterPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-brand-dark">Crear cuenta</h1>
+        <h1 className="text-3xl font-bold text-brand-dark">{tAuth.registerTitle}</h1>
         <p className="text-brand-muted text-sm">
-          ¿Ya tienes cuenta?{" "}
+          {tAuth.registerSubtitle}{" "}
           <Link href="/login" className="text-brand-primary font-medium hover:underline">
-            Inicia sesión
+            {tAuth.loginLink}
           </Link>
         </p>
       </div>
@@ -115,7 +142,7 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 onBlur={field.id === "email" ? () => {
                   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
-                  setEmailError(form.email && !valid ? "Email no válido" : "");
+                  setEmailError(form.email && !valid ? tAuth.emailInvalid : "");
                 } : undefined}
                 className={`w-full pl-10 pr-4 py-3 rounded-brand-card border bg-white
                            text-brand-dark placeholder:text-brand-muted/60
@@ -137,14 +164,13 @@ export default function RegisterPage() {
         <PhoneInput
           value={form.phone}
           onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}
-          label="WhatsApp (con código de país)"
-          placeholder="6XX XXX XXX"
-          required
+          label={tAuth.whatsappPhone}
+          placeholder={tAuth.whatsappPlaceholder}
         />
 
         {/* Password */}
         <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-brand-dark">Contraseña</label>
+          <label htmlFor="password" className="text-sm font-medium text-brand-dark">{tAuth.password}</label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
             <input
@@ -152,7 +178,7 @@ export default function RegisterPage() {
               name="password"
               type={showPw ? "text" : "password"}
               required
-              placeholder="Mínimo 8 caracteres"
+              placeholder={tAuth.passwordPlaceholder}
               value={form.password}
               onChange={handleChange}
               className="w-full pl-10 pr-11 py-3 rounded-brand-card border border-gray-200 bg-white
@@ -164,7 +190,7 @@ export default function RegisterPage() {
               type="button"
               onClick={() => setShowPw((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark transition-colors"
-              aria-label={showPw ? "Ocultar contraseña" : "Mostrar contraseña"}
+              aria-label={showPw ? tAuth.hidePassword : tAuth.showPassword}
             >
               {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -174,7 +200,7 @@ export default function RegisterPage() {
             const len = form.password.length;
             const strength = len >= 12 ? 3 : len >= 8 ? 2 : 1;
             const colors = ["", "bg-red-400", "bg-amber-400", "bg-emerald-500"];
-            const labels = ["", "Débil", "Media", "Fuerte"];
+            const labels = ["", tAuth.passwordWeak, tAuth.passwordMedium, tAuth.passwordStrong];
             return (
               <div className="space-y-1 pt-1">
                 <div className="flex gap-1">
@@ -190,7 +216,7 @@ export default function RegisterPage() {
                 <p className={`text-[11px] font-semibold ${
                   strength === 1 ? "text-red-500" : strength === 2 ? "text-amber-500" : "text-emerald-600"
                 }`}>
-                  Contraseña {labels[strength]}
+                  {labels[strength]}
                 </p>
               </div>
             );
@@ -199,11 +225,11 @@ export default function RegisterPage() {
 
         {/* Terms note */}
         <p className="text-xs text-brand-muted leading-relaxed pt-1">
-          Al registrarte aceptas nuestros{" "}
-          <span className="text-brand-primary cursor-pointer hover:underline">Términos de uso</span>{" "}
-          y{" "}
-          <span className="text-brand-primary cursor-pointer hover:underline">Política de privacidad</span>.
-          Tu número de WhatsApp se usará para la entrega del vehículo.
+          {tAuth.termsNote}{" "}
+          <span className="text-brand-primary cursor-pointer hover:underline">{tAuth.termsLink}</span>{" "}
+          {tAuth.and}{" "}
+          <span className="text-brand-primary cursor-pointer hover:underline">{tAuth.privacyLink}</span>.
+          {" "}{tAuth.whatsappNote}
         </p>
 
         {/* Submit */}
@@ -220,7 +246,7 @@ export default function RegisterPage() {
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <>
-              Crear mi cuenta
+              {tAuth.registerButton}
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -231,10 +257,8 @@ export default function RegisterPage() {
       <div className="flex items-start gap-3 bg-brand-primary/5 border border-brand-primary/15 rounded-brand-card p-4">
         <div className="h-2 w-2 rounded-full bg-brand-success mt-1.5 shrink-0 animate-pulse" />
         <p className="text-xs text-brand-muted leading-relaxed">
-          <span className="text-brand-dark font-medium">Sin tarjeta de crédito.</span>{" "}
-          Solo necesitas {" "}
-          <span className="text-brand-dark font-medium">10 € de depósito</span>{" "}
-          al recoger el vehículo. Se devuelve al momento de la entrega.
+          <span className="text-brand-dark font-medium">{tAuth.noCard}</span>{" "}
+          {tAuth.depositNote}
         </p>
       </div>
     </div>
