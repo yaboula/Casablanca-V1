@@ -9,23 +9,30 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
-import { Reservation, ReservationStatus } from './reservation.entity';
+import { Reservation, ReservationStatus, PickupLocation } from './reservation.entity';
 import { Vehicle, VehicleStatus } from '../vehicles/vehicle.entity';
 import { User, UserRole } from '../users/user.entity';
 import { StripeService } from '../stripe/stripe.service';
 import { QrService } from '../qr/qr.service';
-import { PickupLocation } from './reservation.entity';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 
-// ─── Factory helpers ──────────────────────────────────────────────────────────
+// ─── Constantes de dominio ────────────────────────────────────────────────────
+
+const DEPOSIT_EUR_CENTS = 1000; // 10 € fijo
+const ONE_DAY_MS = 86_400_000;
+
+// ─── Factories ────────────────────────────────────────────────────────────────
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
     id: 'user-123',
     email: 'customer@test.com',
+    fullName: 'Test User',
     role: UserRole.USER,
-    firstName: 'Test',
-    lastName: 'User',
+    isActive: true,
+    phone: null,
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
     ...overrides,
   } as User;
 }
@@ -33,8 +40,10 @@ function makeUser(overrides: Partial<User> = {}): User {
 function makeVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
   return {
     id: 'vehicle-abc',
+    brand: 'Toyota',
+    model: 'Camry',
     status: VehicleStatus.AVAILABLE,
-    pricePerDayEurCents: 5000, // 50 €/day
+    pricePerDayEurCents: 5000, // 50 €/día
     ...overrides,
   } as Vehicle;
 }
@@ -47,10 +56,15 @@ function makeReservation(overrides: Partial<Reservation> = {}): Reservation {
     status: ReservationStatus.PENDING_DEPOSIT,
     totalDays: 3,
     totalPriceEurCents: 15000,
-    depositEurCents: 1000,
-    stripePaymentIntentId: 'pi_test',
+    depositEurCents: DEPOSIT_EUR_CENTS,
+    pickupDate: new Date(Date.now() + ONE_DAY_MS),
+    returnDate: new Date(Date.now() + 4 * ONE_DAY_MS),
+    pickupLocation: PickupLocation.CMN_T1,
+    stripePaymentIntentId: 'pi_test_abc123',
     stripeClientSecret: 'pi_test_secret_xxx',
     qrCodeHash: null,
+    customerName: null,
+    customerPhone: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -59,72 +73,85 @@ function makeReservation(overrides: Partial<Reservation> = {}): Reservation {
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-/** Creates a minimal QueryRunner mock that simulates a successful transaction */
-const makeQueryRunner = (vehicleRow: Vehicle | null, conflictCount: number = 0) => ({
-  connect: jest.fn().mockResolvedValue(undefined),
-  startTransaction: jest.fn().mockResolvedValue(undefined),
-  commitTransaction: jest.fn().mockResolvedValue(undefined),
-  rollbackTransaction: jest.fn().mockResolvedValue(undefined),
-  release: jest.fn().mockResolvedValue(undefined),
-  manager: {
-    getRepository: jest.fn().mockImplementation((entity: any) => {
-      if (entity === Vehicle) {
-        return {
-          findOne: jest.fn().mockResolvedValue(vehicleRow),
-        };
-      }
-      if (entity === Reservation) {
-        return {
-          createQueryBuilder: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnThis(),
-            andWhere: jest.fn().mockReturnThis(),
-            getCount: jest.fn().mockResolvedValue(conflictCount),
-          }),
-          create: jest.fn().mockImplementation((dto: any) => dto),
-          save: jest.fn().mockImplementation((r: any) => Promise.resolve({ ...r, id: 'res-999' })),
-        };
-      }
-      return {};
+/**
+ * Crea un QueryRunner simulado que controla:
+ *  - qué vehículo devuelve la query de lock
+ *  - cuántas reservas solapadas hay
+ *  - si la transacción debe fallar en save
+ */
+function makeQueryRunner(
+  vehicleRow: Vehicle | null,
+  conflictCount = 0,
+  failOnSave = false,
+) {
+  const repoMocks = {
+    createdData: null as any,
+    findOne: jest.fn().mockResolvedValue(vehicleRow),
+    createQueryBuilder: jest.fn().mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(conflictCount),
     }),
-  },
-});
+    create: jest.fn().mockImplementation((data: any) => {
+      repoMocks.createdData = data;
+      return data;
+    }),
+    save: failOnSave
+      ? jest.fn().mockRejectedValue(new Error('DB error'))
+      : jest.fn().mockImplementation((r: any) =>
+          Promise.resolve({ ...r, id: 'res-999' }),
+        ),
+  };
 
-// ─── Test Suite ───────────────────────────────────────────────────────────────
+  return {
+    connect: jest.fn().mockResolvedValue(undefined),
+    startTransaction: jest.fn().mockResolvedValue(undefined),
+    commitTransaction: jest.fn().mockResolvedValue(undefined),
+    rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+    release: jest.fn().mockResolvedValue(undefined),
+    manager: {
+      getRepository: jest.fn().mockImplementation((entity: any) => {
+        if (entity === Vehicle) return { findOne: repoMocks.findOne };
+        if (entity === Reservation) return repoMocks;
+        return {};
+      }),
+    },
+    _repoMocks: repoMocks,
+  };
+}
+
+// ─── Mocks de dependencias externas ──────────────────────────────────────────────
+
+const mockReservationsRepo = {
+  findOne: jest.fn(),
+  find: jest.fn(),
+  findAndCount: jest.fn(),
+  save: jest.fn(),
+};
+
+const mockVehiclesRepo = { findOne: jest.fn() };
+const mockDataSource = { createQueryRunner: jest.fn() };
+
+const mockStripeService = {
+  createPaymentIntent: jest.fn().mockResolvedValue({
+    id: 'pi_test_abc123',
+    client_secret: 'pi_test_secret_xxx',
+  }),
+  cancelPaymentIntent: jest.fn().mockResolvedValue({}),
+};
+
+const mockQrService = {
+  generateHash: jest.fn().mockReturnValue('mock-qr-hash-64chars'),
+};
+
+const mockExpiryQueue = {
+  add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+};
+
+// ─── Suite principal ────────────────────────────────────────────────────────────────
 
 describe('ReservationsService', () => {
   let service: ReservationsService;
-
-  const mockReservationsRepo = {
-    findOne: jest.fn(),
-    find: jest.fn(),
-    findAndCount: jest.fn(),
-    save: jest.fn(),
-    update: jest.fn(),
-  };
-
-  const mockVehiclesRepo = {
-    findOne: jest.fn(),
-  };
-
-  const mockDataSource = {
-    createQueryRunner: jest.fn(),
-  };
-
-  const mockStripeService = {
-    createPaymentIntent: jest.fn().mockResolvedValue({
-      id: 'pi_test',
-      client_secret: 'pi_test_secret_xxx',
-    }),
-    cancelPaymentIntent: jest.fn().mockResolvedValue({}),
-  };
-
-  const mockQrService = {
-    generateHash: jest.fn().mockReturnValue('mock-qr-hash'),
-  };
-
-  const mockExpiryQueue = {
-    add: jest.fn().mockResolvedValue({ id: 'job-1' }),
-  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -162,11 +189,13 @@ describe('ReservationsService', () => {
     service = module.get<ReservationsService>(ReservationsService);
   });
 
-  // ── create() ───────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // create()
+  // ══════════════════════════════════════════════════════════════════════════
 
   describe('create()', () => {
-    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
-    const threeDaysLater = new Date(Date.now() + 3 * 86_400_000).toISOString();
+    const tomorrow = new Date(Date.now() + ONE_DAY_MS).toISOString();
+    const threeDaysLater = new Date(Date.now() + 3 * ONE_DAY_MS).toISOString();
 
     const dto: CreateReservationDto = {
       vehicleId: 'vehicle-abc',
@@ -177,111 +206,118 @@ describe('ReservationsService', () => {
       customerPhone: '+34600000000',
     };
 
-    it('should create a reservation and enqueue expiry job on success', async () => {
+    it('happy path — reserva creada, transacción commiteada, job de expiración encolado', async () => {
       const vehicle = makeVehicle();
-      const qr = makeQueryRunner(vehicle, 0); // 0 conflicting reservations
+      const qr = makeQueryRunner(vehicle, 0);
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      const user = makeUser();
-      const result = await service.create(dto, user);
+      const result = await service.create(dto, makeUser());
 
-      expect(qr.startTransaction).toHaveBeenCalled();
-      expect(qr.commitTransaction).toHaveBeenCalled();
+      // Transacción ACID completa
+      expect(qr.connect).toHaveBeenCalledTimes(1);
+      expect(qr.startTransaction).toHaveBeenCalledTimes(1);
+      expect(qr.commitTransaction).toHaveBeenCalledTimes(1);
       expect(qr.rollbackTransaction).not.toHaveBeenCalled();
+      expect(qr.release).toHaveBeenCalledTimes(1);
 
+      // Stripe: PI autorizado (no capturado) con el depósito fijo
       expect(mockStripeService.createPaymentIntent).toHaveBeenCalledWith(
-        1000, // DEPOSIT_EUR_CENTS
+        DEPOSIT_EUR_CENTS,
         expect.any(String),
         expect.any(Object),
       );
 
+      // BullMQ: job de expiración a exactamente 15 minutos
       expect(mockExpiryQueue.add).toHaveBeenCalledWith(
         'expire',
-        { reservationId: expect.any(String) },
+        { reservationId: 'res-999' },
         expect.objectContaining({ delay: 15 * 60 * 1000 }),
       );
 
       expect(result.id).toBe('res-999');
+      expect(result.stripeClientSecret).toBe('pi_test_secret_xxx');
     });
 
-    it('should throw BadRequestException if pickupDate is in the past', async () => {
-      const yesterday = new Date(Date.now() - 86_400_000).toISOString();
-      const badDto = { ...dto, pickupDate: yesterday };
-      const user = makeUser();
+    it('rechaza pickupDate en el pasado — sin abrir transacción', async () => {
+      const yesterday = new Date(Date.now() - ONE_DAY_MS).toISOString();
 
-      await expect(service.create(badDto, user)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.create({ ...dto, pickupDate: yesterday }, makeUser()),
+      ).rejects.toThrow(BadRequestException);
+
+      // Validación antes de tocar la BD
+      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if returnDate <= pickupDate', async () => {
-      const badDto = { ...dto, returnDate: tomorrow }; // same day
-      const user = makeUser();
+    it('rechaza returnDate igual a pickupDate', async () => {
+      await expect(
+        service.create({ ...dto, returnDate: tomorrow }, makeUser()),
+      ).rejects.toThrow(BadRequestException);
 
-      await expect(service.create(badDto, user)).rejects.toThrow(
-        BadRequestException,
-      );
+      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException if vehicle does not exist', async () => {
-      const qr = makeQueryRunner(null); // vehicle not found
+    it('rechaza returnDate anterior a pickupDate', async () => {
+      const dayAfterTomorrow = new Date(Date.now() + 2 * ONE_DAY_MS).toISOString();
+
+      await expect(
+        service.create({ ...dto, pickupDate: dayAfterTomorrow, returnDate: tomorrow }, makeUser()),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('lanza NotFoundException si el vehículo no existe — hace rollback', async () => {
+      const qr = makeQueryRunner(null);
       mockDataSource.createQueryRunner.mockReturnValue(qr);
-      const user = makeUser();
 
-      await expect(service.create(dto, user)).rejects.toThrow(NotFoundException);
+      await expect(service.create(dto, makeUser())).rejects.toThrow(NotFoundException);
+      expect(qr.rollbackTransaction).toHaveBeenCalled();
+      expect(qr.release).toHaveBeenCalled();
+    });
+
+    it('lanza ConflictException si hay reserva solapada — hace rollback', async () => {
+      const qr = makeQueryRunner(makeVehicle(), 1); // 1 reserva solapada
+      mockDataSource.createQueryRunner.mockReturnValue(qr);
+
+      await expect(service.create(dto, makeUser())).rejects.toThrow(ConflictException);
       expect(qr.rollbackTransaction).toHaveBeenCalled();
     });
 
-    it('should throw ConflictException if vehicle is unavailable for the dates', async () => {
-      const vehicle = makeVehicle();
-      const qr = makeQueryRunner(vehicle, 1); // 1 conflicting reservation
-      mockDataSource.createQueryRunner.mockReturnValue(qr);
-      const user = makeUser();
-
-      await expect(service.create(dto, user)).rejects.toThrow(ConflictException);
-      expect(qr.rollbackTransaction).toHaveBeenCalled();
-    });
-
-    it('should calculate price server-side (Zero Trust)', async () => {
-      const vehicle = makeVehicle({ pricePerDayEurCents: 10000 }); // 100 €/day
+    it('precio calculado server-side — Zero Trust (cliente no puede alterar el precio)', async () => {
+      const vehicle = makeVehicle({ pricePerDayEurCents: 10000 }); // 100 €/día
       const qr = makeQueryRunner(vehicle, 0);
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      // Verify the reservation repo .create() is called with server-computed price
-      let capturedReservationData: any;
-      qr.manager.getRepository.mockImplementation((entity: any) => {
-        if (entity === Vehicle) return { findOne: jest.fn().mockResolvedValue(vehicle) };
-        if (entity === Reservation) {
-          return {
-            createQueryBuilder: jest.fn().mockReturnValue({
-              where: jest.fn().mockReturnThis(),
-              andWhere: jest.fn().mockReturnThis(),
-              getCount: jest.fn().mockResolvedValue(0),
-            }),
-            create: jest.fn().mockImplementation((data: any) => {
-              capturedReservationData = data;
-              return data;
-            }),
-            save: jest.fn().mockImplementation((r: any) => Promise.resolve({ ...r, id: 'res-999' })),
-          };
-        }
-        return {};
-      });
+      await service.create(dto, makeUser());
 
-      const user = makeUser();
-      await service.create(dto, user);
+      const saved = qr._repoMocks.createdData;
+      expect(saved).toBeDefined();
 
-      // 2 full days × 100 €/day = 200 € = 20000 cents (dates: tomorrow to threeDaysLater ≈ 2 days)
-      expect(capturedReservationData.totalPriceEurCents).toBeGreaterThan(0);
-      // Deposit is always fixed at 1000 cents = 10 €
-      expect(capturedReservationData.depositEurCents).toBe(1000);
+      const days = Math.round(
+        (new Date(threeDaysLater).getTime() - new Date(tomorrow).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+      // totalPriceEurCents viene del servidor: pricePerDay × days
+      expect(saved.totalPriceEurCents).toBe(10000 * days);
+      // Depósito siempre fijo en 1000 (10 €) — nunca del cliente
+      expect(saved.depositEurCents).toBe(DEPOSIT_EUR_CENTS);
+    });
+
+    it('hace rollback si el save en BD falla — libera el queryRunner', async () => {
+      const qr = makeQueryRunner(makeVehicle(), 0, true); // failOnSave
+      mockDataSource.createQueryRunner.mockReturnValue(qr);
+
+      await expect(service.create(dto, makeUser())).rejects.toThrow();
+      expect(qr.rollbackTransaction).toHaveBeenCalled();
+      expect(qr.release).toHaveBeenCalled();
     });
   });
 
-  // ── cancel() ───────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // cancel()
+  // ══════════════════════════════════════════════════════════════════════════
 
   describe('cancel()', () => {
-    it('should cancel a PENDING_DEPOSIT reservation as the owner', async () => {
+    it('owner cancela su reserva PENDING_DEPOSIT — Stripe PI cancelado', async () => {
       const reservation = makeReservation();
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
       mockReservationsRepo.save.mockResolvedValue({
@@ -289,48 +325,96 @@ describe('ReservationsService', () => {
         status: ReservationStatus.CANCELLED,
       });
 
-      const user = makeUser();
-      const result = await service.cancel('res-999', user);
+      const result = await service.cancel('res-999', makeUser());
 
       expect(result.status).toBe(ReservationStatus.CANCELLED);
-      // Stripe cancel is called fire-and-forget — just verify it was called
-      expect(mockStripeService.cancelPaymentIntent).toHaveBeenCalledWith('pi_test');
+      expect(mockStripeService.cancelPaymentIntent).toHaveBeenCalledWith('pi_test_abc123');
     });
 
-    it('should throw ForbiddenException if USER tries to cancel another user\'s reservation', async () => {
-      const reservation = makeReservation({ userId: 'other-user' });
+    it('owner cancela reserva AWAITING_CAPTURE', async () => {
+      const reservation = makeReservation({ status: ReservationStatus.AWAITING_CAPTURE });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+      mockReservationsRepo.save.mockResolvedValue({
+        ...reservation,
+        status: ReservationStatus.CANCELLED,
+      });
+
+      const result = await service.cancel('res-999', makeUser());
+      expect(result.status).toBe(ReservationStatus.CANCELLED);
+    });
+
+    it('OPERATOR puede cancelar reserva CONFIRMED', async () => {
+      const reservation = makeReservation({ status: ReservationStatus.CONFIRMED });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+      mockReservationsRepo.save.mockResolvedValue({
+        ...reservation,
+        status: ReservationStatus.CANCELLED,
+      });
+
+      const result = await service.cancel('res-999', makeUser({ role: UserRole.OPERATOR }));
+      expect(result.status).toBe(ReservationStatus.CANCELLED);
+    });
+
+    it('ADMIN puede cancelar reserva CONFIRMED', async () => {
+      const reservation = makeReservation({ status: ReservationStatus.CONFIRMED });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+      mockReservationsRepo.save.mockResolvedValue({
+        ...reservation,
+        status: ReservationStatus.CANCELLED,
+      });
+
+      const result = await service.cancel('res-999', makeUser({ role: UserRole.ADMIN }));
+      expect(result.status).toBe(ReservationStatus.CANCELLED);
+    });
+
+    it('USER no puede cancelar la reserva de otro — ForbiddenException', async () => {
+      const reservation = makeReservation({ userId: 'otro-user-999' });
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
 
-      const user = makeUser({ id: 'user-123' });
-      await expect(service.cancel('res-999', user)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.cancel('res-999', makeUser({ id: 'user-123' })),
+      ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw BadRequestException if status is not cancelable', async () => {
+    it('USER no puede cancelar reserva IN_PROGRESS — BadRequestException', async () => {
       const reservation = makeReservation({ status: ReservationStatus.IN_PROGRESS });
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
 
-      const user = makeUser();
-      await expect(service.cancel('res-999', user)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.cancel('res-999', makeUser())).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw NotFoundException for non-existent reservation', async () => {
+    it('USER no puede cancelar reserva COMPLETED', async () => {
+      const reservation = makeReservation({ status: ReservationStatus.COMPLETED });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+
+      await expect(service.cancel('res-999', makeUser())).rejects.toThrow(BadRequestException);
+    });
+
+    it('lanza NotFoundException para reserva inexistente', async () => {
       mockReservationsRepo.findOne.mockResolvedValue(null);
 
-      const user = makeUser();
-      await expect(service.cancel('no-such-id', user)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.cancel('no-existe', makeUser())).rejects.toThrow(NotFoundException);
+    });
+
+    it('no llama cancelPaymentIntent si stripePaymentIntentId es null', async () => {
+      const reservation = makeReservation({ stripePaymentIntentId: null });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+      mockReservationsRepo.save.mockResolvedValue({
+        ...reservation,
+        status: ReservationStatus.CANCELLED,
+      });
+
+      await service.cancel('res-999', makeUser());
+      expect(mockStripeService.cancelPaymentIntent).not.toHaveBeenCalled();
     });
   });
 
-  // ── complete() ─────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // complete()
+  // ══════════════════════════════════════════════════════════════════════════
 
   describe('complete()', () => {
-    it('should set IN_PROGRESS reservation to COMPLETED', async () => {
+    it('reserva IN_PROGRESS → COMPLETED', async () => {
       const reservation = makeReservation({ status: ReservationStatus.IN_PROGRESS });
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
       mockReservationsRepo.save.mockResolvedValue({
@@ -339,57 +423,136 @@ describe('ReservationsService', () => {
       });
 
       const result = await service.complete('res-999');
+
       expect(result.status).toBe(ReservationStatus.COMPLETED);
+      expect(mockReservationsRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: ReservationStatus.COMPLETED }),
+      );
     });
 
-    it('should throw BadRequestException if reservation is not IN_PROGRESS', async () => {
+    it('lanza BadRequestException si estado es CONFIRMED (no IN_PROGRESS)', async () => {
       const reservation = makeReservation({ status: ReservationStatus.CONFIRMED });
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
 
-      await expect(service.complete('res-999')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.complete('res-999')).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw NotFoundException for non-existent reservation', async () => {
+    it('lanza BadRequestException si estado es PENDING_DEPOSIT', async () => {
+      const reservation = makeReservation({ status: ReservationStatus.PENDING_DEPOSIT });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+
+      await expect(service.complete('res-999')).rejects.toThrow(BadRequestException);
+    });
+
+    it('lanza BadRequestException si estado es CANCELLED', async () => {
+      const reservation = makeReservation({ status: ReservationStatus.CANCELLED });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+
+      await expect(service.complete('res-999')).rejects.toThrow(BadRequestException);
+    });
+
+    it('lanza NotFoundException para reserva inexistente', async () => {
       mockReservationsRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.complete('no-such-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.complete('no-existe')).rejects.toThrow(NotFoundException);
     });
   });
 
-  // ── findMy() ────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // findMy()
+  // ══════════════════════════════════════════════════════════════════════════
 
   describe('findMy()', () => {
-    it('should return only the user\'s own reservations for USER role', async () => {
+    it('USER recibe solo sus reservas — where tiene userId', async () => {
       const reservations = [makeReservation()];
       mockReservationsRepo.findAndCount.mockResolvedValue([reservations, 1]);
 
-      const user = makeUser();
-      const result = await service.findMy(user);
+      const result = await service.findMy(makeUser());
 
       expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({ where: { userId: 'user-123' } }),
       );
       expect(result.data).toEqual(reservations);
       expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
     });
 
-    it('should return ALL reservations for OPERATOR role', async () => {
+    it('OPERATOR recibe TODAS las reservas — sin filtro de userId', async () => {
       const reservations = [makeReservation(), makeReservation({ id: 'res-888' })];
       mockReservationsRepo.findAndCount.mockResolvedValue([reservations, 2]);
 
-      const operator = makeUser({ role: UserRole.OPERATOR });
-      const result = await service.findMy(operator);
+      const result = await service.findMy(makeUser({ role: UserRole.OPERATOR }));
 
-      // No userId filter for operators
       expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
         expect.not.objectContaining({ where: { userId: expect.anything() } }),
       );
-      expect(result.data.length).toBe(2);
       expect(result.total).toBe(2);
+    });
+
+    it('ADMIN recibe TODAS las reservas — sin filtro de userId', async () => {
+      mockReservationsRepo.findAndCount.mockResolvedValue([[makeReservation()], 1]);
+
+      const result = await service.findMy(makeUser({ role: UserRole.ADMIN }));
+
+      expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
+        expect.not.objectContaining({ where: { userId: expect.anything() } }),
+      );
+      expect(result.total).toBe(1);
+    });
+
+    it('paginación — skip y take calculados correctamente', async () => {
+      mockReservationsRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findMy(makeUser(), { page: 3, limit: 10 });
+
+      expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 20, take: 10 }),
+      );
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // findById()
+  // ══════════════════════════════════════════════════════════════════════════
+
+  describe('findById()', () => {
+    it('USER puede ver su propia reserva', async () => {
+      const reservation = makeReservation({ userId: 'user-123' });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+
+      const result = await service.findById('res-999', makeUser({ id: 'user-123' }));
+      expect(result.id).toBe('res-999');
+    });
+
+    it('USER no puede ver la reserva de otro — ForbiddenException', async () => {
+      const reservation = makeReservation({ userId: 'otro-user' });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+
+      await expect(
+        service.findById('res-999', makeUser({ id: 'user-123' })),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('OPERATOR puede ver cualquier reserva', async () => {
+      const reservation = makeReservation({ userId: 'otro-user' });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+
+      const result = await service.findById('res-999', makeUser({ role: UserRole.OPERATOR }));
+      expect(result.id).toBe('res-999');
+    });
+
+    it('ADMIN puede ver cualquier reserva', async () => {
+      const reservation = makeReservation({ userId: 'otro-user' });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+
+      const result = await service.findById('res-999', makeUser({ role: UserRole.ADMIN }));
+      expect(result.id).toBe('res-999');
+    });
+
+    it('lanza NotFoundException si la reserva no existe', async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.findById('no-existe', makeUser())).rejects.toThrow(NotFoundException);
     });
   });
 });
