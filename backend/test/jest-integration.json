@@ -1,0 +1,17 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testMatch": ["<rootDir>/test/integration/**/*.spec.ts"],
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "setupFiles": ["<rootDir>/test/setup/load-env.ts"],
+  "testEnvironment": "node",
+  "testTimeout": 60000,
+  "runInBand": true,
+  "forceExit": true,
+  "verbose": true,
+  "moduleNameMapper": {
+    "^src/(.*)$": "<rootDir>/src/$1"
+  }
+}
