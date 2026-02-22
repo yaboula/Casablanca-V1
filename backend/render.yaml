@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: nexus-backend
+    env: node
+    region: frankfurt # Cercano a África/Marruecos/España
+    plan: free # Plan de Render gratuito
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: API_PREFIX
+        value: "api/v1"
+      # CORS: URL de producción de Vercel (Next.js config variable)
+      - key: FRONTEND_URL
+        sync: false
+
+      # === Bases de Datos / Caché (Variables Sincronizadas después manualmente) ===
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+
+      # === STRIPE Config (Variables requeridas por tu backend) ===
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # === Seguridad JWT ===
+      - key: JWT_SECRET
+        generateValue: true # Genera un hash aleatorio la primera vez automáticamente
+      - key: JWT_EXPIRES_IN
+        value: "7d"
