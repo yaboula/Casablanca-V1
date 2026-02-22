@@ -28,6 +28,7 @@ export default function LogoutButton({
     } finally {
       setLoading(false);
     }
+    window.dispatchEvent(new Event("nexus-auth-change"));
     toast.success("Sesión cerrada");
     router.push("/login");
   }

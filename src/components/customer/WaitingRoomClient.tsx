@@ -40,7 +40,10 @@ interface ApiReservation {
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function getDocStatus(docs: ApiDocument[], type: "PASSPORT" | "DRIVING_LICENSE"): DocStatus {
+function getDocStatus(
+  docs: ApiDocument[],
+  type: "PASSPORT" | "DRIVING_LICENSE",
+): DocStatus {
   const doc = docs.find((d) => d.type === type);
   return doc?.status ?? "PENDING_REVIEW";
 }
@@ -55,17 +58,24 @@ export default function WaitingRoomClient({ reservationId }: Props) {
   const router = useRouter();
 
   const tWaiting = useTranslations("waitingRoom");
-  const [passportStatus, setPassportStatus] = useState<DocStatus>("PENDING_REVIEW");
-  const [licenseStatus, setLicenseStatus] = useState<DocStatus>("PENDING_REVIEW");
-  const [rejectedType, setRejectedType] = useState<"PASSPORT" | "DRIVING_LICENSE" | null>(null);
-  const [rejectionReason, setRejectionReason] = useState<string>(tWaiting.blurryReason);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
+  const [passportStatus, setPassportStatus] =
+    useState<DocStatus>("PENDING_REVIEW");
+  const [licenseStatus, setLicenseStatus] =
+    useState<DocStatus>("PENDING_REVIEW");
+  const [rejectedType, setRejectedType] = useState<
+    "PASSPORT" | "DRIVING_LICENSE" | null
+  >(null);
+  const [rejectionReason, setRejectionReason] = useState<string>(
+    tWaiting.blurryReason,
+  );
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionStatus>("connecting");
   const [logs, setLogs] = useState<LogEntry[]>([
     { text: tWaiting.logReceived, status: "done" },
     { text: tWaiting.logConnecting, status: "pending" },
   ]);
 
-  //  SSE real-time connection + one-time initial REST check 
+  //  SSE real-time connection + one-time initial REST check
 
   useEffect(() => {
     if (!reservationId) return;
@@ -73,10 +83,13 @@ export default function WaitingRoomClient({ reservationId }: Props) {
     // One-time REST check: sync document status that changed before SSE connected
     async function initialCheck() {
       try {
-        const reservations = await apiFetch<ApiReservation[]>("/reservations/my", {
-          auth: true,
-          cache: "no-store",
-        });
+        const reservations = await apiFetch<ApiReservation[]>(
+          "/reservations/my",
+          {
+            auth: true,
+            cache: "no-store",
+          },
+        );
         const reservation = reservations.find((r) => r.id === reservationId);
         if (!reservation) return;
         const docs = reservation.documents ?? [];
@@ -91,44 +104,57 @@ export default function WaitingRoomClient({ reservationId }: Props) {
           setRejectedType("DRIVING_LICENSE");
           setRejectionReason(tWaiting.blurryReason);
         }
-      } catch { /* SSE will surface updates */ }
+      } catch {
+        /* SSE will surface updates */
+      }
     }
     initialCheck();
 
     // SSE connection  JWT stays in HttpOnly cookie, never in URL
-    const disconnect = createSSEConnection({
-      onStatusChange: (status) => {
-        setConnectionStatus(status);
-        if (status === "connected") {
-          setLogs((prev) => [
-            ...prev.filter((l) => l.text !== tWaiting.logConnecting),
-            { text: tWaiting.logConnected, status: "pending" },
-          ]);
-        }
-        if (status === "error") {
+    const disconnect = createSSEConnection(
+      {
+        onStatusChange: (status) => {
+          setConnectionStatus(status);
+          if (status === "connected") {
+            setLogs((prev) => [
+              ...prev.filter((l) => l.text !== tWaiting.logConnecting),
+              { text: tWaiting.logConnected, status: "pending" },
+            ]);
+          }
+          if (status === "error") {
+            setLogs((prev) => [
+              ...prev,
+              { text: tWaiting.logNoConnection, status: "error" },
+            ]);
+          }
+        },
+        onDocumentApproved: (data) => {
+          if (data.reservationId !== reservationId) return;
+          const type = data.documentType as "PASSPORT" | "DRIVING_LICENSE";
+          if (type === "PASSPORT") setPassportStatus("APPROVED");
+          if (type === "DRIVING_LICENSE") setLicenseStatus("APPROVED");
+          const label =
+            type === "PASSPORT" ? tWaiting.passport : tWaiting.license;
           setLogs((prev) => [
             ...prev,
-            { text: tWaiting.logNoConnection, status: "error" },
+            { text: `${label} — ${tWaiting.docApproved}`, status: "done" },
           ]);
-        }
+        },
+        onDocumentRejected: (data) => {
+          if (data.reservationId !== reservationId) return;
+          const type = data.documentType as "PASSPORT" | "DRIVING_LICENSE";
+          setRejectedType(type);
+          setRejectionReason(data.reason ?? tWaiting.blurryReason);
+          const label =
+            type === "PASSPORT" ? tWaiting.passport : tWaiting.license;
+          setLogs((prev) => [
+            ...prev,
+            { text: `${label} — ${tWaiting.docRejected}`, status: "error" },
+          ]);
+        },
       },
-      onDocumentApproved: (data) => {
-        if (data.reservationId !== reservationId) return;
-        const type = data.documentType as "PASSPORT" | "DRIVING_LICENSE";
-        if (type === "PASSPORT") setPassportStatus("APPROVED");
-        if (type === "DRIVING_LICENSE") setLicenseStatus("APPROVED");
-        const label = type === "PASSPORT" ? tWaiting.passport : tWaiting.license;
-        setLogs((prev) => [...prev, { text: `${label} — ${tWaiting.docApproved}`, status: "done" }]);
-      },
-      onDocumentRejected: (data) => {
-        if (data.reservationId !== reservationId) return;
-        const type = data.documentType as "PASSPORT" | "DRIVING_LICENSE";
-        setRejectedType(type);
-        setRejectionReason(data.reason ?? tWaiting.blurryReason);
-        const label = type === "PASSPORT" ? tWaiting.passport : tWaiting.license;
-        setLogs((prev) => [...prev, { text: `${label} — ${tWaiting.docRejected}`, status: "error" }]);
-      },
-    });
+      reservationId,
+    );
 
     return disconnect;
   }, [reservationId]);
@@ -147,17 +173,22 @@ export default function WaitingRoomClient({ reservationId }: Props) {
   // â”€â”€ WhatsApp link â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const whatsappUrl = `https://wa.me/${OPERATOR_PHONE}?text=${encodeURIComponent(
-    tWaiting.whatsappMsg.replace("{id}", reservationId ?? "")
+    tWaiting.whatsappMsg.replace("{id}", reservationId ?? ""),
   )}`;
 
-  const allApproved = passportStatus === "APPROVED" && licenseStatus === "APPROVED";
+  const allApproved =
+    passportStatus === "APPROVED" && licenseStatus === "APPROVED";
   const someRejected = rejectedType !== null;
 
   // â”€â”€ Rejected state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (someRejected) {
-    const docLabel = rejectedType === "PASSPORT" ? tWaiting.passport.toLowerCase() : tWaiting.license.toLowerCase();
-    const docParam = rejectedType === "PASSPORT" ? "PASSPORT" : "DRIVING_LICENSE";
+    const docLabel =
+      rejectedType === "PASSPORT"
+        ? tWaiting.passport.toLowerCase()
+        : tWaiting.license.toLowerCase();
+    const docParam =
+      rejectedType === "PASSPORT" ? "PASSPORT" : "DRIVING_LICENSE";
 
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-6">
@@ -170,7 +201,9 @@ export default function WaitingRoomClient({ reservationId }: Props) {
             <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
             </div>
-            <h2 className="text-lg font-bold text-brand-dark">{tWaiting.actionRequired}</h2>
+            <h2 className="text-lg font-bold text-brand-dark">
+              {tWaiting.actionRequired}
+            </h2>
           </div>
 
           <p className="text-sm text-brand-muted mb-2">
@@ -181,9 +214,7 @@ export default function WaitingRoomClient({ reservationId }: Props) {
               Motivo: &ldquo;{rejectionReason}&rdquo;
             </p>
           </div>
-          <p className="text-sm text-brand-muted mb-5">
-            {tWaiting.dontWorry}
-          </p>
+          <p className="text-sm text-brand-muted mb-5">{tWaiting.dontWorry}</p>
 
           <div className="flex flex-col gap-3">
             <Link
@@ -228,7 +259,9 @@ export default function WaitingRoomClient({ reservationId }: Props) {
           <div>
             <h1 className="text-white font-bold text-base">{tWaiting.title}</h1>
             <p className="text-slate-400 text-xs">
-              {reservationId ? tWaiting.subtitle.replace("{id}", reservationId) : tWaiting.noReservation}
+              {reservationId
+                ? tWaiting.subtitle.replace("{id}", reservationId)
+                : tWaiting.noReservation}
             </p>
           </div>
         </div>
@@ -240,8 +273,16 @@ export default function WaitingRoomClient({ reservationId }: Props) {
               {tWaiting.docsSent}
             </p>
             <div className="space-y-2">
-              <DocRow icon={FileText} label={tWaiting.passport} status={passportStatus} />
-              <DocRow icon={CreditCard} label={tWaiting.license} status={licenseStatus} />
+              <DocRow
+                icon={FileText}
+                label={tWaiting.passport}
+                status={passportStatus}
+              />
+              <DocRow
+                icon={CreditCard}
+                label={tWaiting.license}
+                status={licenseStatus}
+              />
             </div>
           </div>
 
@@ -267,8 +308,12 @@ export default function WaitingRoomClient({ reservationId }: Props) {
                     <CheckCircle2 className="w-8 h-8 text-brand-success" />
                   </motion.div>
                   <div>
-                    <p className="text-sm font-bold text-brand-dark">{tWaiting.approved}</p>
-                    <p className="text-xs text-brand-muted">{tWaiting.redirecting}</p>
+                    <p className="text-sm font-bold text-brand-dark">
+                      {tWaiting.approved}
+                    </p>
+                    <p className="text-xs text-brand-muted">
+                      {tWaiting.redirecting}
+                    </p>
                   </div>
                 </motion.div>
               ) : (
@@ -281,13 +326,19 @@ export default function WaitingRoomClient({ reservationId }: Props) {
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <span className="relative flex h-3 w-3">
-                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75
-                        ${connectionStatus === "error" ? "bg-red-500" : connectionStatus === "connecting" ? "bg-amber-400" : "bg-brand-primary"}`} />
-                      <span className={`relative inline-flex rounded-full h-3 w-3
-                        ${connectionStatus === "error" ? "bg-red-500" : connectionStatus === "connecting" ? "bg-amber-400" : "bg-brand-primary"}`} />
+                      <span
+                        className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75
+                        ${connectionStatus === "error" ? "bg-red-500" : connectionStatus === "connecting" ? "bg-amber-400" : "bg-brand-primary"}`}
+                      />
+                      <span
+                        className={`relative inline-flex rounded-full h-3 w-3
+                        ${connectionStatus === "error" ? "bg-red-500" : connectionStatus === "connecting" ? "bg-amber-400" : "bg-brand-primary"}`}
+                      />
                     </span>
                     <p className="text-sm font-bold text-brand-dark">
-                      {connectionStatus === "connecting" ? tWaiting.connecting : tWaiting.reviewing}
+                      {connectionStatus === "connecting"
+                        ? tWaiting.connecting
+                        : tWaiting.reviewing}
                     </p>
                   </div>
                   <p className="text-sm text-brand-muted">
@@ -326,7 +377,11 @@ export default function WaitingRoomClient({ reservationId }: Props) {
                   {log.status === "pending" && (
                     <motion.div
                       animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 2,
+                        ease: "linear",
+                      }}
                     >
                       <RefreshCw className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                     </motion.div>
@@ -341,7 +396,9 @@ export default function WaitingRoomClient({ reservationId }: Props) {
 
           {/* WhatsApp CTA */}
           <div className="pt-1">
-            <p className="text-xs text-brand-muted mb-2">{tWaiting.questionsWaiting}</p>
+            <p className="text-xs text-brand-muted mb-2">
+              {tWaiting.questionsWaiting}
+            </p>
             <a
               href={whatsappUrl}
               target="_blank"
@@ -398,4 +455,3 @@ function DocRow({
     </div>
   );
 }
-

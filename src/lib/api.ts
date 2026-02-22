@@ -2,9 +2,9 @@
  * Centralized HTTP client for NEXUS API
  * Prefixes all paths with NEXT_PUBLIC_API_URL and attaches JWT automatically.
  */
+import { CLIENT_API_BASE } from "@/lib/config";
 
-const BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3900/api/v1";
+const BASE = CLIENT_API_BASE;
 
 export interface ApiError {
   statusCode: number;
@@ -16,7 +16,7 @@ export class NexusApiError extends Error {
   constructor(
     public readonly statusCode: number,
     message: string,
-    public readonly error?: string
+    public readonly error?: string,
   ) {
     super(message);
     this.name = "NexusApiError";
@@ -35,7 +35,7 @@ function getJwtFromCookie(): string | null {
 
 export async function apiFetch<T>(
   path: string,
-  init: RequestInit & { auth?: boolean } = {}
+  init: RequestInit & { auth?: boolean } = {},
 ): Promise<T> {
   const { auth = false, headers: extraHeaders, ...rest } = init;
 
@@ -63,10 +63,21 @@ export async function apiFetch<T>(
       if (!authPages.some((p) => currentPath.startsWith(p))) {
         // Attempt one silent refresh via the server-side API route
         try {
-          const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
+          const refreshRes = await fetch("/api/auth/refresh", {
+            method: "POST",
+          });
           if (refreshRes.ok) {
-            // Retry the original request exactly once with fresh cookie
-            const retryRes = await fetch(url, { ...rest, headers });
+            // Re-read the NEW token from cookie after refresh
+            const newToken = getJwtFromCookie();
+            const retryHeaders: Record<string, string> = {
+              ...headers,
+              ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+            };
+            // Retry the original request exactly once with fresh token
+            const retryRes = await fetch(url, {
+              ...rest,
+              headers: retryHeaders,
+            });
             if (retryRes.ok) {
               if (retryRes.status === 204) return undefined as T;
               return retryRes.json() as Promise<T>;

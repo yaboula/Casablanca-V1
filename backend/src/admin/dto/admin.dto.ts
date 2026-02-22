@@ -50,6 +50,11 @@ export class CreateVehicleDto {
   @IsUrl()
   imageUrl: string;
 
+  @IsOptional()
+  @IsArray()
+  @IsUrl({}, { each: true })
+  imageUrls?: string[];
+
   @IsEnum(Transmission)
   transmission: Transmission;
 
@@ -96,6 +101,11 @@ export class UpdateVehicleDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUrl({}, { each: true })
+  imageUrls?: string[];
 
   @IsOptional()
   @IsEnum(Transmission)

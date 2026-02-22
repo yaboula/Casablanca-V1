@@ -1,0 +1,65 @@
+{
+  "folders": [
+    {
+      "name": "ACD (Frontend)",
+      "path": ".",
+    },
+    {
+      "name": "backend",
+      "path": "backend",
+    },
+  ],
+  "settings": {
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/dist": true,
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/dist": true,
+      "**/playwright-report": true,
+      "**/playwright-output": true,
+    },
+    "playwright.reuseBrowser": false,
+    "playwright.env": {
+      "BASE_URL": "http://localhost:3600",
+    },
+    "sqltools.connections": [
+      {
+        "ssh": "Disabled",
+        "previewLimit": 50,
+        "server": "localhost",
+        "port": 5432,
+        "askForPassword": true,
+        "driver": "PostgreSQL",
+        "name": "Nexus Local",
+        "database": "nexus_db",
+        "username": "nexus",
+      },
+    ],
+  },
+  "extensions": {
+    "recommendations": [
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "bradlc.vscode-tailwindcss",
+      "ms-playwright.playwright",
+      "prisma.prisma",
+      "Nuxtr.nuxt-vscode-extentions",
+    ],
+  },
+}

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { SERVER_API_BASE } from "@/lib/config";
 
-const API_URL =
-  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3900/api/v1";
+const API_URL = SERVER_API_BASE;
 
 const IS_PROD = process.env.NODE_ENV === "production";
 
@@ -20,7 +20,10 @@ export async function POST() {
   const refreshToken = cookieStore.get("nexus_refresh")?.value;
 
   if (!refreshToken) {
-    return NextResponse.json({ ok: false, reason: "no_refresh_token" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, reason: "no_refresh_token" },
+      { status: 401 },
+    );
   }
 
   // Forward to NestJS
@@ -32,12 +35,18 @@ export async function POST() {
       body: JSON.stringify({ refreshToken }),
     });
   } catch {
-    return NextResponse.json({ ok: false, reason: "upstream_error" }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, reason: "upstream_error" },
+      { status: 503 },
+    );
   }
 
   if (!nestRes.ok) {
     // Refresh token expired or invalid — clear all session cookies
-    const res = NextResponse.json({ ok: false, reason: "refresh_expired" }, { status: 401 });
+    const res = NextResponse.json(
+      { ok: false, reason: "refresh_expired" },
+      { status: 401 },
+    );
     for (const name of ["nexus_token", "nexus_refresh", "nexus_user"]) {
       res.cookies.set(name, "", {
         httpOnly: name !== "nexus_user",
@@ -50,7 +59,7 @@ export async function POST() {
     return res;
   }
 
-  const data = await nestRes.json() as {
+  const data = (await nestRes.json()) as {
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
@@ -62,13 +71,21 @@ export async function POST() {
   // Compute max-age from JWT exp
   function maxAgeFromToken(token: string, fallback: number): number {
     try {
-      const p = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+      const p = JSON.parse(
+        Buffer.from(token.split(".")[1], "base64url").toString(),
+      );
       if (p.exp) return Math.max(0, p.exp - Math.floor(Date.now() / 1000));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return fallback;
   }
 
-  const cookieBase = { secure: IS_PROD, sameSite: "strict" as const, path: "/" };
+  const cookieBase = {
+    secure: IS_PROD,
+    sameSite: "strict" as const,
+    path: "/",
+  };
   const res = NextResponse.json({ ok: true });
 
   res.cookies.set("nexus_token", accessToken, {
@@ -81,11 +98,20 @@ export async function POST() {
     httpOnly: true,
     maxAge: maxAgeFromToken(newRefreshToken, 60 * 60 * 24 * 30),
   });
-  res.cookies.set("nexus_user", JSON.stringify({ id: user.id, email: user.email, fullName: user.fullName, role: user.role }), {
-    ...cookieBase,
-    httpOnly: false,
-    maxAge: maxAgeFromToken(accessToken, 60 * 60 * 24),
-  });
+  res.cookies.set(
+    "nexus_user",
+    JSON.stringify({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+    }),
+    {
+      ...cookieBase,
+      httpOnly: false,
+      maxAge: maxAgeFromToken(accessToken, 60 * 60 * 24),
+    },
+  );
 
   return res;
 }

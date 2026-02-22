@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import type { Vehicle } from "@/types";
@@ -25,6 +25,7 @@ import PhoneInput from "@/components/ui/PhoneInput";
 import { apiFetch, NexusApiError } from "@/lib/api";
 import StripeProvider from "@/components/shared/StripeProvider";
 import PaymentStep from "@/components/vehicles/PaymentStep";
+import { readUserCookie } from "@/hooks/useUser";
 
 // ── Steps ─────────────────────────────────────────────────────
 
@@ -58,21 +59,30 @@ const slideVariants = {
 
 export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
   const router = useRouter();
-  const { pickupDate, returnDate, pickupLocation, totalDays, totalPriceEUR, setReservationId } =
-    useBookingStore();
+  const pathname = usePathname();
+  const {
+    pickupDate,
+    returnDate,
+    pickupLocation,
+    totalDays,
+    totalPriceEUR,
+    setReservationId,
+  } = useBookingStore();
 
   const [step, setStep] = useState<Step>(1);
   const [direction, setDirection] = useState(0);
 
-  // Contact form
-  const [name, setName] = useState("");
+  // Contact form — pre-filled from session cookie if available
+  const [name, setName] = useState(() => readUserCookie()?.fullName ?? "");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => readUserCookie()?.email ?? "");
 
   // Payment state (real)
   const [processing, setProcessing] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [serverReservationId, setServerReservationId] = useState<string | null>(null);
+  const [serverReservationId, setServerReservationId] = useState<string | null>(
+    null,
+  );
 
   // T3-0 — Guard: redirect if dates are missing (shared link / expired store)
   useEffect(() => {
@@ -85,8 +95,13 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
     }
   }, [router]);
 
+  const CASABLANCA_TZ = "Africa/Casablanca";
   const fmtDate = (ts: number | null) =>
-    ts ? format(new Date(ts), "EEE d MMM · HH:mm", { locale: es }) : "—";
+    ts
+      ? formatInTimeZone(new Date(ts), CASABLANCA_TZ, "EEE d MMM · HH:mm", {
+          locale: es,
+        })
+      : "—";
 
   const goNext = useCallback(() => {
     setDirection(1);
@@ -98,14 +113,56 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
     setStep((s) => Math.max(s - 1, 1) as Step);
   }, []);
 
+  // Step 1 → Step 2: require login first
+  const handleStep1Next = useCallback(() => {
+    const user = readUserCookie();
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    goNext();
+  }, [router, pathname, goNext]);
+
   // Validity checks — declared before handleContactNext so closure captures correctly
-  const contactValid = name.trim().length >= 2 && phone.replace(/[^\d]/g, "").length >= 8;
+  const contactValid =
+    name.trim().length >= 2 && phone.replace(/[^\d]/g, "").length >= 8;
+
+  const bypassPayment = process.env.NEXT_PUBLIC_BYPASS_PAYMENT === "true";
 
   // T3-3 — Step 2 → Step 3: create reservation in backend
   const handleContactNext = useCallback(async () => {
     if (!contactValid || processing) return;
     setProcessing(true);
     try {
+      const payload = {
+        vehicleId: vehicle.id,
+        pickupDate: new Date(pickupDate!).toISOString(),
+        returnDate: new Date(returnDate!).toISOString(),
+        pickupLocation,
+        customerName: name.trim(),
+        customerPhone: phone,
+        // DEV bypass: send price so the route doesn't need to query the DB
+        pricePerDayCents: Math.round(vehicle.pricePerDay * 100),
+      };
+
+      if (bypassPayment) {
+        // DEV: skip NestJS + Stripe — insert directly into DB as CONFIRMED
+        const devRes = await fetch("/api/dev/book-bypass", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!devRes.ok) {
+          const err = await devRes.json().catch(() => ({}));
+          throw new Error(err.detail ?? err.error ?? "Dev bypass failed");
+        }
+        const { id } = await devRes.json();
+        setReservationId(id);
+        router.push(`/booking/confirmed?id=${id}`);
+        return;
+      }
+
+      // Normal flow: create via NestJS (Stripe PaymentIntent inside)
       const res = await apiFetch<{
         id: string;
         stripeClientSecret: string;
@@ -113,14 +170,7 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
       }>("/reservations", {
         method: "POST",
         auth: true,
-        body: JSON.stringify({
-          vehicleId: vehicle.id,
-          pickupDate: new Date(pickupDate!).toISOString(),
-          returnDate: new Date(returnDate!).toISOString(),
-          pickupLocation,
-          customerName: name.trim(),
-          customerPhone: phone,
-        }),
+        body: JSON.stringify(payload),
       });
       setClientSecret(res.stripeClientSecret);
       setServerReservationId(res.id);
@@ -129,6 +179,7 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
       if (err instanceof NexusApiError && err.statusCode === 409) {
         toast.error("Este vehículo ya no está disponible para esas fechas.");
       } else {
+        console.error("[BookFlowClient] reservation error:", err);
         toast.error("No se pudo iniciar la reserva. Inténtalo de nuevo.");
       }
     } finally {
@@ -143,7 +194,10 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
     pickupLocation,
     name,
     phone,
+    bypassPayment,
     goNext,
+    router,
+    setReservationId,
   ]);
 
   // T3-5 — Post-payment success
@@ -183,7 +237,11 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors
                     ${done ? "bg-brand-success text-white" : active ? "bg-brand-primary text-white" : "bg-slate-100 text-brand-muted"}`}
                 >
-                  {done ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                  {done ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : (
+                    <Icon className="w-3.5 h-3.5" />
+                  )}
                 </div>
                 <span
                   className={`text-xs font-semibold transition-colors hidden sm:inline
@@ -211,7 +269,9 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
             {/* ─── Step 1: Summary ──────────────────────── */}
             {step === 1 && (
               <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-brand-dark mb-4">Resumen de tu reserva</h2>
+                <h2 className="text-lg font-bold text-brand-dark mb-4">
+                  Resumen de tu reserva
+                </h2>
 
                 {/* Vehicle mini-card */}
                 <div className="flex items-center gap-4 bg-slate-50 rounded-xl p-3 mb-5">
@@ -231,22 +291,40 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                     <p className="text-sm font-bold text-brand-dark">
                       {vehicle.brand} {vehicle.model}
                     </p>
-                    <p className="text-xs text-brand-muted">{vehicle.pricePerDay}€/día</p>
+                    <p className="text-xs text-brand-muted">
+                      {vehicle.pricePerDay}€/día
+                    </p>
                   </div>
                 </div>
 
                 {/* Details */}
                 <div className="rounded-xl bg-slate-50 border border-slate-100 divide-y divide-slate-100 mb-5 overflow-hidden">
-                  <Row icon={MapPin} label="Terminal" value={PICKUP_LOCATION_LABELS[pickupLocation]} />
-                  <Row icon={Calendar} label="Recogida" value={fmtDate(pickupDate)} />
-                  <Row icon={Calendar} label="Devolución" value={fmtDate(returnDate)} />
+                  <Row
+                    icon={MapPin}
+                    label="Terminal"
+                    value={PICKUP_LOCATION_LABELS[pickupLocation]}
+                  />
+                  <Row
+                    icon={Calendar}
+                    label="Recogida"
+                    value={fmtDate(pickupDate)}
+                  />
+                  <Row
+                    icon={Calendar}
+                    label="Devolución"
+                    value={fmtDate(returnDate)}
+                  />
                 </div>
 
                 {/* Price breakdown */}
                 <div className="space-y-2 mb-5">
                   <PriceRow
                     label={`Alquiler${totalDays ? ` (${totalDays}d × ${vehicle.pricePerDay}€)` : ""}`}
-                    value={totalPriceEUR ? `${totalPriceEUR}€` : `${vehicle.pricePerDay}€/día`}
+                    value={
+                      totalPriceEUR
+                        ? `${totalPriceEUR}€`
+                        : `${vehicle.pricePerDay}€/día`
+                    }
                   />
                   <PriceRow label="Seguro Todo Riesgo" value="Incluido" green />
                   <PriceRow label="Tag Jawaz" value="Incluido" green />
@@ -263,7 +341,7 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
 
                 <button
                   type="button"
-                  onClick={goNext}
+                  onClick={handleStep1Next}
                   className="w-full mt-5 min-h-[50px] bg-brand-primary text-white font-bold text-sm rounded-full
                              flex items-center justify-center gap-2
                              hover:bg-brand-primary-hover active:scale-[0.98]
@@ -278,7 +356,9 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
             {/* ─── Step 2: Contact ──────────────────────── */}
             {step === 2 && (
               <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-brand-dark mb-1">Datos de contacto</h2>
+                <h2 className="text-lg font-bold text-brand-dark mb-1">
+                  Datos de contacto
+                </h2>
                 <p className="text-sm text-brand-muted mb-5">
                   Te enviaremos la confirmación por WhatsApp y email.
                 </p>
@@ -328,7 +408,11 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                       <>
                         <motion.div
                           animate={{ rotate: 360 }}
-                          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                          transition={{
+                            repeat: Infinity,
+                            duration: 1,
+                            ease: "linear",
+                          }}
                           className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
                         />
                         Iniciando reserva…
@@ -347,9 +431,12 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
             {/* ─── Step 3: Payment (Stripe) ─────────────── */}
             {step === 3 && (
               <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-brand-dark mb-1">Pago seguro</h2>
+                <h2 className="text-lg font-bold text-brand-dark mb-1">
+                  Pago seguro
+                </h2>
                 <p className="text-sm text-brand-muted mb-5">
-                  Solo {DEPOSIT_AMOUNT_EUR}€ de señal. Resto al recoger el coche.
+                  Solo {DEPOSIT_AMOUNT_EUR}€ de señal. Resto al recoger el
+                  coche.
                 </p>
 
                 {clientSecret ? (
@@ -365,7 +452,11 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                   <div className="flex items-center justify-center py-12">
                     <motion.div
                       animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1,
+                        ease: "linear",
+                      }}
                       className="w-6 h-6 border-2 border-brand-primary/30 border-t-brand-primary rounded-full"
                     />
                   </div>
@@ -394,7 +485,9 @@ function Row({
     <div className="flex items-center gap-3 px-4 py-2.5 text-sm">
       <Icon className="w-3.5 h-3.5 text-brand-muted shrink-0" />
       <span className="text-brand-muted">{label}</span>
-      <span className="ml-auto font-semibold text-brand-dark text-right">{value}</span>
+      <span className="ml-auto font-semibold text-brand-dark text-right">
+        {value}
+      </span>
     </div>
   );
 }
@@ -411,7 +504,9 @@ function PriceRow({
   return (
     <div className="flex justify-between text-sm">
       <span className="text-brand-muted">{label}</span>
-      <span className={`font-semibold ${green ? "text-emerald-600" : "text-brand-dark"}`}>
+      <span
+        className={`font-semibold ${green ? "text-emerald-600" : "text-brand-dark"}`}
+      >
         {value}
       </span>
     </div>
@@ -453,7 +548,9 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-brand-dark mb-1.5">{label}</label>
+      <label className="block text-xs font-semibold text-brand-dark mb-1.5">
+        {label}
+      </label>
       <input
         type={type}
         value={value}

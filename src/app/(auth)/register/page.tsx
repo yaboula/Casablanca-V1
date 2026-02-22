@@ -4,7 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { User, Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
+import {
+  User,
+  Mail,
+  Lock,
+  ArrowRight,
+  Loader2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { apiFetch, NexusApiError } from "@/lib/api";
 import type { NexusUser } from "@/hooks/useUser";
@@ -42,15 +50,18 @@ export default function RegisterPage() {
       const phoneDigits = form.phone.replace(/\D/g, "");
       const phoneValue = phoneDigits.length >= 7 ? form.phone : undefined;
 
-      const res = await apiFetch<{ accessToken: string; user: NexusUser }>("/auth/register", {
-        method: "POST",
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-          fullName: form.name,
-          ...(phoneValue ? { phone: phoneValue } : {}),
-        }),
-      });
+      const res = await apiFetch<{ accessToken: string; user: NexusUser }>(
+        "/auth/register",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: form.email,
+            password: form.password,
+            fullName: form.name,
+            ...(phoneValue ? { phone: phoneValue } : {}),
+          }),
+        },
+      );
 
       // Store JWT in HttpOnly cookie via Next.js API route
       await fetch("/api/auth/session", {
@@ -59,8 +70,12 @@ export default function RegisterPage() {
         body: JSON.stringify(res),
       });
 
+      // Notify all mounted components (Navbar, etc.) to re-read the cookie
+      window.dispatchEvent(new Event("nexus-auth-change"));
+
       toast.success(tAuth.toastAccountCreated);
       router.push("/");
+      router.refresh(); // re-render Server Components with the new session
     } catch (err) {
       if (err instanceof NexusApiError) {
         if (err.statusCode === 409) {
@@ -90,14 +105,18 @@ export default function RegisterPage() {
       label: tAuth.fullName,
       type: "text",
       placeholder: tAuth.fullNamePlaceholder,
-      icon: <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />,
+      icon: (
+        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
+      ),
     },
     {
       id: "email",
       label: tAuth.email,
       type: "email",
       placeholder: tAuth.emailPlaceholder,
-      icon: <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />,
+      icon: (
+        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
+      ),
     },
 
     {
@@ -105,7 +124,9 @@ export default function RegisterPage() {
       label: tAuth.password,
       type: "password",
       placeholder: tAuth.passwordPlaceholder,
-      icon: <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />,
+      icon: (
+        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
+      ),
     },
   ];
 
@@ -113,10 +134,15 @@ export default function RegisterPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-brand-dark">{tAuth.registerTitle}</h1>
+        <h1 className="text-3xl font-bold text-brand-dark">
+          {tAuth.registerTitle}
+        </h1>
         <p className="text-brand-muted text-sm">
           {tAuth.registerSubtitle}{" "}
-          <Link href="/login" className="text-brand-primary font-medium hover:underline">
+          <Link
+            href="/login"
+            className="text-brand-primary font-medium hover:underline"
+          >
             {tAuth.loginLink}
           </Link>
         </p>
@@ -125,26 +151,39 @@ export default function RegisterPage() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Name + Email */}
-        {fields.filter((f) => f.id !== "password").map((field) => (
-          <div key={field.id} className="space-y-1.5">
-            <label htmlFor={field.id} className="text-sm font-medium text-brand-dark">
-              {field.label}
-            </label>
-            <div className="relative">
-              {field.icon}
-              <input
-                id={field.id}
-                name={field.id}
-                type={field.type}
-                required
-                placeholder={field.placeholder}
-                value={form[field.id]}
-                onChange={handleChange}
-                onBlur={field.id === "email" ? () => {
-                  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
-                  setEmailError(form.email && !valid ? tAuth.emailInvalid : "");
-                } : undefined}
-                className={`w-full pl-10 pr-4 py-3 rounded-brand-card border bg-white
+        {fields
+          .filter((f) => f.id !== "password")
+          .map((field) => (
+            <div key={field.id} className="space-y-1.5">
+              <label
+                htmlFor={field.id}
+                className="text-sm font-medium text-brand-dark"
+              >
+                {field.label}
+              </label>
+              <div className="relative">
+                {field.icon}
+                <input
+                  id={field.id}
+                  name={field.id}
+                  type={field.type}
+                  required
+                  placeholder={field.placeholder}
+                  value={form[field.id]}
+                  onChange={handleChange}
+                  onBlur={
+                    field.id === "email"
+                      ? () => {
+                          const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                            form.email,
+                          );
+                          setEmailError(
+                            form.email && !valid ? tAuth.emailInvalid : "",
+                          );
+                        }
+                      : undefined
+                  }
+                  className={`w-full pl-10 pr-4 py-3 rounded-brand-card border bg-white
                            text-brand-dark placeholder:text-brand-muted/60
                            focus:outline-none focus:ring-2 transition-all text-sm
                            ${
@@ -152,13 +191,13 @@ export default function RegisterPage() {
                                ? "border-red-400 focus:ring-red-200 focus:border-red-400"
                                : "border-gray-200 focus:ring-brand-primary/30 focus:border-brand-primary"
                            }`}
-              />
+                />
+              </div>
+              {field.id === "email" && emailError && (
+                <p className="text-xs text-red-500 mt-0.5">{emailError}</p>
+              )}
             </div>
-            {field.id === "email" && emailError && (
-              <p className="text-xs text-red-500 mt-0.5">{emailError}</p>
-            )}
-          </div>
-        ))}
+          ))}
 
         {/* Phone with country code selector */}
         <PhoneInput
@@ -170,7 +209,12 @@ export default function RegisterPage() {
 
         {/* Password */}
         <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-brand-dark">{tAuth.password}</label>
+          <label
+            htmlFor="password"
+            className="text-sm font-medium text-brand-dark"
+          >
+            {tAuth.password}
+          </label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
             <input
@@ -192,44 +236,69 @@ export default function RegisterPage() {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark transition-colors"
               aria-label={showPw ? tAuth.hidePassword : tAuth.showPassword}
             >
-              {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPw ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
             </button>
           </div>
           {/* Password strength bar */}
-          {form.password.length > 0 && (() => {
-            const len = form.password.length;
-            const strength = len >= 12 ? 3 : len >= 8 ? 2 : 1;
-            const colors = ["", "bg-red-400", "bg-amber-400", "bg-emerald-500"];
-            const labels = ["", tAuth.passwordWeak, tAuth.passwordMedium, tAuth.passwordStrong];
-            return (
-              <div className="space-y-1 pt-1">
-                <div className="flex gap-1">
-                  {[1, 2, 3].map((s) => (
-                    <div
-                      key={s}
-                      className={`h-1 flex-1 rounded-full transition-colors ${
-                        s <= strength ? colors[strength] : "bg-slate-200"
-                      }`}
-                    />
-                  ))}
+          {form.password.length > 0 &&
+            (() => {
+              const len = form.password.length;
+              const strength = len >= 12 ? 3 : len >= 8 ? 2 : 1;
+              const colors = [
+                "",
+                "bg-red-400",
+                "bg-amber-400",
+                "bg-emerald-500",
+              ];
+              const labels = [
+                "",
+                tAuth.passwordWeak,
+                tAuth.passwordMedium,
+                tAuth.passwordStrong,
+              ];
+              return (
+                <div className="space-y-1 pt-1">
+                  <div className="flex gap-1">
+                    {[1, 2, 3].map((s) => (
+                      <div
+                        key={s}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          s <= strength ? colors[strength] : "bg-slate-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p
+                    className={`text-[11px] font-semibold ${
+                      strength === 1
+                        ? "text-red-500"
+                        : strength === 2
+                          ? "text-amber-500"
+                          : "text-emerald-600"
+                    }`}
+                  >
+                    {labels[strength]}
+                  </p>
                 </div>
-                <p className={`text-[11px] font-semibold ${
-                  strength === 1 ? "text-red-500" : strength === 2 ? "text-amber-500" : "text-emerald-600"
-                }`}>
-                  {labels[strength]}
-                </p>
-              </div>
-            );
-          })()}
+              );
+            })()}
         </div>
 
         {/* Terms note */}
         <p className="text-xs text-brand-muted leading-relaxed pt-1">
           {tAuth.termsNote}{" "}
-          <span className="text-brand-primary cursor-pointer hover:underline">{tAuth.termsLink}</span>{" "}
+          <span className="text-brand-primary cursor-pointer hover:underline">
+            {tAuth.termsLink}
+          </span>{" "}
           {tAuth.and}{" "}
-          <span className="text-brand-primary cursor-pointer hover:underline">{tAuth.privacyLink}</span>.
-          {" "}{tAuth.whatsappNote}
+          <span className="text-brand-primary cursor-pointer hover:underline">
+            {tAuth.privacyLink}
+          </span>
+          . {tAuth.whatsappNote}
         </p>
 
         {/* Submit */}

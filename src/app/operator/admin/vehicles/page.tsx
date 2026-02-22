@@ -13,6 +13,7 @@ export interface AdminVehicle {
   category: "SEDAN" | "SUV" | "LUXURY" | "COMPACT";
   pricePerDayEurCents: number;
   imageUrl: string;
+  imageUrls: string[];
   transmission: "AUTOMATIC" | "MANUAL";
   seats: number;
   luggageCount: number;

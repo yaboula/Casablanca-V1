@@ -20,7 +20,11 @@ export function useUser(): NexusUser | null {
   const [user, setUser] = useState<NexusUser | null>(null);
 
   useEffect(() => {
-    setUser(readUserCookie());
+    const sync = () => setUser(readUserCookie());
+    sync();
+    // Re-sync whenever login/logout fires the custom event
+    window.addEventListener("nexus-auth-change", sync);
+    return () => window.removeEventListener("nexus-auth-change", sync);
   }, []);
 
   return user;

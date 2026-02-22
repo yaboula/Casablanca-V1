@@ -44,7 +44,8 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/check-in") ||
     pathname.startsWith("/waiting-room") ||
     pathname.startsWith("/smart-ticket") ||
-    pathname.startsWith("/booking/confirmed");
+    pathname.startsWith("/booking/confirmed") ||
+    pathname.startsWith("/book");
 
   if (isCustomerRoute && !role) {
     const loginUrl = req.nextUrl.clone();
@@ -74,6 +75,7 @@ export const config = {
     "/waiting-room/:path*",
     "/smart-ticket/:path*",
     "/booking/confirmed/:path*",
+    "/book/:path*",
     "/operator/:path*",
   ],
 };

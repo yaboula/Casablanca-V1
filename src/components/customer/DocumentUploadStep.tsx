@@ -2,14 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Camera,
-  Check,
-  ImageIcon,
-  RefreshCw,
-  Sun,
-  Upload,
-} from "lucide-react";
+import { Camera, Check, ImageIcon, RefreshCw, Sun, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
@@ -27,27 +20,35 @@ interface Props {
 // ── Constants ─────────────────────────────────────────────────
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/heic", "application/pdf"];
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/heic",
+  "application/pdf",
+];
 
 // ── S3 XHR upload with progress ───────────────────────────────
 
 function uploadToS3WithProgress(
   url: string,
   file: File,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);
     xhr.setRequestHeader("Content-Type", file.type);
     xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      if (e.lengthComputable)
+        onProgress(Math.round((e.loaded / e.total) * 100));
     });
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
       else reject(new Error(`S3 upload failed: ${xhr.status}`));
     });
-    xhr.addEventListener("error", () => reject(new Error("Network error during S3 upload")));
+    xhr.addEventListener("error", () =>
+      reject(new Error("Network error during S3 upload")),
+    );
     xhr.send(file);
   });
 }
@@ -78,7 +79,11 @@ function validateFile(file: File): string | null {
 
 // ── Component ─────────────────────────────────────────────────
 
-export default function DocumentUploadStep({ type, reservationId, onComplete }: Props) {
+export default function DocumentUploadStep({
+  type,
+  reservationId,
+  onComplete,
+}: Props) {
   const [mode, setMode] = useState<Mode>("camera");
   const [state, setState] = useState<UploadState>("IDLE");
   const [preview, setPreview] = useState<string | null>(null);
@@ -158,7 +163,7 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
         stopCamera();
       },
       "image/jpeg",
-      0.85
+      0.85,
     );
   }
 
@@ -224,6 +229,23 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
 
   async function doUpload(file: File, resId: string) {
     try {
+      // DEV BYPASS: skip S3 entirely — insert directly in Postgres
+      if (process.env.NEXT_PUBLIC_BYPASS_PAYMENT === "true") {
+        const bypassRes = await fetch("/api/dev/doc-bypass", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reservationId: resId, type }),
+        });
+        if (!bypassRes.ok) {
+          const err = await bypassRes.json().catch(() => ({}));
+          throw new Error(err.detail ?? err.error ?? "Doc bypass failed");
+        }
+        setState("UPLOADED");
+        localStorage.removeItem(`nexus-pending-${type}`);
+        setTimeout(() => onComplete(), 800);
+        return;
+      }
+
       // Step 1: Get presigned URL
       const presign = await apiFetch<{ uploadUrl: string; fileKey: string }>(
         "/documents/presign",
@@ -231,7 +253,7 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
           method: "POST",
           auth: true,
           body: JSON.stringify({ reservationId: resId, type }),
-        }
+        },
       );
 
       // Step 2: PUT directly to S3 with progress tracking
@@ -241,7 +263,11 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
       await apiFetch("/documents/confirm", {
         method: "POST",
         auth: true,
-        body: JSON.stringify({ reservationId: resId, type, fileKey: presign.fileKey }),
+        body: JSON.stringify({
+          reservationId: resId,
+          type,
+          fileKey: presign.fileKey,
+        }),
       });
 
       setState("UPLOADED");
@@ -250,7 +276,8 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
       setTimeout(() => onComplete(), 800);
     } catch (err) {
       setState("ERROR");
-      const message = err instanceof Error ? err.message : "Error al subir el documento.";
+      const message =
+        err instanceof Error ? err.message : "Error al subir el documento.";
       toast.error(message);
     }
   }
@@ -310,7 +337,11 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
                 <motion.div
                   className="w-[80%] h-[60%] relative"
                   animate={{ opacity: [0.7, 1, 0.7] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                 >
                   {/* Corner indicators */}
                   <span className="absolute top-0 left-0 w-6 h-6 border-t-3 border-l-3 border-brand-primary rounded-tl-lg" />
@@ -370,7 +401,9 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
               <p className="text-sm font-semibold text-brand-muted">
                 Toca para subir tu {label.toLowerCase()}
               </p>
-              <p className="text-xs text-brand-muted/60">JPG, PNG, HEIC, PDF · máx 5 MB</p>
+              <p className="text-xs text-brand-muted/60">
+                JPG, PNG, HEIC, PDF · máx 5 MB
+              </p>
             </button>
 
             <input
@@ -405,7 +438,11 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
           >
             <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview} alt={`Preview ${label}`} className="w-full h-full object-cover" />
+              <img
+                src={preview}
+                alt={`Preview ${label}`}
+                className="w-full h-full object-cover"
+              />
             </div>
 
             <div className="flex gap-3 w-full">
@@ -482,8 +519,12 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
             >
               <Check className="w-8 h-8 text-brand-success" />
             </motion.div>
-            <p className="text-base font-bold text-brand-dark">Documento recibido</p>
-            <p className="text-sm text-brand-muted">{label} subido correctamente</p>
+            <p className="text-base font-bold text-brand-dark">
+              Documento recibido
+            </p>
+            <p className="text-sm text-brand-muted">
+              {label} subido correctamente
+            </p>
           </motion.div>
         )}
 
@@ -499,9 +540,12 @@ export default function DocumentUploadStep({ type, reservationId, onComplete }: 
             <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
               <RefreshCw className="w-8 h-8 text-red-500" />
             </div>
-            <p className="text-base font-bold text-brand-dark">Error al subir</p>
+            <p className="text-base font-bold text-brand-dark">
+              Error al subir
+            </p>
             <p className="text-sm text-brand-muted text-center">
-              No se pudo subir el documento. Comprueba tu conexión e inténtalo de nuevo.
+              No se pudo subir el documento. Comprueba tu conexión e inténtalo
+              de nuevo.
             </p>
             <button
               type="button"

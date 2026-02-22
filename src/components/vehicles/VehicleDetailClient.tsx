@@ -55,18 +55,22 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
     setVehicle,
   } = useBookingStore();
 
-  // Gallery
-  const allImages = vehicle.imageUrls ?? [vehicle.imageUrl];
+  // Gallery — filter empty strings to avoid next/image crash
+  const allImages = (vehicle.imageUrls?.length
+    ? vehicle.imageUrls
+    : [vehicle.imageUrl]
+  ).filter(Boolean) as string[];
+  const safeImages = allImages.length > 0 ? allImages : ["/images/vehicles/placeholder.svg"];
   const [activeImg, setActiveImg] = useState(0);
   const [dragDir, setDragDir] = useState(0);
 
   function nextImg() {
     setDragDir(1);
-    setActiveImg((i) => (i + 1) % allImages.length);
+    setActiveImg((i) => (i + 1) % safeImages.length);
   }
   function prevImg() {
     setDragDir(-1);
-    setActiveImg((i) => (i - 1 + allImages.length) % allImages.length);
+    setActiveImg((i) => (i - 1 + safeImages.length) % safeImages.length);
   }
 
   const totalPrice = totalDays ? totalDays * vehicle.pricePerDay : null;
@@ -135,7 +139,7 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
                   className="absolute inset-0 cursor-grab active:cursor-grabbing"
                 >
                   <Image
-                    src={allImages[activeImg]}
+                    src={safeImages[activeImg]}
                     alt={`${vehicle.brand} ${vehicle.model} - foto ${activeImg + 1}`}
                     fill
                     priority={activeImg === 0}
@@ -149,7 +153,7 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
               </AnimatePresence>
 
               {/* Nav arrows — only shown when multiple images */}
-              {allImages.length > 1 && (
+              {safeImages.length > 1 && (
                 <>
                   <button
                     type="button"
@@ -171,7 +175,7 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
                   </button>
                   {/* Dots */}
                   <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5 z-10">
-                    {allImages.map((_, i) => (
+                    {safeImages.map((_, i) => (
                       <button
                         key={i}
                         type="button"
@@ -187,9 +191,9 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
             </motion.div>
 
             {/* Thumbnails */}
-            {allImages.length > 1 && (
+            {safeImages.length > 1 && (
               <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-                {allImages.map((url, i) => (
+                {safeImages.map((url, i) => (
                   <button
                     key={i}
                     type="button"

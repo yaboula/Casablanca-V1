@@ -14,8 +14,8 @@ export const revalidate = 21_600; // 6 hours
 export async function GET() {
   try {
     const res = await fetch(
-      "https://api.frankfurter.app/latest?from=EUR&to=MAD",
-      { next: { revalidate: 21_600 } }
+      "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=MAD",
+      { next: { revalidate: 21_600 } },
     );
 
     if (!res.ok) {
@@ -36,20 +36,24 @@ export async function GET() {
       { rate, source: "live", base: "EUR", quote: "MAD" },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=3600",
+          "Cache-Control":
+            "public, s-maxage=21600, stale-while-revalidate=3600",
         },
-      }
+      },
     );
   } catch (err) {
     // Graceful fallback — never block the UI for a FX rate
-    console.warn("[exchange-rate] Failed to fetch live rate, using fallback:", err);
+    console.warn(
+      "[exchange-rate] Failed to fetch live rate, using fallback:",
+      err,
+    );
     return NextResponse.json(
       { rate: EUR_TO_MAD_RATE, source: "fallback", base: "EUR", quote: "MAD" },
       {
         headers: {
           "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60",
         },
-      }
+      },
     );
   }
 }

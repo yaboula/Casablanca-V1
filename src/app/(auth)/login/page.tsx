@@ -4,11 +4,18 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  ArrowRight,
+  Loader2,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+} from "lucide-react";
 import { apiFetch, NexusApiError } from "@/lib/api";
 import type { NexusUser } from "@/hooks/useUser";
 import { useTranslations } from "@/lib/i18n";
-
 
 function LoginForm() {
   const router = useRouter();
@@ -29,10 +36,13 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await apiFetch<{ accessToken: string; user: NexusUser }>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await apiFetch<{ accessToken: string; user: NexusUser }>(
+        "/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        },
+      );
 
       // Store JWT in HttpOnly cookie via Next.js API route
       await fetch("/api/auth/session", {
@@ -41,8 +51,12 @@ function LoginForm() {
         body: JSON.stringify(res),
       });
 
+      // Notify all mounted components (Navbar, etc.) to re-read the cookie
+      window.dispatchEvent(new Event("nexus-auth-change"));
+
       toast.success(tAuth.toastWelcomeBack);
       router.push(redirect);
+      router.refresh(); // re-render Server Components with the new session
     } catch (err) {
       if (err instanceof NexusApiError) {
         if (err.statusCode === 401) {
@@ -64,10 +78,15 @@ function LoginForm() {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-brand-dark">{tAuth.loginTitle}</h1>
+        <h1 className="text-3xl font-bold text-brand-dark">
+          {tAuth.loginTitle}
+        </h1>
         <p className="text-brand-muted text-sm">
           {tAuth.loginSubtitle}{" "}
-          <Link href="/register" className="text-brand-primary font-medium hover:underline">
+          <Link
+            href="/register"
+            className="text-brand-primary font-medium hover:underline"
+          >
             {tAuth.registerFreeLink}
           </Link>
         </p>
@@ -77,7 +96,7 @@ function LoginForm() {
       {sessionExpired && (
         <div className="flex items-start gap-3 rounded-brand-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-          <span>  {tAuth.sessionExpired}</span>
+          <span> {tAuth.sessionExpired}</span>
         </div>
       )}
 
@@ -85,7 +104,10 @@ function LoginForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email */}
         <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-brand-dark">
+          <label
+            htmlFor="email"
+            className="text-sm font-medium text-brand-dark"
+          >
             {tAuth.email}
           </label>
           <div className="relative">
@@ -108,10 +130,16 @@ function LoginForm() {
         {/* Password */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-sm font-medium text-brand-dark">
+            <label
+              htmlFor="password"
+              className="text-sm font-medium text-brand-dark"
+            >
               {tAuth.password}
             </label>
-            <Link href="/forgot-password" className="text-xs text-brand-primary hover:underline">
+            <Link
+              href="/forgot-password"
+              className="text-xs text-brand-primary hover:underline"
+            >
               {tAuth.forgotPassword}
             </Link>
           </div>
@@ -135,7 +163,11 @@ function LoginForm() {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark transition-colors"
               aria-label={showPw ? tAuth.hidePassword : tAuth.showPassword}
             >
-              {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPw ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>

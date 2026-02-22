@@ -1,7 +1,26 @@
 "use client";
 
-import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
-import { ArrowRight, Car, Clock, LayoutDashboard, MapPin, Plane, QrCode, Shield, Smartphone, Star, User, Wifi, Zap } from "lucide-react";
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useSpring,
+} from "framer-motion";
+import {
+  ArrowRight,
+  Car,
+  Clock,
+  LayoutDashboard,
+  MapPin,
+  Plane,
+  QrCode,
+  Shield,
+  Smartphone,
+  Star,
+  User,
+  Wifi,
+  Zap,
+} from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import BookingPanel from "@/components/shared/BookingPanel";
@@ -9,8 +28,6 @@ import CountUp from "@/components/ui/CountUp";
 import Marquee from "@/components/ui/Marquee";
 import { useBookingStore, useCurrencyStore } from "@/stores/useBookingStore";
 import { useLocaleStore, useTranslations } from "@/lib/i18n";
-
-
 
 // ── Animation variants ────────────────────────────────────────
 
@@ -57,20 +74,29 @@ import type { NexusUser } from "@/hooks/useUser";
 
 export default function HomeClient() {
   const [session, setSession] = useState<NexusUser | null>(null);
-  const [categoryPrices, setCategoryPrices] = useState<Record<string, number>>({});
+  const [categoryPrices, setCategoryPrices] = useState<Record<string, number>>(
+    {},
+  );
   const { currency, madRate } = useCurrencyStore();
   const tHome = useTranslations("home");
   const locale = useLocaleStore((s) => s.locale);
 
   // Font size for hero headline — FR has longer words so we cap it smaller at every breakpoint
-  const heroFontClass = locale === "fr"
-    ? "text-[3.5rem] md:text-[4.5rem] lg:text-[3.2rem] xl:text-[5rem] 2xl:text-[5rem]"
-    : "text-[3.5rem] md:text-[4.5rem] lg:text-[4rem] xl:text-[6rem] 2xl:text-[6.5rem]";
+  const heroFontClass =
+    locale === "fr"
+      ? "text-[3.5rem] md:text-[4.5rem] lg:text-[3.2rem] xl:text-[5rem] 2xl:text-[5rem]"
+      : "text-[3.5rem] md:text-[4.5rem] lg:text-[4rem] xl:text-[6rem] 2xl:text-[6.5rem]";
 
   // ── Translated static arrays (locale-reactive) ───────────────
   const MARQUEE_ITEMS = [
-    tHome.marquee0, tHome.marquee1, tHome.marquee2, tHome.marquee3,
-    tHome.marquee4, tHome.marquee5, tHome.marquee6, tHome.marquee7,
+    tHome.marquee0,
+    tHome.marquee1,
+    tHome.marquee2,
+    tHome.marquee3,
+    tHome.marquee4,
+    tHome.marquee5,
+    tHome.marquee6,
+    tHome.marquee7,
   ];
   const STEPS = [
     { n: "1", label: tHome.trustStep1 },
@@ -78,66 +104,117 @@ export default function HomeClient() {
     { n: "3", label: tHome.trustStep3, accent: true },
   ];
   const METRICS: Array<{ to: number; suffix: string; label: string }> = [
-    { to: 3,   suffix: " min", label: tHome.metricPickup },
-    { to: 10,  suffix: "€",    label: tHome.metricDeposit },
-    { to: 24,  suffix: "/7",   label: tHome.metricSupport },
-    { to: 100, suffix: "%",    label: tHome.metricDigital },
+    { to: 3, suffix: " min", label: tHome.metricPickup },
+    { to: 10, suffix: "€", label: tHome.metricDeposit },
+    { to: 24, suffix: "/7", label: tHome.metricSupport },
+    { to: 100, suffix: "%", label: tHome.metricDigital },
   ];
   const PROCESS_STEPS = [
     { Icon: Smartphone, title: tHome.step1Title, description: tHome.step1Desc },
-    { Icon: QrCode,     title: tHome.step2Title, description: tHome.step2Desc },
-    { Icon: Car,        title: tHome.step3Title, description: tHome.step3Desc },
+    { Icon: QrCode, title: tHome.step2Title, description: tHome.step2Desc },
+    { Icon: Car, title: tHome.step3Title, description: tHome.step3Desc },
   ];
   const fi = tHome.fleetIncludes;
   const FLEET_CATEGORIES = [
     {
-      name: tHome.fleetCat0, apiCategory: "COMPACT", example: "VW Polo o similar",
+      name: tHome.fleetCat0,
+      apiCategory: "COMPACT",
+      example: "VW Polo o similar",
       fromPrice: 45,
-      imageUrl: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?q=80&w=800&auto=format&fit=crop",
-      badge: tHome.fleetCat0Badge, includes: [fi.basicInsurance, fi.unlimitedKm],
+      imageUrl:
+        "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?q=80&w=800&auto=format&fit=crop",
+      badge: tHome.fleetCat0Badge,
+      includes: [fi.basicInsurance, fi.unlimitedKm],
     },
     {
-      name: tHome.fleetCat1, apiCategory: "SUV", example: "Hyundai Tucson o similar",
+      name: tHome.fleetCat1,
+      apiCategory: "SUV",
+      example: "Hyundai Tucson o similar",
       fromPrice: 85,
-      imageUrl: "https://images.unsplash.com/photo-1519245659620-e859806a8d3b?q=80&w=800&auto=format&fit=crop",
-      badge: tHome.fleetCat1Badge, includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g],
+      imageUrl:
+        "https://images.unsplash.com/photo-1519245659620-e859806a8d3b?q=80&w=800&auto=format&fit=crop",
+      badge: tHome.fleetCat1Badge,
+      includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g],
     },
     {
-      name: tHome.fleetCat2, apiCategory: "LUXURY", example: "Audi A4 o similar",
+      name: tHome.fleetCat2,
+      apiCategory: "LUXURY",
+      example: "Audi A4 o similar",
       fromPrice: 120,
-      imageUrl: "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?q=80&w=800&auto=format&fit=crop",
-      badge: null, includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g],
+      imageUrl:
+        "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?q=80&w=800&auto=format&fit=crop",
+      badge: null,
+      includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g],
     },
     {
-      name: tHome.fleetCat3, apiCategory: "SEDAN", example: "Mercedes Clase C o similar",
+      name: tHome.fleetCat3,
+      apiCategory: "SEDAN",
+      example: "Mercedes Clase C o similar",
       fromPrice: 140,
-      imageUrl: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=800&auto=format&fit=crop",
-      badge: null, includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g, fi.premiumCleaning],
+      imageUrl:
+        "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=800&auto=format&fit=crop",
+      badge: null,
+      includes: [fi.fullInsurance, fi.jawazTag, fi.sim5g, fi.premiumCleaning],
     },
   ];
   const TESTIMONIALS = [
-    { name: "Carlos M.",  route: "CMN → Casablanca", rating: 5, text: tHome.testimonial0 },
-    { name: "Sophie L.",  route: "CMN → Marrakech",  rating: 5, text: tHome.testimonial1 },
-    { name: "Ahmed B.",   route: "CMN → Rabat",      rating: 5, text: tHome.testimonial2 },
-    { name: "Laura G.",   route: "CMN → Essaouira",  rating: 5, text: tHome.testimonial3 },
-    { name: "Youssef K.", route: "CMN → Fez",        rating: 5, text: tHome.testimonial4 },
-    { name: "María T.",   route: "CMN → Agadir",     rating: 5, text: tHome.testimonial5 },
+    {
+      name: "Carlos M.",
+      route: "CMN → Casablanca",
+      rating: 5,
+      text: tHome.testimonial0,
+    },
+    {
+      name: "Sophie L.",
+      route: "CMN → Marrakech",
+      rating: 5,
+      text: tHome.testimonial1,
+    },
+    {
+      name: "Ahmed B.",
+      route: "CMN → Rabat",
+      rating: 5,
+      text: tHome.testimonial2,
+    },
+    {
+      name: "Laura G.",
+      route: "CMN → Essaouira",
+      rating: 5,
+      text: tHome.testimonial3,
+    },
+    {
+      name: "Youssef K.",
+      route: "CMN → Fez",
+      rating: 5,
+      text: tHome.testimonial4,
+    },
+    {
+      name: "María T.",
+      route: "CMN → Agadir",
+      rating: 5,
+      text: tHome.testimonial5,
+    },
   ];
 
-  useEffect(() => { setSession(readUserCookie()); }, []);
+  useEffect(() => {
+    setSession(readUserCookie());
+  }, []);
 
   // Fetch real min prices per category from API
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3900/api/v1";
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
     fetch(`${base}/vehicles`)
       .then((r) => r.json())
       .then((json) => {
-        const vehicles: Array<{ category: string; pricePerDayEurCents: number }> =
-          json.data ?? [];
+        const vehicles: Array<{
+          category: string;
+          pricePerDayEurCents: number;
+        }> = json.data ?? [];
         const prices: Record<string, number> = {};
         for (const v of vehicles) {
           const eur = v.pricePerDayEurCents / 100;
-          if (!prices[v.category] || eur < prices[v.category]) prices[v.category] = eur;
+          if (!prices[v.category] || eur < prices[v.category])
+            prices[v.category] = eur;
         }
         setCategoryPrices(prices);
       })
@@ -167,7 +244,7 @@ export default function HomeClient() {
       mouseX.set(e.clientX - rect.left);
       mouseY.set(e.clientY - rect.top);
     },
-    [mouseX, mouseY]
+    [mouseX, mouseY],
   );
 
   const scrollToFleet = () =>
@@ -176,7 +253,6 @@ export default function HomeClient() {
   return (
     <>
       <div className="relative w-full bg-brand-bg">
-
         {/* ==========================================================
             1. HERO
         ========================================================== */}
@@ -196,7 +272,8 @@ export default function HomeClient() {
             aria-hidden
             className="absolute inset-0 pointer-events-none z-[1]"
             style={{
-              backgroundImage: "radial-gradient(circle, #94A3B8 1px, transparent 1px)",
+              backgroundImage:
+                "radial-gradient(circle, #94A3B8 1px, transparent 1px)",
               backgroundSize: "28px 28px",
               opacity: 0.45,
             }}
@@ -207,14 +284,16 @@ export default function HomeClient() {
             aria-hidden
             className="absolute top-0 right-0 w-[700px] h-[700px] pointer-events-none z-[1]"
             style={{
-              background: "radial-gradient(ellipse at top right, rgba(37,99,235,0.24) 0%, transparent 62%)",
+              background:
+                "radial-gradient(ellipse at top right, rgba(37,99,235,0.24) 0%, transparent 62%)",
             }}
           />
           <div
             aria-hidden
             className="absolute bottom-0 left-0 w-[500px] h-[500px] pointer-events-none z-[1]"
             style={{
-              background: "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.17) 0%, transparent 60%)",
+              background:
+                "radial-gradient(ellipse at bottom left, rgba(16,185,129,0.17) 0%, transparent 60%)",
             }}
           />
 
@@ -223,19 +302,32 @@ export default function HomeClient() {
             className="absolute top-[22%] left-[2%] xl:left-[2.5%] hidden min-[1500px]:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+            transition={{
+              delay: 0.4,
+              duration: 0.7,
+              ease: [0.22, 1, 0.36, 1] as const,
+            }}
           >
             <motion.div
               animate={{ y: [0, -9, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.3,
+              }}
               className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.06)] cursor-default select-none"
             >
               <span className="w-8 h-8 rounded-xl bg-brand-primary flex items-center justify-center text-white text-sm font-black flex-shrink-0">
                 €
               </span>
               <div>
-                <p className="text-brand-dark font-bold text-sm leading-none">{tHome.badge10eur}</p>
-                <p className="text-brand-muted text-[10px] mt-0.5">{tHome.badge10eurSub}</p>
+                <p className="text-brand-dark font-bold text-sm leading-none">
+                  {tHome.badge10eur}
+                </p>
+                <p className="text-brand-muted text-[10px] mt-0.5">
+                  {tHome.badge10eurSub}
+                </p>
               </div>
             </motion.div>
           </motion.div>
@@ -244,21 +336,37 @@ export default function HomeClient() {
             className="absolute top-[18%] right-[2%] xl:right-[2.5%] hidden min-[1500px]:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+            transition={{
+              delay: 0.6,
+              duration: 0.7,
+              ease: [0.22, 1, 0.36, 1] as const,
+            }}
           >
             <motion.div
               animate={{ y: [0, -7, 0] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              transition={{
+                duration: 3.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 1,
+              }}
               className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.06)] cursor-default select-none"
             >
               <div className="flex gap-0.5">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                  <Star
+                    key={i}
+                    className="w-3 h-3 fill-amber-400 text-amber-400"
+                  />
                 ))}
               </div>
               <div>
-                <p className="text-brand-dark font-bold text-sm leading-none">4.9 / 5</p>
-                <p className="text-brand-muted text-[10px] mt-0.5">{tHome.badgeRating}</p>
+                <p className="text-brand-dark font-bold text-sm leading-none">
+                  4.9 / 5
+                </p>
+                <p className="text-brand-muted text-[10px] mt-0.5">
+                  {tHome.badgeRating}
+                </p>
               </div>
             </motion.div>
           </motion.div>
@@ -267,19 +375,32 @@ export default function HomeClient() {
             className="absolute bottom-[28%] left-[2%] xl:left-[2.5%] hidden min-[1500px]:block z-10"
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.8, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+            transition={{
+              delay: 0.8,
+              duration: 0.7,
+              ease: [0.22, 1, 0.36, 1] as const,
+            }}
           >
             <motion.div
               animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+              transition={{
+                duration: 4.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.8,
+              }}
               className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.06)] cursor-default select-none"
             >
               <span className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
                 <Zap className="w-4 h-4 text-white" />
               </span>
               <div>
-                <p className="text-brand-dark font-bold text-sm leading-none">{tHome.badge3min}</p>
-                <p className="text-brand-muted text-[10px] mt-0.5">{tHome.badge3minSub}</p>
+                <p className="text-brand-dark font-bold text-sm leading-none">
+                  {tHome.badge3min}
+                </p>
+                <p className="text-brand-muted text-[10px] mt-0.5">
+                  {tHome.badge3minSub}
+                </p>
               </div>
             </motion.div>
           </motion.div>
@@ -288,34 +409,49 @@ export default function HomeClient() {
             className="absolute bottom-[30%] right-[2%] xl:right-[2.5%] hidden min-[1500px]:block z-10"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1.0, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+            transition={{
+              delay: 1.0,
+              duration: 0.7,
+              ease: [0.22, 1, 0.36, 1] as const,
+            }}
           >
             <motion.div
               animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+              transition={{
+                duration: 3.8,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 1.5,
+              }}
               className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.06)] cursor-default select-none"
             >
               <span className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
                 <Clock className="w-4 h-4 text-brand-dark" />
               </span>
               <div>
-                <p className="text-brand-dark font-bold text-sm leading-none">{tHome.badge24h}</p>
-                <p className="text-brand-muted text-[10px] mt-0.5">{tHome.badge24hSub}</p>
+                <p className="text-brand-dark font-bold text-sm leading-none">
+                  {tHome.badge24h}
+                </p>
+                <p className="text-brand-muted text-[10px] mt-0.5">
+                  {tHome.badge24hSub}
+                </p>
               </div>
             </motion.div>
           </motion.div>
 
           {/* ── Hero center + Booking Panel ───────── */}
           <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 w-full max-w-7xl mx-auto flex-1 min-h-[80vh]">
-
             {/* Center content */}
             <div className="flex flex-col items-center text-center lg:items-start lg:text-left w-full max-w-xl xl:max-w-2xl flex-1">
-
               {/* Live availability pill */}
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
+                transition={{
+                  delay: 0.2,
+                  duration: 0.55,
+                  ease: [0.22, 1, 0.36, 1] as const,
+                }}
                 className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-slate-200 bg-white shadow-sm text-xs text-brand-muted tracking-[0.16em] uppercase font-semibold mb-10"
               >
                 <span className="relative flex h-2 w-2 flex-shrink-0">
@@ -355,11 +491,17 @@ export default function HomeClient() {
                   aria-label={tHome.heroInstant}
                 >
                   {tHome.heroInstant.split("").map((char, i) => (
-                    <span key={i} className="overflow-hidden inline-block" style={{ paddingBottom: "0.05em" }}>
+                    <span
+                      key={i}
+                      className="overflow-hidden inline-block"
+                      style={{ paddingBottom: "0.05em" }}
+                    >
                       <motion.span
                         variants={charItem}
                         className="inline-block font-black tracking-tight leading-[1.05] text-brand-primary"
-                        style={{ display: char === " " ? "inline" : "inline-block" }}
+                        style={{
+                          display: char === " " ? "inline" : "inline-block",
+                        }}
                       >
                         {char === " " ? "\u00A0" : char}
                       </motion.span>
@@ -372,11 +514,18 @@ export default function HomeClient() {
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45, duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
+                transition={{
+                  delay: 0.45,
+                  duration: 0.55,
+                  ease: [0.22, 1, 0.36, 1] as const,
+                }}
                 className="flex items-center gap-2 sm:gap-3 mb-8"
               >
                 {STEPS.map((step, i) => (
-                  <span key={step.n} className="flex items-center gap-2 sm:gap-3">
+                  <span
+                    key={step.n}
+                    className="flex items-center gap-2 sm:gap-3"
+                  >
                     <span className="flex items-center gap-2">
                       <span
                         className={`w-6 h-6 rounded-full text-[11px] font-black flex items-center justify-center flex-shrink-0 ${
@@ -406,7 +555,11 @@ export default function HomeClient() {
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }}
+                transition={{
+                  delay: 0.5,
+                  duration: 0.5,
+                  ease: [0.22, 1, 0.36, 1] as const,
+                }}
                 className="text-base md:text-lg text-brand-muted max-w-sm mb-10 leading-relaxed"
               >
                 {tHome.heroSubtitle}
@@ -421,12 +574,15 @@ export default function HomeClient() {
               >
                 <div className="flex gap-0.5">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <Star
+                      key={i}
+                      className="w-3.5 h-3.5 fill-amber-400 text-amber-400"
+                    />
                   ))}
                 </div>
                 <span className="text-xs text-brand-muted font-medium">
-                  <span className="text-brand-dark font-bold">4.9</span>
-                  {" "}· Beta · CMN
+                  <span className="text-brand-dark font-bold">4.9</span> · Beta
+                  · CMN
                 </span>
               </motion.div>
 
@@ -435,7 +591,11 @@ export default function HomeClient() {
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.75, duration: 0.45, ease: [0.22, 1, 0.36, 1] as const }}
+                  transition={{
+                    delay: 0.75,
+                    duration: 0.45,
+                    ease: [0.22, 1, 0.36, 1] as const,
+                  }}
                   className="mt-6 w-full max-w-sm"
                 >
                   <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
@@ -444,24 +604,37 @@ export default function HomeClient() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-brand-dark truncate">
-                        {tHome.sessionGreeting.replace("{name}", session.fullName?.split(" ")[0] ?? session.email.split("@")[0])}
+                        {tHome.sessionGreeting.replace(
+                          "{name}",
+                          session.fullName?.split(" ")[0] ??
+                            session.email.split("@")[0],
+                        )}
                       </p>
                       <p className="text-sm text-slate-500">
-                        {session.role === "OPERATOR" || session.role === "ADMIN" ? tHome.sessionOperatorDesc : tHome.sessionCustomerDesc}
+                        {session.role === "OPERATOR" || session.role === "ADMIN"
+                          ? tHome.sessionOperatorDesc
+                          : tHome.sessionCustomerDesc}
                       </p>
                     </div>
                     <Link
-                      href={session.role === "OPERATOR" || session.role === "ADMIN" ? "/operator/dashboard" : "/dashboard"}
+                      href={
+                        session.role === "OPERATOR" || session.role === "ADMIN"
+                          ? "/operator/dashboard"
+                          : "/dashboard"
+                      }
                       className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-bold
                                  px-3.5 py-2 rounded-xl hover:bg-blue-700 active:scale-[0.98]
                                  transition-all shrink-0 min-h-[36px]"
                     >
-                      {session.role === "OPERATOR" || session.role === "ADMIN" ? (
+                      {session.role === "OPERATOR" ||
+                      session.role === "ADMIN" ? (
                         <LayoutDashboard className="w-3.5 h-3.5" />
                       ) : (
                         <QrCode className="w-3.5 h-3.5" />
                       )}
-                      {session.role === "OPERATOR" || session.role === "ADMIN" ? tHome.sessionCTAOperator : tHome.sessionCTACustomer}
+                      {session.role === "OPERATOR" || session.role === "ADMIN"
+                        ? tHome.sessionCTAOperator
+                        : tHome.sessionCTACustomer}
                     </Link>
                   </div>
                 </motion.div>
@@ -567,7 +740,9 @@ export default function HomeClient() {
                   <span className="text-[11px] font-bold text-brand-muted tracking-[0.2em] uppercase mb-2">
                     {tHome.stepLabel} {i + 1}
                   </span>
-                  <h3 className="text-xl font-bold text-brand-dark mb-3">{step.title}</h3>
+                  <h3 className="text-xl font-bold text-brand-dark mb-3">
+                    {step.title}
+                  </h3>
                   <p className="text-brand-muted text-sm leading-relaxed max-w-[220px]">
                     {step.description}
                   </p>
@@ -618,7 +793,10 @@ export default function HomeClient() {
                   href={catalogUrl}
                   variants={fadeUp}
                   whileHover={{ y: -6 }}
-                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] as const }}
+                  transition={{
+                    duration: 0.25,
+                    ease: [0.22, 1, 0.36, 1] as const,
+                  }}
                   className="group relative rounded-2xl overflow-hidden border border-slate-100 bg-white hover:shadow-xl hover:shadow-blue-100/50 hover:border-blue-200 transition-all duration-300 cursor-pointer block"
                 >
                   {cat.badge && (
@@ -639,7 +817,9 @@ export default function HomeClient() {
                     <p className="text-[10px] text-brand-muted font-medium uppercase tracking-widest mb-1">
                       {cat.example}
                     </p>
-                    <h3 className="text-xl font-bold text-brand-dark mb-2">{cat.name}</h3>
+                    <h3 className="text-xl font-bold text-brand-dark mb-2">
+                      {cat.name}
+                    </h3>
 
                     {/* Includes strip */}
                     <div className="flex flex-wrap gap-1.5 mb-4">
@@ -655,13 +835,22 @@ export default function HomeClient() {
 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                       <div>
-                        <span className="text-xs text-brand-muted">{tHome.fleetFrom} </span>
+                        <span className="text-xs text-brand-muted">
+                          {tHome.fleetFrom}{" "}
+                        </span>
                         <span className="text-2xl font-black text-brand-primary">
                           {currency === "MAD"
-                            ? Math.round((categoryPrices[cat.apiCategory] ?? cat.fromPrice) * madRate)
-                            : (categoryPrices[cat.apiCategory] ?? cat.fromPrice)}
+                            ? Math.round(
+                                (categoryPrices[cat.apiCategory] ??
+                                  cat.fromPrice) * madRate,
+                              )
+                            : (categoryPrices[cat.apiCategory] ??
+                              cat.fromPrice)}
                         </span>
-                        <span className="text-xs text-brand-muted">{currency === "MAD" ? " DH" : "€"}{tHome.fleetPerDay}</span>
+                        <span className="text-xs text-brand-muted">
+                          {currency === "MAD" ? " DH" : "€"}
+                          {tHome.fleetPerDay}
+                        </span>
                       </div>
                       <span className="w-9 h-9 rounded-full bg-brand-primary/10 flex items-center justify-center group-hover:bg-brand-primary group-hover:text-white text-brand-primary transition-colors duration-200">
                         <ArrowRight className="w-4 h-4" />
@@ -680,10 +869,22 @@ export default function HomeClient() {
               viewport={{ once: true }}
               className="mt-8 flex flex-wrap items-center justify-center gap-6 text-brand-muted text-xs font-medium"
             >
-              <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-brand-primary" /> {tHome.incInsurance}</span>
-              <span className="flex items-center gap-1.5"><Wifi className="w-3.5 h-3.5 text-brand-primary" /> {tHome.incSIM}</span>
-              <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-brand-primary" /> {tHome.incJawaz}</span>
-              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-brand-primary" /> {tHome.incPickup}</span>
+              <span className="flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-brand-primary" />{" "}
+                {tHome.incInsurance}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Wifi className="w-3.5 h-3.5 text-brand-primary" />{" "}
+                {tHome.incSIM}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-brand-primary" />{" "}
+                {tHome.incJawaz}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-brand-primary" />{" "}
+                {tHome.incPickup}
+              </span>
             </motion.div>
           </div>
         </section>
@@ -696,7 +897,6 @@ export default function HomeClient() {
           title={tHome.testimonialsTitle}
           testimonials={TESTIMONIALS}
         />
-
       </div>
     </>
   );
@@ -706,10 +906,19 @@ export default function HomeClient() {
 interface TestimonialsCarouselProps {
   eyebrow: string;
   title: string;
-  testimonials: Array<{ name: string; route: string; rating: number; text: string }>;
+  testimonials: Array<{
+    name: string;
+    route: string;
+    rating: number;
+    text: string;
+  }>;
 }
 
-function TestimonialsCarousel({ eyebrow, title, testimonials }: TestimonialsCarouselProps) {
+function TestimonialsCarousel({
+  eyebrow,
+  title,
+  testimonials,
+}: TestimonialsCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -733,7 +942,9 @@ function TestimonialsCarousel({ eyebrow, title, testimonials }: TestimonialsCaro
 
     // Pause on hover
     const pause = () => cancelAnimationFrame(raf);
-    const resume = () => { raf = requestAnimationFrame(tick); };
+    const resume = () => {
+      raf = requestAnimationFrame(tick);
+    };
     el.addEventListener("mouseenter", pause);
     el.addEventListener("mouseleave", resume);
 
@@ -779,7 +990,10 @@ function TestimonialsCarousel({ eyebrow, title, testimonials }: TestimonialsCaro
           >
             <div className="flex gap-0.5 mb-4">
               {[...Array(t.rating)].map((_, i) => (
-                <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <Star
+                  key={i}
+                  className="w-3.5 h-3.5 fill-amber-400 text-amber-400"
+                />
               ))}
             </div>
             <p className="text-brand-dark text-[15px] leading-relaxed font-medium flex-1 mb-5">

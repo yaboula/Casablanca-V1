@@ -4,22 +4,36 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  User, LogOut, LayoutDashboard, Menu, X,
-  Car, Sparkles, BookOpen, Globe, ChevronDown,
-  Moon, Sun,
+  User,
+  LogOut,
+  LayoutDashboard,
+  Menu,
+  X,
+  Car,
+  Sparkles,
+  BookOpen,
+  Globe,
+  ChevronDown,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCurrencyStore } from "@/stores/useBookingStore";
-import { useLocaleStore, useTranslations, LOCALE_LABELS, type Locale } from "@/lib/i18n";
+import {
+  useLocaleStore,
+  useTranslations,
+  LOCALE_LABELS,
+  type Locale,
+} from "@/lib/i18n";
 import { useUser } from "@/hooks/useUser";
 import { useDarkModeStore } from "@/hooks/useDarkMode";
 
 // ── Nav Config (hrefs & icons only — labels come from translations) ──────────
 
 const NAV_HREFS = [
-  { href: "/#fleet",   icon: Car,      key: "fleet"      as const },
-  { href: "/#why",    icon: Sparkles,  key: "howItWorks" as const },
-  { href: "/catalog", icon: BookOpen,  key: "bookNow"    as const },
+  { href: "/#fleet", icon: Car, key: "fleet" as const },
+  { href: "/#why", icon: Sparkles, key: "howItWorks" as const },
+  { href: "/catalog", icon: BookOpen, key: "bookNow" as const },
 ] as const;
 
 // ── Header ───────────────────────────────────────────────────
@@ -35,7 +49,10 @@ export default function Header() {
 
   const tNav = useTranslations("nav");
   const tHeader = useTranslations("header");
-  const NAV_ITEMS = NAV_HREFS.map((item) => ({ ...item, label: tNav[item.key] }));
+  const NAV_ITEMS = NAV_HREFS.map((item) => ({
+    ...item,
+    label: tNav[item.key],
+  }));
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -52,14 +69,17 @@ export default function Header() {
     }
     if (menuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [menuOpen]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
   // Close mobile menu on route change
@@ -73,10 +93,11 @@ export default function Header() {
     } catch {
       // proceed regardless
     }
+    window.dispatchEvent(new Event("nexus-auth-change"));
     setMenuOpen(false);
     setMobileOpen(false);
     router.push("/");
-    router.refresh(); // clear Next.js cache so useUser re-reads empty cookie
+    router.refresh();
   }
 
   const isActive = (href: string) =>
@@ -173,9 +194,13 @@ export default function Header() {
                       className="absolute right-0 top-14 w-56 bg-white rounded-2xl shadow-xl shadow-black/5 border border-slate-100 py-1.5 z-50 overflow-hidden"
                     >
                       <div className="px-4 py-3 border-b border-slate-100">
-                        <p className="text-sm font-semibold text-brand-dark truncate">{user.fullName ?? user.email}</p>
+                        <p className="text-sm font-semibold text-brand-dark truncate">
+                          {user.fullName ?? user.email}
+                        </p>
                         <p className="text-xs text-brand-muted mt-0.5">
-                          {user.role === "OPERATOR" || user.role === "ADMIN" ? tHeader.operatorRole : tHeader.customerRole}
+                          {user.role === "OPERATOR" || user.role === "ADMIN"
+                            ? tHeader.operatorRole
+                            : tHeader.customerRole}
                         </p>
                       </div>
 
@@ -185,7 +210,10 @@ export default function Header() {
                           onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-dark hover:bg-slate-50 transition-colors"
                         >
-                          <LayoutDashboard size={16} className="text-brand-muted" />
+                          <LayoutDashboard
+                            size={16}
+                            className="text-brand-muted"
+                          />
                           {tHeader.operatorPanel}
                         </Link>
                       )}
@@ -197,7 +225,10 @@ export default function Header() {
                             onClick={() => setMenuOpen(false)}
                             className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-dark hover:bg-slate-50 transition-colors"
                           >
-                            <LayoutDashboard size={16} className="text-brand-muted" />
+                            <LayoutDashboard
+                              size={16}
+                              className="text-brand-muted"
+                            />
                             {tHeader.myBookings}
                           </Link>
                           <Link
@@ -235,11 +266,23 @@ export default function Header() {
             >
               <AnimatePresence mode="wait" initial={false}>
                 {mobileOpen ? (
-                  <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                  <motion.div
+                    key="x"
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
                     <X size={20} className="text-brand-dark" />
                   </motion.div>
                 ) : (
-                  <motion.div key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                  <motion.div
+                    key="menu"
+                    initial={{ rotate: 90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: -90, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
                     <Menu size={20} className="text-brand-dark" />
                   </motion.div>
                 )}
@@ -338,8 +381,14 @@ export default function Header() {
                       <User size={16} className="text-white" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-brand-dark truncate">{user.fullName ?? user.email}</p>
-                      <p className="text-xs text-brand-muted">{user.role === "OPERATOR" || user.role === "ADMIN" ? tHeader.operatorRole : tHeader.customerRole}</p>
+                      <p className="text-sm font-semibold text-brand-dark truncate">
+                        {user.fullName ?? user.email}
+                      </p>
+                      <p className="text-xs text-brand-muted">
+                        {user.role === "OPERATOR" || user.role === "ADMIN"
+                          ? tHeader.operatorRole
+                          : tHeader.customerRole}
+                      </p>
                     </div>
                   </div>
 
@@ -361,7 +410,10 @@ export default function Header() {
                         onClick={() => setMobileOpen(false)}
                         className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-base font-medium text-brand-dark hover:bg-slate-50"
                       >
-                        <LayoutDashboard size={20} className="text-brand-muted" />
+                        <LayoutDashboard
+                          size={20}
+                          className="text-brand-muted"
+                        />
                         {tHeader.myBookings}
                       </Link>
                       <Link
@@ -406,7 +458,8 @@ function LocaleToggle() {
 
   useEffect(() => {
     function close(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     }
     if (open) {
       document.addEventListener("mousedown", close);
@@ -429,7 +482,10 @@ function LocaleToggle() {
       >
         <Globe size={14} />
         <span className="uppercase">{locale}</span>
-        <ChevronDown size={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          size={12}
+          className={`transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       <AnimatePresence>
@@ -444,7 +500,10 @@ function LocaleToggle() {
             {LOCALES.map((l) => (
               <button
                 key={l}
-                onClick={() => { setLocale(l); setOpen(false); }}
+                onClick={() => {
+                  setLocale(l);
+                  setOpen(false);
+                }}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors ${
                   locale === l
                     ? "text-brand-primary bg-blue-50"

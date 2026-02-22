@@ -18,6 +18,7 @@ export default function OperatorProfilePage() {
     } catch {
       // proceed regardless
     }
+    window.dispatchEvent(new Event("nexus-auth-change"));
     toast.success("Sesión cerrada");
     setLoggingOut(false);
     router.push("/");
@@ -33,10 +34,14 @@ export default function OperatorProfilePage() {
           <User className="w-7 h-7 text-blue-600" />
         </div>
         <div>
-          <p className="text-base font-bold text-slate-900">{user?.fullName ?? "Operador"}</p>
+          <p className="text-base font-bold text-slate-900">
+            {user?.fullName ?? "Operador"}
+          </p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <Shield className="w-3 h-3 text-emerald-500" />
-            <span className="text-xs font-semibold text-emerald-500">{user?.role ?? "Operador"}</span>
+            <span className="text-xs font-semibold text-emerald-500">
+              {user?.role ?? "Operador"}
+            </span>
           </div>
         </div>
       </div>
@@ -44,7 +49,11 @@ export default function OperatorProfilePage() {
       {/* Info rows */}
       <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-200 mb-5 shadow-sm">
         <ProfileRow icon={Mail} label="Email" value={user?.email ?? "—"} />
-        <ProfileRow icon={Shield} label="Rol" value={user?.role ?? "Operador"} />
+        <ProfileRow
+          icon={Shield}
+          label="Rol"
+          value={user?.role ?? "Operador"}
+        />
       </div>
 
       {/* Stats */}
@@ -96,7 +105,9 @@ function ProfileRow({
     <div className="flex items-center gap-3 px-4 py-3">
       <Icon className="w-4 h-4 text-slate-400 shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+          {label}
+        </p>
         <p className="text-sm font-medium text-slate-900 truncate">{value}</p>
       </div>
     </div>

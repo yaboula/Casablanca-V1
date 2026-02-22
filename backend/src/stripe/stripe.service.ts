@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import Stripe from 'stripe';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import Stripe from "stripe";
 
 @Injectable()
 export class StripeService {
@@ -8,11 +8,11 @@ export class StripeService {
   private readonly webhookSecret: string;
 
   constructor(private readonly config: ConfigService) {
-    this.stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
-      apiVersion: '2023-10-16',
+    this.stripe = new Stripe(this.config.get<string>("STRIPE_SECRET_KEY")!, {
+      apiVersion: "2023-10-16",
       typescript: true,
     });
-    this.webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET')!;
+    this.webhookSecret = this.config.get<string>("STRIPE_WEBHOOK_SECRET")!;
   }
 
   /**
@@ -31,8 +31,8 @@ export class StripeService {
     return this.stripe.paymentIntents.create(
       {
         amount: amountCents,
-        currency: 'eur',
-        capture_method: 'manual',
+        currency: "eur",
+        capture_method: "manual",
         metadata: {
           reservationId,
           ...metadata,
@@ -50,7 +50,9 @@ export class StripeService {
    * Captures an already-authorized Payment Intent.
    * Called exclusively from the BullMQ capture-stripe processor.
    */
-  async capturePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
+  async capturePaymentIntent(
+    paymentIntentId: string,
+  ): Promise<Stripe.PaymentIntent> {
     return this.stripe.paymentIntents.capture(paymentIntentId, undefined, {
       idempotencyKey: `pi-capture-${paymentIntentId}`,
     });
@@ -60,8 +62,23 @@ export class StripeService {
    * Cancels an authorized (but not captured) Payment Intent.
    * Used when reservation expires or is cancelled before capture.
    */
-  async cancelPaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
+  async cancelPaymentIntent(
+    paymentIntentId: string,
+  ): Promise<Stripe.PaymentIntent> {
     return this.stripe.paymentIntents.cancel(paymentIntentId);
+  }
+
+  /**
+   * Refunds a captured Payment Intent.
+   * Used when an Operator cancels a CONFIRMED reservation.
+   *
+   * @param paymentIntentId The ID of the Payment Intent to refund
+   */
+  async refundPaymentIntent(paymentIntentId: string): Promise<Stripe.Refund> {
+    return this.stripe.refunds.create(
+      { payment_intent: paymentIntentId },
+      { idempotencyKey: `pi-refund-${paymentIntentId}` },
+    );
   }
 
   /**

@@ -4,12 +4,13 @@
  */
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { SERVER_API_BASE } from "@/lib/config";
 
-const API = process.env.API_URL ?? "http://localhost:3900/api/v1";
+const API = SERVER_API_BASE;
 
 async function handler(
   req: NextRequest,
-  context: { params: Promise<{ path: string[] }> }
+  context: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   const cookieStore = await cookies();
   const token = cookieStore.get("nexus_token")?.value;
@@ -34,8 +35,8 @@ async function handler(
   const bodyInit: BodyInit | null = ["GET", "HEAD"].includes(req.method)
     ? null
     : isFormData
-    ? await req.blob()
-    : await req.text();
+      ? await req.blob()
+      : await req.text();
 
   const upstreamRes = await fetch(upstreamUrl, {
     method: req.method,
@@ -55,7 +56,7 @@ async function handler(
   return NextResponse.json(data, { status: upstreamRes.status });
 }
 
-export const GET    = handler;
-export const POST   = handler;
-export const PATCH  = handler;
+export const GET = handler;
+export const POST = handler;
+export const PATCH = handler;
 export const DELETE = handler;

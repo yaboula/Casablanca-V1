@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { differenceInCalendarDays, startOfDay } from "date-fns";
 import type { PickupLocation } from "@/types";
 
 // ── State shape ──────────────────────────────────────────────
@@ -37,15 +36,15 @@ interface BookingActions {
 function calcDerivedFields(
   pickupEpoch: number | null,
   returnEpoch: number | null,
-  pricePerDay: number | null
+  pricePerDay: number | null,
 ): { totalDays: number | null; totalPriceEUR: number | null } {
   if (!pickupEpoch || !returnEpoch || !pricePerDay) {
     return { totalDays: null, totalPriceEUR: null };
   }
-  const days = differenceInCalendarDays(
-    startOfDay(new Date(returnEpoch)),
-    startOfDay(new Date(pickupEpoch))
-  );
+  const diffMs = returnEpoch - pickupEpoch;
+  // Match backend 24h tranches
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
   if (days <= 0) return { totalDays: null, totalPriceEUR: null };
   return { totalDays: days, totalPriceEUR: days * pricePerDay };
 }
@@ -72,7 +71,11 @@ export const useBookingStore = create<BookingState & BookingActions>()(
 
       setDates: (pickupEpoch, returnEpoch) => {
         const { selectedVehiclePricePerDay } = get();
-        const derived = calcDerivedFields(pickupEpoch, returnEpoch, selectedVehiclePricePerDay);
+        const derived = calcDerivedFields(
+          pickupEpoch,
+          returnEpoch,
+          selectedVehiclePricePerDay,
+        );
         set({ pickupDate: pickupEpoch, returnDate: returnEpoch, ...derived });
       },
 
@@ -111,8 +114,8 @@ export const useBookingStore = create<BookingState & BookingActions>()(
         selectedVehiclePricePerDay: state.selectedVehiclePricePerDay,
         reservationId: state.reservationId,
       }),
-    }
-  )
+    },
+  ),
 );
 
 // ── Currency store (separate, persisted in localStorage) ─────
@@ -136,6 +139,6 @@ export const useCurrencyStore = create<CurrencyState>()(
       setCurrency: (c) => set({ currency: c }),
       setMadRate: (rate) => set({ madRate: rate }),
     }),
-    { name: "nexus-currency", storage: createJSONStorage(() => localStorage) }
-  )
+    { name: "nexus-currency", storage: createJSONStorage(() => localStorage) },
+  ),
 );

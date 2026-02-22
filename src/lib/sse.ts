@@ -27,7 +27,10 @@ export interface SSEHandlers {
  *
  * Returns a cleanup function — call it in the `useEffect` return to close properly.
  */
-export function createSSEConnection(handlers: SSEHandlers): () => void {
+export function createSSEConnection(
+  handlers: SSEHandlers,
+  reservationId?: string,
+): () => void {
   let retries = 0;
   let es: EventSource | null = null;
   let closed = false;
@@ -38,8 +41,11 @@ export function createSSEConnection(handlers: SSEHandlers): () => void {
 
     handlers.onStatusChange?.("connecting");
 
-    // The URL contains NO token — cookie is sent automatically by the browser
-    es = new EventSource("/api/sse/proxy");
+    // Pass reservationId so the proxy can use the correct NestJS endpoint
+    const url = reservationId
+      ? `/api/sse/proxy?reservationId=${encodeURIComponent(reservationId)}`
+      : "/api/sse/proxy";
+    es = new EventSource(url);
 
     es.onopen = () => {
       retries = 0; // reset backoff counter on successful connect

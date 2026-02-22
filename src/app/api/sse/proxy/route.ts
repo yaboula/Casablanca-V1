@@ -14,34 +14,30 @@ export const dynamic = "force-dynamic";
  *                  ↓  text/event-stream pipe
  * Browser  (standard EventSource, no token in URL)
  */
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const cookieStore = await cookies();
   const token = cookieStore.get("nexus_token")?.value;
   if (!token) return new Response("Unauthorized", { status: 401 });
 
-  // Decode JWT payload to get userId — no signature verification needed (only for routing)
-  let userId: string;
-  try {
-    const payloadB64 = token.split(".")[1];
-    const payload = JSON.parse(atob(payloadB64));
-    userId = payload.sub as string;
-    if (!userId) throw new Error("No sub in JWT");
-  } catch {
-    return new Response("Invalid token", { status: 400 });
-  }
+  const reservationId = req.nextUrl.searchParams.get("reservationId");
+  if (!reservationId)
+    return new Response("reservationId query param required", { status: 400 });
 
-  const API_URL = process.env.API_URL ?? "http://localhost:3001/api/v1";
+  const API_URL = process.env.API_URL ?? "http://localhost:3900/api/v1";
 
-  // Open upstream connection — token is ONLY in the Authorization header, never in the URL
-  const upstreamRes = await fetch(`${API_URL}/sse/user/${userId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "text/event-stream",
-      "Cache-Control": "no-cache",
+  // Open upstream connection to /sse/reservation/:id — token is ONLY in the Authorization header
+  const upstreamRes = await fetch(
+    `${API_URL}/sse/reservation/${reservationId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+      // @ts-expect-error — Node 18+ fetch supports duplex streaming
+      duplex: "half",
     },
-    // @ts-expect-error — Node 18+ fetch supports duplex streaming
-    duplex: "half",
-  });
+  );
 
   if (!upstreamRes.ok || !upstreamRes.body) {
     return new Response("SSE upstream error", { status: 502 });

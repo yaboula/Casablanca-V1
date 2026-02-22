@@ -20,6 +20,7 @@ import {
   isBefore,
   startOfDay,
 } from "date-fns";
+import { formatInTimeZone, toDate } from "date-fns-tz";
 import { es as esLocale, fr as frLocale } from "date-fns/locale";
 import { enUS as enUSLocale } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,26 +34,33 @@ import { PICKUP_LOCATION_LABELS } from "@/lib/constants";
 import type { PickupLocation } from "@/types";
 import { useTranslations, useLocaleStore } from "@/lib/i18n";
 
-//  helpers 
+//  helpers
 
 const LOCATIONS: PickupLocation[] = ["CMN_T1", "CMN_T2"];
-const HOURS = Array.from(
-  { length: 48 },
-  (_, i) => {
-    const h = Math.floor(i / 2);
-    const m = i % 2 === 0 ? "00" : "30";
-    return `${String(h).padStart(2, "0")}:${m}`;
-  }
-);
+const HOURS = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const m = i % 2 === 0 ? "00" : "30";
+  return `${String(h).padStart(2, "0")}:${m}`;
+});
+
+// By default we force all bookings into Casablanca local time
+const CASABLANCA_TZ = "Africa/Casablanca";
 
 function buildDate(date: Date, timeStr: string) {
-  const [h, m] = timeStr.split(":").map(Number);
-  const d = new Date(date);
-  d.setHours(h, m, 0, 0);
-  return d;
+  // `date` is a local Date object from the DatePicker (e.g. 2024-05-15 00:00:00 local time).
+  // We want to treat that *face value* as literal Casablanca time.
+  const yyyy = date.getFullYear();
+  const MM = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+
+  // Format: "YYYY-MM-DDTHH:mm:00" (no timezone suffix)
+  const dateTimeStr = `${yyyy}-${MM}-${dd}T${timeStr}:00`;
+
+  // Parse that exact literal wall-time in Casablanca, returning the absolute Date
+  return toDate(dateTimeStr, { timeZone: CASABLANCA_TZ });
 }
 
-//  DateTimeField 
+//  DateTimeField
 
 interface DateTimeFieldProps {
   label: string;
@@ -76,7 +84,8 @@ function DateTimeField({
   const [open, setOpen] = useState(false);
   const tBooking = useTranslations("booking");
   const { locale } = useLocaleStore();
-  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
+  const dateFnsLocale =
+    locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
 
   const displayText = date
     ? format(date, "dd MMM yyyy", { locale: dateFnsLocale })
@@ -120,7 +129,12 @@ function DateTimeField({
           <Calendar
             mode="single"
             selected={date}
-            onSelect={(d) => { if (d) { onDateChange(d); setOpen(false); } }}
+            onSelect={(d) => {
+              if (d) {
+                onDateChange(d);
+                setOpen(false);
+              }
+            }}
             defaultMonth={defaultMonth ?? date ?? new Date()}
             disabled={(d) =>
               isBefore(startOfDay(d), startOfDay(disabledBefore ?? new Date()))
@@ -152,10 +166,11 @@ function TerminalSelect({
   const [open, setOpen] = useState(false);
   const tBooking = useTranslations("booking");
 
-  const TERMINAL_META: Record<PickupLocation, { title: string; sub: string }> = {
-    CMN_T1: { title: tBooking.terminal1, sub: tBooking.t1Sub },
-    CMN_T2: { title: tBooking.terminal2, sub: tBooking.t2Sub },
-  };
+  const TERMINAL_META: Record<PickupLocation, { title: string; sub: string }> =
+    {
+      CMN_T1: { title: tBooking.terminal1, sub: tBooking.t1Sub },
+      CMN_T2: { title: tBooking.terminal2, sub: tBooking.t2Sub },
+    };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -169,8 +184,12 @@ function TerminalSelect({
                      transition-all duration-150"
         >
           <MapPin className="w-4 h-4 text-brand-primary shrink-0" />
-          <span className="flex-1 truncate">CMN · {TERMINAL_META[value].title}</span>
-          <ChevronDown className={`w-4 h-4 text-brand-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          <span className="flex-1 truncate">
+            CMN · {TERMINAL_META[value].title}
+          </span>
+          <ChevronDown
+            className={`w-4 h-4 text-brand-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -187,7 +206,10 @@ function TerminalSelect({
             <button
               key={loc}
               type="button"
-              onClick={() => { onChange(loc); setOpen(false); }}
+              onClick={() => {
+                onChange(loc);
+                setOpen(false);
+              }}
               className={`w-full flex items-start gap-3 px-3 py-3 rounded-xl transition-all text-left
                 ${
                   active
@@ -195,18 +217,27 @@ function TerminalSelect({
                     : "hover:bg-slate-50 border border-transparent"
                 }`}
             >
-              <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0
-                ${ active ? "bg-brand-primary" : "bg-slate-100" }`}
+              <div
+                className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+                ${active ? "bg-brand-primary" : "bg-slate-100"}`}
               >
-                <MapPin className={`w-4 h-4 ${ active ? "text-white" : "text-brand-muted" }`} />
+                <MapPin
+                  className={`w-4 h-4 ${active ? "text-white" : "text-brand-muted"}`}
+                />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-bold ${ active ? "text-brand-primary" : "text-brand-dark" }`}>
+                <p
+                  className={`text-sm font-bold ${active ? "text-brand-primary" : "text-brand-dark"}`}
+                >
                   {TERMINAL_META[loc].title}
                 </p>
-                <p className="text-xs text-brand-muted mt-0.5 leading-tight">{TERMINAL_META[loc].sub}</p>
+                <p className="text-xs text-brand-muted mt-0.5 leading-tight">
+                  {TERMINAL_META[loc].sub}
+                </p>
               </div>
-              {active && <Check className="w-4 h-4 text-brand-primary mt-1 shrink-0" />}
+              {active && (
+                <Check className="w-4 h-4 text-brand-primary mt-1 shrink-0" />
+              )}
             </button>
           );
         })}
@@ -240,7 +271,9 @@ function TimeSelect({
         >
           <Clock className="w-3.5 h-3.5 text-brand-muted shrink-0" />
           <span className="flex-1 text-left">{value}</span>
-          <ChevronDown className={`w-3 h-3 text-brand-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          <ChevronDown
+            className={`w-3 h-3 text-brand-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -248,15 +281,20 @@ function TimeSelect({
         align="start"
         sideOffset={8}
       >
-        <div className="max-h-56 overflow-y-auto flex flex-col gap-0.5
-                        [scrollbar-width:thin] [scrollbar-color:#e2e8f0_transparent]">
+        <div
+          className="max-h-56 overflow-y-auto flex flex-col gap-0.5
+                        [scrollbar-width:thin] [scrollbar-color:#e2e8f0_transparent]"
+        >
           {HOURS.map((h) => {
             const active = h === value;
             return (
               <button
                 key={h}
                 type="button"
-                onClick={() => { onChange(h); setOpen(false); }}
+                onClick={() => {
+                  onChange(h);
+                  setOpen(false);
+                }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold transition-all
                   ${
                     active
@@ -275,7 +313,7 @@ function TimeSelect({
   );
 }
 
-//  Step 1: Dates 
+//  Step 1: Dates
 
 function StepDates({ onNext }: { onNext: () => void }) {
   const { pickupLocation, setDates, setLocation } = useBookingStore();
@@ -285,7 +323,9 @@ function StepDates({ onNext }: { onNext: () => void }) {
 
   const [pickupDate, setPickupDate] = useState<Date | undefined>(today);
   const [pickupTime, setPickupTime] = useState("12:00");
-  const [returnDate, setReturnDate] = useState<Date | undefined>(addDays(today, 1));
+  const [returnDate, setReturnDate] = useState<Date | undefined>(
+    addDays(today, 1),
+  );
   const [returnTime, setReturnTime] = useState("12:00");
 
   function handlePickupDateChange(d: Date) {
@@ -302,7 +342,7 @@ function StepDates({ onNext }: { onNext: () => void }) {
     if (!pickupDate || !returnDate) return null;
     const d = differenceInCalendarDays(
       buildDate(returnDate, returnTime),
-      buildDate(pickupDate, pickupTime)
+      buildDate(pickupDate, pickupTime),
     );
     return d > 0 ? d : null;
   }, [pickupDate, pickupTime, returnDate, returnTime]);
@@ -311,14 +351,13 @@ function StepDates({ onNext }: { onNext: () => void }) {
     if (!pickupDate || !returnDate) return;
     setDates(
       buildDate(pickupDate, pickupTime).getTime(),
-      buildDate(returnDate, returnTime).getTime()
+      buildDate(returnDate, returnTime).getTime(),
     );
     onNext();
   }
 
   return (
     <div className="flex flex-col gap-4">
-
       {/* Terminal */}
       <div className="flex flex-col gap-1.5">
         <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
@@ -389,30 +428,45 @@ function StepDates({ onNext }: { onNext: () => void }) {
   );
 }
 
-//  Step 2: Confirm 
+//  Step 2: Confirm
 
 function StepConfirm({ onBack }: { onBack: () => void }) {
-  const { totalDays, pickupLocation, pickupDate, returnDate } = useBookingStore();
+  const { totalDays, pickupLocation, pickupDate, returnDate } =
+    useBookingStore();
   const router = useRouter();
   const tBooking = useTranslations("booking");
   const { locale } = useLocaleStore();
-  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
+  const dateFnsLocale =
+    locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
 
   const fmt = (ts: number | null) =>
-    ts ? format(new Date(ts), "d MMM yyyy · HH:mm", { locale: dateFnsLocale }) : "";
+    ts
+      ? format(new Date(ts), "d MMM yyyy · HH:mm", { locale: dateFnsLocale })
+      : "";
 
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-2xl bg-slate-50 border border-slate-100 divide-y divide-slate-100 overflow-hidden">
         {[
-          { label: tBooking.terminal,  value: PICKUP_LOCATION_LABELS[pickupLocation] },
-          { label: tBooking.pickup,    value: fmt(pickupDate) },
-          { label: tBooking.return,    value: fmt(returnDate) },
-          { label: tBooking.duration,  value: `${totalDays} ${totalDays === 1 ? tBooking.day : tBooking.days}` },
+          {
+            label: tBooking.terminal,
+            value: PICKUP_LOCATION_LABELS[pickupLocation],
+          },
+          { label: tBooking.pickup, value: fmt(pickupDate) },
+          { label: tBooking.return, value: fmt(returnDate) },
+          {
+            label: tBooking.duration,
+            value: `${totalDays} ${totalDays === 1 ? tBooking.day : tBooking.days}`,
+          },
         ].map((r) => (
-          <div key={r.label} className="flex justify-between items-center px-4 py-3 text-sm">
+          <div
+            key={r.label}
+            className="flex justify-between items-center px-4 py-3 text-sm"
+          >
             <span className="text-brand-muted">{r.label}</span>
-            <span className="font-semibold text-brand-dark text-right">{r.value}</span>
+            <span className="font-semibold text-brand-dark text-right">
+              {r.value}
+            </span>
           </div>
         ))}
       </div>
@@ -423,9 +477,7 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
         </div>
         <div>
           <p className="text-sm font-bold text-brand-dark">{tBooking.payNow}</p>
-          <p className="text-xs text-brand-muted mt-0.5">
-            {tBooking.payNote}
-          </p>
+          <p className="text-xs text-brand-muted mt-0.5">{tBooking.payNote}</p>
         </div>
       </div>
 
@@ -451,7 +503,7 @@ function StepConfirm({ onBack }: { onBack: () => void }) {
   );
 }
 
-//  Step dots 
+//  Step dots
 
 function StepDots({ current }: { current: number }) {
   return (
@@ -472,12 +524,20 @@ function StepDots({ current }: { current: number }) {
 }
 
 const stepVariants = {
-  enter:  { opacity: 0, x: 16 },
-  center: { opacity: 1, x: 0,   transition: { duration: 0.2,  ease: "easeOut" as const } },
-  exit:   { opacity: 0, x: -16, transition: { duration: 0.15, ease: "easeIn"  as const } },
+  enter: { opacity: 0, x: 16 },
+  center: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.2, ease: "easeOut" as const },
+  },
+  exit: {
+    opacity: 0,
+    x: -16,
+    transition: { duration: 0.15, ease: "easeIn" as const },
+  },
 };
 
-//  Main export 
+//  Main export
 
 export default function BookingPanel() {
   const [step, setStep] = useState(1);
@@ -504,12 +564,24 @@ export default function BookingPanel() {
 
       <AnimatePresence mode="wait">
         {step === 1 && (
-          <motion.div key="s1" variants={stepVariants} initial="enter" animate="center" exit="exit">
+          <motion.div
+            key="s1"
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+          >
             <StepDates onNext={() => setStep(2)} />
           </motion.div>
         )}
         {step === 2 && (
-          <motion.div key="s2" variants={stepVariants} initial="enter" animate="center" exit="exit">
+          <motion.div
+            key="s2"
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+          >
             <StepConfirm onBack={() => setStep(1)} />
           </motion.div>
         )}

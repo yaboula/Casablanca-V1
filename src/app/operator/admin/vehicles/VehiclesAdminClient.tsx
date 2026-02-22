@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, X, ChevronDown, AlertTriangle, Car } from "lucide-react";
+import { Plus, Pencil, Trash2, X, ChevronDown, AlertTriangle, Car, Images } from "lucide-react";
 import type { AdminVehicle } from "./page";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; dot: string }> = {
@@ -24,8 +24,11 @@ type VehicleForm = {
   brand: string;
   model: string;
   category: string;
-  pricePerDayEurCents: string;
+  /** Price in EUR (user-friendly). Converted to cents on submit. */
+  priceEur: string;
   imageUrl: string;
+  /** Extra gallery images (beyond the main imageUrl). Up to 4. */
+  galleryUrls: string[];
   transmission: string;
   seats: string;
   luggageCount: string;
@@ -33,12 +36,15 @@ type VehicleForm = {
   status: string;
 };
 
+const MAX_GALLERY = 4;
+
 const EMPTY_FORM: VehicleForm = {
   brand: "",
   model: "",
   category: "COMPACT",
-  pricePerDayEurCents: "",
+  priceEur: "",
   imageUrl: "",
+  galleryUrls: [""],
   transmission: "MANUAL",
   seats: "5",
   luggageCount: "1",
@@ -47,12 +53,17 @@ const EMPTY_FORM: VehicleForm = {
 };
 
 function vehicleToForm(v: AdminVehicle): VehicleForm {
+  // Gallery: all imageUrls except the main one (dedup)
+  const extra = (v.imageUrls ?? [])
+    .filter((u) => u && u.trim() !== "" && u !== v.imageUrl)
+    .slice(0, MAX_GALLERY);
   return {
     brand: v.brand,
     model: v.model,
     category: v.category,
-    pricePerDayEurCents: String(v.pricePerDayEurCents),
+    priceEur: (v.pricePerDayEurCents / 100).toString(),
     imageUrl: v.imageUrl,
+    galleryUrls: extra.length > 0 ? extra : [""],
     transmission: v.transmission,
     seats: String(v.seats),
     luggageCount: String(v.luggageCount),
@@ -86,6 +97,7 @@ export default function VehiclesAdminClient({
   const [confirmDelete, setConfirmDelete] = useState<{ vehicle: AdminVehicle; mode: DeleteMode } | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [imgError, setImgError] = useState(false);
+  const [galleryErrors, setGalleryErrors] = useState<boolean[]>([]);
 
   // Filtered list
   const visible = statusFilter === "ALL"
@@ -102,6 +114,7 @@ export default function VehiclesAdminClient({
     setForm(EMPTY_FORM);
     setEditTarget(null);
     setImgError(false);
+    setGalleryErrors([]);
     setPanel("create");
   }
 
@@ -109,6 +122,7 @@ export default function VehiclesAdminClient({
     setForm(vehicleToForm(v));
     setEditTarget(v);
     setImgError(false);
+    setGalleryErrors([]);
     setPanel("edit");
   }
 
@@ -117,28 +131,64 @@ export default function VehiclesAdminClient({
     setEditTarget(null);
   }
 
-  function setField(key: keyof VehicleForm, value: string) {
+  function setField(key: Exclude<keyof VehicleForm, "galleryUrls">, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (key === "imageUrl") setImgError(false);
+  }
+
+  function setGalleryUrl(idx: number, value: string) {
+    setForm((prev) => {
+      const galleryUrls = [...prev.galleryUrls];
+      galleryUrls[idx] = value;
+      return { ...prev, galleryUrls };
+    });
+    setGalleryErrors((prev) => { const next = [...prev]; next[idx] = false; return next; });
+  }
+
+  function addGalleryUrl() {
+    if (form.galleryUrls.length < MAX_GALLERY) {
+      setForm((prev) => ({ ...prev, galleryUrls: [...prev.galleryUrls, ""] }));
+    }
+  }
+
+  function removeGalleryUrl(idx: number) {
+    setForm((prev) => {
+      const galleryUrls = prev.galleryUrls.filter((_, i) => i !== idx);
+      return { ...prev, galleryUrls: galleryUrls.length > 0 ? galleryUrls : [""] };
+    });
+    setGalleryErrors((prev) => prev.filter((_, i) => i !== idx));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
 
-    const price = parseInt(form.pricePerDayEurCents, 10);
-    if (isNaN(price) || price <= 0) {
-      toast.error("El precio en céntimos debe ser un número positivo.");
+    const priceEurNum = parseFloat(form.priceEur);
+    if (isNaN(priceEurNum) || priceEurNum <= 0) {
+      toast.error("El precio debe ser un número positivo en euros (ej: 65).");
       setSaving(false);
       return;
     }
+
+    const mainUrl = form.imageUrl.trim();
+    if (!mainUrl) {
+      toast.error("La imagen principal es obligatoria.");
+      setSaving(false);
+      return;
+    }
+
+    // imageUrls = [main, ...gallery] — deduplicated, no empty strings
+    const allImageUrls = [mainUrl, ...form.galleryUrls.map((u) => u.trim())]
+      .filter(Boolean)
+      .filter((u, i, arr) => arr.indexOf(u) === i);
 
     const payload = {
       brand: form.brand.trim(),
       model: form.model.trim(),
       category: form.category,
-      pricePerDayEurCents: price,
-      imageUrl: form.imageUrl.trim(),
+      pricePerDayEurCents: Math.round(priceEurNum * 100),
+      imageUrl: mainUrl,
+      imageUrls: allImageUrls,
       transmission: form.transmission,
       seats: parseInt(form.seats, 10),
       luggageCount: parseInt(form.luggageCount, 10),
@@ -206,9 +256,10 @@ export default function VehiclesAdminClient({
   }
 
   // EUR price preview
-  const priceEur = (() => {
-    const n = parseInt(form.pricePerDayEurCents, 10);
-    return isNaN(n) || n <= 0 ? null : (n / 100).toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const priceHint = (() => {
+    const n = parseFloat(form.priceEur);
+    if (isNaN(n) || n <= 0) return null;
+    return n.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   })();
 
   return (
@@ -477,7 +528,7 @@ export default function VehiclesAdminClient({
 
             {/* Image preview */}
             {form.imageUrl && !imgError && (
-              <div className="mx-5 mb-4 rounded-2xl overflow-hidden h-36 bg-slate-100 relative">
+              <div className="mx-5 mb-2 rounded-2xl overflow-hidden h-36 bg-slate-100 relative">
                 <Image
                   src={form.imageUrl}
                   alt="Preview"
@@ -488,8 +539,37 @@ export default function VehiclesAdminClient({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                 <span className="absolute bottom-2 left-3 text-white text-xs font-semibold bg-black/30 px-2 py-0.5 rounded-full">
-                  Vista previa
+                  Principal
                 </span>
+                {form.galleryUrls.filter(Boolean).length > 0 && (
+                  <span className="absolute bottom-2 right-3 text-white text-xs font-semibold bg-black/30 px-2 py-0.5 rounded-full">
+                    +{form.galleryUrls.filter(Boolean).length} en galería
+                  </span>
+                )}
+              </div>
+            )}
+            {/* Gallery thumbnail strip */}
+            {form.galleryUrls.some(Boolean) && (
+              <div className="flex gap-2 px-5 mb-4 overflow-x-auto">
+                {form.galleryUrls.filter(Boolean).map((url, idx) => (
+                  <div key={idx} className="w-14 h-10 rounded-xl overflow-hidden bg-slate-100 relative shrink-0 border border-slate-200">
+                    <Image
+                      src={url}
+                      alt={`Galería ${idx + 2}`}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                      onError={() =>
+                        setGalleryErrors((prev) => { const n = [...prev]; n[idx] = true; return n; })
+                      }
+                    />
+                    {galleryErrors[idx] && (
+                      <div className="absolute inset-0 bg-red-50 flex items-center justify-center">
+                        <X className="w-3 h-3 text-red-400" />
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
@@ -542,26 +622,30 @@ export default function VehiclesAdminClient({
               </div>
 
               <FormField
-                label="Precio por día"
+                label="Precio por día (€)"
                 required
-                hint={priceEur ? `= ${priceEur} €/día` : "Introduce precio en céntimos (ej: 6500 = 65 €)"}
-                hintOk={!!priceEur}
+                hint={priceHint ? `= ${priceHint} €/día` : "Introduce el precio en euros (ej: 65 o 65.50)"}
+                hintOk={!!priceHint}
               >
-                <input
-                  required
-                  type="number"
-                  min={100}
-                  value={form.pricePerDayEurCents}
-                  onChange={(e) => setField("pricePerDayEurCents", e.target.value)}
-                  placeholder="6500  (= 65 €)"
-                  className={inputCls}
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">€</span>
+                  <input
+                    required
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    value={form.priceEur}
+                    onChange={(e) => setField("priceEur", e.target.value)}
+                    placeholder="65.00"
+                    className="w-full h-11 pl-7 pr-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
               </FormField>
 
               <FormField
                 label="URL imagen principal"
                 required
-                hint={imgError ? "URL no válida o imagen no accesible" : "Pega una URL y verás la preview arriba"}
+                hint={imgError ? "URL no válida o imagen no accesible" : "Pega una URL de Unsplash u otro host permitido"}
                 hintOk={!imgError && !!form.imageUrl}
               >
                 <input
@@ -569,10 +653,82 @@ export default function VehiclesAdminClient({
                   type="url"
                   value={form.imageUrl}
                   onChange={(e) => setField("imageUrl", e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="https://images.unsplash.com/photo-..."
                   className={inputCls}
                 />
               </FormField>
+
+              {/* ── Gallery images ───────────────────────────────── */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Images className="w-3.5 h-3.5 text-slate-400" />
+                  <label className="text-xs font-semibold text-slate-600">
+                    Imágenes adicionales (galería)
+                  </label>
+                  <span className="text-[10px] text-slate-400 ml-auto">
+                    {form.galleryUrls.filter(Boolean).length}/{MAX_GALLERY}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {form.galleryUrls.map((url, idx) => (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <div className="flex-1">
+                        <input
+                          type="url"
+                          value={url}
+                          onChange={(e) => setGalleryUrl(idx, e.target.value)}
+                          placeholder="https://images.unsplash.com/photo-..."
+                          className={inputCls}
+                        />
+                        {galleryErrors[idx] && (
+                          <p className="text-[11px] mt-0.5 text-red-500">URL no válida o inaccesible</p>
+                        )}
+                      </div>
+                      {/* Thumbnail preview */}
+                      {url.trim() && !galleryErrors[idx] && (
+                        <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 relative shrink-0 border border-slate-200">
+                          <Image
+                            src={url.trim()}
+                            alt={`Galería ${idx + 2}`}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                            onError={() =>
+                              setGalleryErrors((prev) => {
+                                const next = [...prev];
+                                next[idx] = true;
+                                return next;
+                              })
+                            }
+                          />
+                        </div>
+                      )}
+                      {/* Remove button */}
+                      <button
+                        type="button"
+                        onClick={() => removeGalleryUrl(idx)}
+                        className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-500 flex items-center justify-center text-slate-400 transition-colors shrink-0"
+                        title="Eliminar imagen"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {form.galleryUrls.length < MAX_GALLERY && (
+                  <button
+                    type="button"
+                    onClick={addGalleryUrl}
+                    className="mt-2 flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Añadir imagen
+                  </button>
+                )}
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  Estas imágenes aparecerán en la galería del detalle del vehículo.
+                </p>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Plazas" required>

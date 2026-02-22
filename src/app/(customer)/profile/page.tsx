@@ -47,7 +47,7 @@ export default function ProfilePage() {
         phone: (user as { phone?: string })?.phone ?? "",
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
   const handleSave = useCallback(async () => {
@@ -80,6 +80,7 @@ export default function ProfilePage() {
     setLoggingOut(true);
     try {
       await fetch("/api/auth/session", { method: "DELETE" });
+      window.dispatchEvent(new Event("nexus-auth-change"));
       toast.success(tProfile.toastLoggedOut);
       router.push("/login");
     } catch {
@@ -111,8 +112,12 @@ export default function ProfilePage() {
               <User className="w-6 h-6 text-brand-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-brand-dark">{formData.fullName}</h1>
-              <p className="text-sm text-brand-muted">{tProfile.verifiedCustomer}</p>
+              <h1 className="text-xl font-bold text-brand-dark">
+                {formData.fullName}
+              </h1>
+              <p className="text-sm text-brand-muted">
+                {tProfile.verifiedCustomer}
+              </p>
             </div>
           </div>
         </motion.div>
@@ -125,7 +130,9 @@ export default function ProfilePage() {
           className="bg-white border border-slate-200 rounded-2xl p-5 mb-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-brand-dark">{tProfile.contactInfo}</h2>
+            <h2 className="text-sm font-bold text-brand-dark">
+              {tProfile.contactInfo}
+            </h2>
             {!isEditing ? (
               <button
                 type="button"
@@ -160,9 +167,21 @@ export default function ProfilePage() {
           </div>
           {!isEditing ? (
             <div className="space-y-3">
-              <InfoRow icon={User} label={tProfile.fullName} value={formData.fullName} />
-              <InfoRow icon={Mail} label={tProfile.email} value={formData.email} />
-              <InfoRow icon={Phone} label={tProfile.phone} value={formData.phone} />
+              <InfoRow
+                icon={User}
+                label={tProfile.fullName}
+                value={formData.fullName}
+              />
+              <InfoRow
+                icon={Mail}
+                label={tProfile.email}
+                value={formData.email}
+              />
+              <InfoRow
+                icon={Phone}
+                label={tProfile.phone}
+                value={formData.phone}
+              />
             </div>
           ) : (
             <div className="space-y-3">
@@ -205,8 +224,12 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
               <FileText className="w-4 h-4 text-brand-muted shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-brand-dark">{tProfile.passportDoc}</p>
-                <p className="text-[11px] text-brand-muted">{tProfile.docRequired}</p>
+                <p className="text-sm font-semibold text-brand-dark">
+                  {tProfile.passportDoc}
+                </p>
+                <p className="text-[11px] text-brand-muted">
+                  {tProfile.docRequired}
+                </p>
               </div>
               <Link
                 href="/dashboard"
@@ -218,8 +241,12 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
               <CreditCard className="w-4 h-4 text-brand-muted shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-brand-dark">{tProfile.licenseDoc}</p>
-                <p className="text-[11px] text-brand-muted">{tProfile.docRequired}</p>
+                <p className="text-sm font-semibold text-brand-dark">
+                  {tProfile.licenseDoc}
+                </p>
+                <p className="text-[11px] text-brand-muted">
+                  {tProfile.docRequired}
+                </p>
               </div>
               <Link
                 href="/dashboard"

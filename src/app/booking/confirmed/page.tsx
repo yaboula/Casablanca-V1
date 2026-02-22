@@ -56,13 +56,8 @@ function ConfirmedContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") ?? null;
 
-  const {
-    pickupDate,
-    returnDate,
-    pickupLocation,
-    totalDays,
-    totalPriceEUR,
-  } = useBookingStore();
+  const { pickupDate, returnDate, pickupLocation, totalDays, totalPriceEUR } =
+    useBookingStore();
 
   const [status, setStatus] = useState<ConfirmationStatus>("polling");
   const [reservation, setReservation] = useState<Reservation | null>(null);
@@ -78,9 +73,15 @@ function ConfirmedContent() {
 
     async function poll() {
       try {
-        const res = await apiFetch<Reservation>(`/reservations/${id}`, {
-          auth: true,
-        });
+        const raw = await apiFetch<{ data: Reservation } | Reservation>(
+          `/reservations/${id}`,
+          {
+            auth: true,
+          },
+        );
+        // NestJS wraps single-entity responses in { data: {...} }
+        const res: Reservation =
+          (raw as { data: Reservation }).data ?? (raw as Reservation);
         if (res.status === "CONFIRMED" || res.status === "IN_PROGRESS") {
           setReservation(res);
           setStatus("confirmed");
@@ -211,9 +212,7 @@ function ConfirmedContent() {
     res.pickupLocation ??
     pickupLocation;
   const days = res.totalDays ?? totalDays;
-  const depositEur = res.depositEurCents
-    ? res.depositEurCents / 100
-    : 10;
+  const depositEur = res.depositEurCents ? res.depositEurCents / 100 : 10;
   const totalEur = res.totalPriceEurCents
     ? res.totalPriceEurCents / 100
     : (totalPriceEUR ?? 0);
@@ -221,7 +220,6 @@ function ConfirmedContent() {
   return (
     <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-
         {/* Success animation */}
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}

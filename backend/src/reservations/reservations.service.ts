@@ -4,17 +4,17 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { Reservation, ReservationStatus } from './reservation.entity';
-import { Vehicle, VehicleStatus } from '../vehicles/vehicle.entity';
-import { User, UserRole } from '../users/user.entity';
-import { CreateReservationDto } from './dto/create-reservation.dto';
-import { StripeService } from '../stripe/stripe.service';
-import { QrService } from '../qr/qr.service';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, DataSource } from "typeorm";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
+import { Reservation, ReservationStatus } from "./reservation.entity";
+import { Vehicle, VehicleStatus } from "../vehicles/vehicle.entity";
+import { User, UserRole } from "../users/user.entity";
+import { CreateReservationDto } from "./dto/create-reservation.dto";
+import { StripeService } from "../stripe/stripe.service";
+import { QrService } from "../qr/qr.service";
 
 // Fixed deposit: 10 EUR
 const DEPOSIT_EUR_CENTS = 1000;
@@ -34,7 +34,7 @@ export class ReservationsService {
     private readonly reservationsRepo: Repository<Reservation>,
     @InjectRepository(Vehicle)
     private readonly vehiclesRepo: Repository<Vehicle>,
-    @InjectQueue('reservation-expiry')
+    @InjectQueue("reservation-expiry")
     private readonly reservationExpiryQueue: Queue,
     private readonly dataSource: DataSource,
     private readonly stripeService: StripeService,
@@ -64,22 +64,24 @@ export class ReservationsService {
 
     // ── Date validation ──────────────────────────────────────
     if (isNaN(pickupDate.getTime()) || isNaN(returnDate.getTime())) {
-      throw new BadRequestException('Fechas inválidas.');
+      throw new BadRequestException("Fechas inválidas.");
     }
 
     if (pickupDate < now) {
-      throw new BadRequestException('pickupDate no puede ser en el pasado.');
+      throw new BadRequestException("pickupDate no puede ser en el pasado.");
     }
 
     if (returnDate <= pickupDate) {
-      throw new BadRequestException('returnDate debe ser posterior a pickupDate.');
+      throw new BadRequestException(
+        "returnDate debe ser posterior a pickupDate.",
+      );
     }
 
     const diffMs = returnDate.getTime() - pickupDate.getTime();
     const totalDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
     if (totalDays < 1) {
-      throw new BadRequestException('El alquiler mínimo es 1 día.');
+      throw new BadRequestException("El alquiler mínimo es 1 día.");
     }
 
     // ── Run Saga Phase 1 in a DB transaction ────────────────────
@@ -91,34 +93,34 @@ export class ReservationsService {
 
     try {
       // 1. Lock the vehicle row (pessimistic write — prevents concurrent overbooking)
-      const vehicle = await queryRunner.manager
-        .getRepository(Vehicle)
-        .findOne({
-          where: { id: dto.vehicleId },
-          lock: { mode: 'pessimistic_write' },
-        });
+      const vehicle = await queryRunner.manager.getRepository(Vehicle).findOne({
+        where: { id: dto.vehicleId },
+        lock: { mode: "pessimistic_write" },
+      });
 
       if (!vehicle) {
         throw new NotFoundException(`Vehículo ${dto.vehicleId} no encontrado.`);
       }
 
       if (vehicle.status !== VehicleStatus.AVAILABLE) {
-        throw new ConflictException('El vehículo no está disponible para alquiler.');
+        throw new ConflictException(
+          "El vehículo no está disponible para alquiler.",
+        );
       }
 
       // 2. Check for overlapping reservations (while holding vehicle lock)
       const overlapping = await queryRunner.manager
         .getRepository(Reservation)
-        .createQueryBuilder('r')
-        .where('r.vehicleId = :vehicleId', { vehicleId: dto.vehicleId })
-        .andWhere('r.status IN (:...statuses)', { statuses: BLOCKING_STATUSES })
-        .andWhere('r.pickupDate < :returnDate', { returnDate })
-        .andWhere('r.returnDate > :pickupDate', { pickupDate })
+        .createQueryBuilder("r")
+        .where("r.vehicleId = :vehicleId", { vehicleId: dto.vehicleId })
+        .andWhere("r.status IN (:...statuses)", { statuses: BLOCKING_STATUSES })
+        .andWhere("r.pickupDate < :returnDate", { returnDate })
+        .andWhere("r.returnDate > :pickupDate", { pickupDate })
         .getCount();
 
       if (overlapping > 0) {
         throw new ConflictException(
-          'El vehículo ya está reservado para las fechas seleccionadas.',
+          "El vehículo ya está reservado para las fechas seleccionadas.",
         );
       }
 
@@ -129,7 +131,7 @@ export class ReservationsService {
       //    capture_method: 'manual' — only authorizes, does NOT charge yet
       //    In test mode (NODE_ENV=test), skip real Stripe and use mock values
       let paymentIntent: { id: string; client_secret: string | null };
-      if (process.env.NODE_ENV === 'test') {
+      if (process.env.NODE_ENV === "test") {
         // E2E / integration test bypass — no real Stripe call
         paymentIntent = {
           id: `pi_test_mock_${Date.now()}`,
@@ -182,12 +184,12 @@ export class ReservationsService {
     // ── Phase 2 (outside transaction) ───────────────────────
     // Enqueue expiry job: if still PENDING_DEPOSIT after 15 min → cancel
     await this.reservationExpiryQueue.add(
-      'expire',
+      "expire",
       { reservationId: reservation.id },
       {
         delay: 15 * 60 * 1000, // 15 minutes
         attempts: 3,
-        backoff: { type: 'exponential', delay: 5_000 },
+        backoff: { type: "exponential", delay: 5_000 },
         removeOnComplete: true,
         removeOnFail: false,
       },
@@ -215,11 +217,8 @@ export class ReservationsService {
     }
 
     // Ownership check (users can only cancel their own reservations)
-    if (
-      user.role === UserRole.USER &&
-      reservation.userId !== user.id
-    ) {
-      throw new ForbiddenException('No tienes acceso a esta reserva.');
+    if (user.role === UserRole.USER && reservation.userId !== user.id) {
+      throw new ForbiddenException("No tienes acceso a esta reserva.");
     }
 
     const cancelableStatuses = [
@@ -239,19 +238,32 @@ export class ReservationsService {
     }
 
     // ── Phase 1: DB update ───────────────────────────────────
+    const originalStatus = reservation.status;
     reservation.status = ReservationStatus.CANCELLED;
     const saved = await this.reservationsRepo.save(reservation);
 
-    // ── Phase 2: Cancel Stripe PI ────────────────────────────
+    // ── Phase 2: Cancel or Refund Stripe PI ─────────────────────────
     if (saved.stripePaymentIntentId) {
-      this.stripeService
-        .cancelPaymentIntent(saved.stripePaymentIntentId)
-        .catch((err) => {
-          // Stripe auto-releases after ~7 days; log and continue
-          console.error(
-            `[cancel] Stripe cancelPaymentIntent failed (non-fatal): ${err.message}`,
-          );
-        });
+      if (originalStatus === ReservationStatus.CONFIRMED) {
+        // CONFIRMED implies Stripe PI is CAPTURED. Cancellations throw an error on captured PIs. Must emit a Refund.
+        this.stripeService
+          .refundPaymentIntent(saved.stripePaymentIntentId)
+          .catch((err) => {
+            console.error(
+              `[cancel] Stripe refundPaymentIntent failed (non-fatal, requires manual review): ${err.message}`,
+            );
+          });
+      } else {
+        // For PENDING or AWAITING, PI is merely AUTHORIZED. Cancel it explicitly to release funds.
+        this.stripeService
+          .cancelPaymentIntent(saved.stripePaymentIntentId)
+          .catch((err) => {
+            // Stripe auto-releases after ~7 days; log and continue
+            console.error(
+              `[cancel] Stripe cancelPaymentIntent failed (non-fatal): ${err.message}`,
+            );
+          });
+      }
     }
 
     return saved;
@@ -287,12 +299,17 @@ export class ReservationsService {
   async findMy(
     user: User,
     opts: { page: number; limit: number } = { page: 1, limit: 20 },
-  ): Promise<{ data: Reservation[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    data: Reservation[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const { page, limit } = opts;
     const skip = (page - 1) * limit;
 
     const baseOptions = {
-      order: { createdAt: 'DESC' as const },
+      order: { createdAt: "DESC" as const },
       relations: { vehicle: true, documents: true },
       skip,
       take: limit,
@@ -324,11 +341,8 @@ export class ReservationsService {
       throw new NotFoundException(`Reserva ${id} no encontrada.`);
     }
 
-    if (
-      user.role === UserRole.USER &&
-      reservation.userId !== user.id
-    ) {
-      throw new ForbiddenException('No tienes acceso a esta reserva.');
+    if (user.role === UserRole.USER && reservation.userId !== user.id) {
+      throw new ForbiddenException("No tienes acceso a esta reserva.");
     }
 
     return reservation;

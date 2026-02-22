@@ -180,6 +180,7 @@ export class AdminService {
       category: dto.category,
       pricePerDayEurCents: dto.pricePerDayEurCents,
       imageUrl: dto.imageUrl,
+      imageUrls: dto.imageUrls ?? [dto.imageUrl],
       transmission: dto.transmission,
       seats: dto.seats,
       luggageCount: dto.luggageCount,

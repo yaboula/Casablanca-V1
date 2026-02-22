@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import { mapApiVehicle } from "@/lib/api-mappers";
 import type { Vehicle } from "@/types";
 import BookFlowClient from "@/components/vehicles/BookFlowClient";
+import { SERVER_API_BASE } from "@/lib/config";
 
-const API_URL = process.env.API_URL ?? "http://localhost:3900/api/v1";
+const API_URL = SERVER_API_BASE;
 
 // Allow any UUID
 export const dynamicParams = true;
@@ -17,7 +18,9 @@ async function getVehicle(id: string): Promise<Vehicle | null> {
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;
-    return mapApiVehicle(await res.json());
+    const json = await res.json();
+    const raw = json.data ?? json;
+    return mapApiVehicle(raw);
   } catch {
     return null;
   }
