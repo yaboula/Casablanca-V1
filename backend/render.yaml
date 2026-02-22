@@ -2,6 +2,7 @@ services:
   - type: web
     name: nexus-backend
     env: node
+    rootDir: backend
     region: frankfurt # Cercano a África/Marruecos/España
     plan: free # Plan de Render gratuito
     buildCommand: npm install && npm run build
