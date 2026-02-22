@@ -5,7 +5,7 @@ services:
     rootDir: backend
     region: frankfurt # Cercano a África/Marruecos/España
     plan: free # Plan de Render gratuito
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
