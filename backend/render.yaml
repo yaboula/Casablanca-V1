@@ -26,9 +26,9 @@ services:
 
       # === STRIPE Config (Variables requeridas por tu backend) ===
       - key: STRIPE_SECRET_KEY
-        sync: false
+        value: "sk_test_dummy_key_for_render_boot"
       - key: STRIPE_WEBHOOK_SECRET
-        sync: false
+        value: "whsec_test_dummy_key_for_render_boot"
 
       # === Seguridad JWT ===
       - key: JWT_SECRET
