@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -19,8 +19,8 @@ export const useDarkModeStore = create<DarkModeState>()(
       toggle: () => set((s) => ({ isDark: !s.isDark })),
       setDark: (v) => set({ isDark: v }),
     }),
-    { name: "nexus-theme", storage: createJSONStorage(() => localStorage) }
-  )
+    { name: "nexus-theme", storage: createJSONStorage(() => localStorage) },
+  ),
 );
 
 // ── Hook ──────────────────────────────────────────────────────
@@ -35,21 +35,32 @@ export const useDarkModeStore = create<DarkModeState>()(
  */
 export function useDarkMode() {
   const { isDark, toggle, setDark } = useDarkModeStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Apply .dark class whenever preference changes
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-  }, [isDark]);
+    if (mounted) {
+      document.documentElement.classList.toggle("dark", isDark);
+    }
+  }, [isDark, mounted]);
 
   // On first visit (no stored preference), honour system setting
   useEffect(() => {
-    const stored = localStorage.getItem("nexus-theme");
-    if (!stored) {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setDark(prefersDark);
+    if (mounted) {
+      const stored = localStorage.getItem("nexus-theme");
+      if (!stored) {
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+        setDark(prefersDark);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   return { isDark, toggle };
 }

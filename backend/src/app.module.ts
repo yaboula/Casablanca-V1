@@ -1,23 +1,23 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { BullModule } from '@nestjs/bullmq';
-import { validateEnv } from './config/env.validation';
-import { databaseConfig } from './config/database.config';
-import { HealthModule } from './health/health.module';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { VehiclesModule } from './vehicles/vehicles.module';
-import { ReservationsModule } from './reservations/reservations.module';
-import { QrModule } from './qr/qr.module';
-import { StripeModule } from './stripe/stripe.module';
-import { DocumentsModule } from './documents/documents.module';
-import { S3Module } from './s3/s3.module';
-import { SseModule } from './sse/sse.module';
-import { OperatorModule } from './operator/operator.module';
-import { ChatModule } from './chat/chat.module';
-import { AdminModule } from './admin/admin.module';
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { BullModule } from "@nestjs/bullmq";
+import { validateEnv } from "./config/env.validation";
+import { databaseConfig } from "./config/database.config";
+import { HealthModule } from "./health/health.module";
+import { AuthModule } from "./auth/auth.module";
+import { UsersModule } from "./users/users.module";
+import { VehiclesModule } from "./vehicles/vehicles.module";
+import { ReservationsModule } from "./reservations/reservations.module";
+import { QrModule } from "./qr/qr.module";
+import { StripeModule } from "./stripe/stripe.module";
+import { DocumentsModule } from "./documents/documents.module";
+import { S3Module } from "./s3/s3.module";
+import { SseModule } from "./sse/sse.module";
+import { OperatorModule } from "./operator/operator.module";
+import { ChatModule } from "./chat/chat.module";
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -25,7 +25,7 @@ import { AdminModule } from './admin/admin.module';
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
-      envFilePath: ['.env'],
+      envFilePath: [".env"],
     }),
 
     // ── Database ─────────────────────────────────────────────
@@ -34,22 +34,30 @@ import { AdminModule } from './admin/admin.module';
     // ── Redis / BullMQ ────────────────────────────────────────
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          url: config.get<string>('REDIS_URL', 'redis://localhost:6379'),
-        },
-        defaultJobOptions: {
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>(
+          "REDIS_URL",
+          "redis://localhost:6379",
+        );
+        const isTls = redisUrl.startsWith("rediss://");
+        return {
+          connection: {
+            url: redisUrl,
+            ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+          },
+          defaultJobOptions: {
+            removeOnComplete: true,
+            removeOnFail: false,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
 
     // ── Rate Limiting ─────────────────────────────────────────
     ThrottlerModule.forRoot([
       {
-        name: 'default',
+        name: "default",
         ttl: 60_000,
         limit: 60,
       },

@@ -72,3 +72,21 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
   23 |     }
   24 |
   25 |     const data = (await res.json()) as {
+[exchange-rate] Failed to fetch live rate, using fallback: Error: Frankfurter API responded with 404
+    at GET (src\app\api\exchange-rate\route.ts:22:13)
+  20 |
+  21 |     if (!res.ok) {
+> 22 |       throw new Error(`Frankfurter API responded with ${res.status}`);
+     |             ^
+  23 |     }
+  24 |
+  25 |     const data = (await res.json()) as {
+[exchange-rate] Failed to fetch live rate, using fallback: Error: Frankfurter API responded with 404
+    at GET (src\app\api\exchange-rate\route.ts:22:13)
+  20 |
+  21 |     if (!res.ok) {
+> 22 |       throw new Error(`Frankfurter API responded with ${res.status}`);
+     |             ^
+  23 |     }
+  24 |
+  25 |     const data = (await res.json()) as {
