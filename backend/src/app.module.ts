@@ -43,6 +43,8 @@ import { AdminModule } from "./admin/admin.module";
         return {
           connection: {
             url: redisUrl,
+            keepAlive: 10000,
+            family: 0,
             ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
           },
           defaultJobOptions: {

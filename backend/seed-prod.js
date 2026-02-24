@@ -19,7 +19,7 @@ async function createSchemaAndSeed() {
   console.log("Recreating vehicles table...");
   await client.query(`
     CREATE TABLE vehicles (
-      id UUID PRIMARY KEY,
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       brand VARCHAR NOT NULL,
       model VARCHAR NOT NULL,
       description TEXT,
@@ -45,7 +45,7 @@ async function createSchemaAndSeed() {
   console.log("Recreating users table...");
   await client.query(`
     CREATE TABLE users (
-      id UUID PRIMARY KEY,
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       email VARCHAR UNIQUE NOT NULL,
       password_hash VARCHAR,
       full_name VARCHAR(120) NOT NULL,
@@ -60,7 +60,7 @@ async function createSchemaAndSeed() {
   console.log("Recreating reservations table...");
   await client.query(`
     CREATE TABLE reservations (
-      id UUID PRIMARY KEY,
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       guest_id UUID REFERENCES users(id),
       vehicle_id UUID REFERENCES vehicles(id),
       start_date TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -81,7 +81,7 @@ async function createSchemaAndSeed() {
   console.log("Recreating reservation_documents table...");
   await client.query(`
     CREATE TABLE reservation_documents (
-      id UUID PRIMARY KEY,
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       reservation_id UUID REFERENCES reservations(id),
       document_type VARCHAR NOT NULL,
       s3_key VARCHAR NOT NULL,
@@ -95,7 +95,7 @@ async function createSchemaAndSeed() {
   console.log("Recreating chat_messages table...");
   await client.query(`
     CREATE TABLE chat_messages (
-      id UUID PRIMARY KEY,
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       reservation_id UUID REFERENCES reservations(id),
       sender_id UUID REFERENCES users(id),
       sender_role VARCHAR NOT NULL,
