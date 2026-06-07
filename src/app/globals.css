@@ -178,6 +178,10 @@
   .nx-no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  .nx-marquee {
+    animation: nx-marquee 40s linear infinite;
+  }
 }
 
 @keyframes nx-rise {
@@ -187,6 +191,10 @@
 @keyframes nx-fade {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes nx-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 html {
