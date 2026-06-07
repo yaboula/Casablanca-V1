@@ -6,17 +6,18 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-} from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
-import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { User } from '../users/user.entity';
+} from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { AuthService } from "./auth.service";
+import { RegisterDto } from "./dto/register.dto";
+import { LoginDto } from "./dto/login.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
+import { User } from "../users/user.entity";
 
-@Controller('auth')
+@UseGuards(ThrottlerGuard)
+@Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -25,7 +26,7 @@ export class AuthController {
    * Rate limited: 10 requests/minute (stricter than global 60/min)
    */
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @Post('register')
+  @Post("register")
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -36,7 +37,7 @@ export class AuthController {
    */
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  @Post('login')
+  @Post("login")
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
@@ -48,7 +49,7 @@ export class AuthController {
    */
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  @Post('refresh')
+  @Post("refresh")
   async refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto.refreshToken);
   }
@@ -58,7 +59,7 @@ export class AuthController {
    * Returns the currently authenticated user (token must be valid).
    */
   @UseGuards(JwtAuthGuard)
-  @Get('me')
+  @Get("me")
   me(@CurrentUser() user: User) {
     return { user };
   }

@@ -84,7 +84,8 @@ export default function Header() {
 
   // Close mobile menu on route change
   useEffect(() => {
-    setMobileOpen(false);
+    const id = requestAnimationFrame(() => setMobileOpen(false));
+    return () => cancelAnimationFrame(id);
   }, [pathname]);
 
   async function handleLogout() {
@@ -454,7 +455,10 @@ function LocaleToggle() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
     function close(e: MouseEvent) {
@@ -527,7 +531,10 @@ function CurrencyToggle() {
   const { currency, toggleCurrency } = useCurrencyStore();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   if (!mounted) return null;
 
@@ -566,7 +573,10 @@ function DarkModeToggle() {
   const { isDark, toggle } = useDarkModeStore();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   if (!mounted) return null;
 

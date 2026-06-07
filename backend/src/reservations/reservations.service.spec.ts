@@ -130,13 +130,47 @@ function makeQueryRunner(
 
 const mockReservationsRepo = {
   findOne: jest.fn(),
+  createQueryBuilder: jest.fn().mockReturnValue({
+    where: jest.fn().mockReturnThis(),
+    setLock: jest.fn().mockReturnThis(),
+    getOne: jest.fn().mockImplementation(() => mockReservationsRepo.findOne()),
+  }),
   find: jest.fn(),
   findAndCount: jest.fn(),
   save: jest.fn(),
+  update: jest.fn().mockResolvedValue({ affected: 1 }),
+  count: jest.fn().mockResolvedValue(0),
 };
 
-const mockVehiclesRepo = { findOne: jest.fn() };
-const mockDataSource = { createQueryRunner: jest.fn() };
+const mockVehiclesRepo = {
+  findOne: jest.fn(),
+  update: jest.fn().mockResolvedValue({ affected: 1 }),
+};
+const mockDataSource = {
+  createQueryRunner: jest.fn(),
+  transaction: jest
+    .fn()
+    .mockImplementation(async (cb: (manager: any) => Promise<any>) => {
+      // Simulate a transaction by calling the callback with a mock manager
+      const transactionManager = {
+        getRepository: jest.fn().mockImplementation((entity: any) => {
+          if (entity === Reservation)
+            return {
+              findOne: mockReservationsRepo.findOne,
+              createQueryBuilder: mockReservationsRepo.createQueryBuilder,
+              save: mockReservationsRepo.save,
+              count: mockReservationsRepo.count,
+            };
+          if (entity === Vehicle)
+            return {
+              update: mockVehiclesRepo.update,
+            };
+          return {};
+        }),
+      };
+      return cb(transactionManager);
+    }),
+};
 
 const mockStripeService = {
   createPaymentIntent: jest.fn().mockResolvedValue({
@@ -232,12 +266,15 @@ describe("ReservationsService", () => {
         expect(qr.rollbackTransaction).not.toHaveBeenCalled();
         expect(qr.release).toHaveBeenCalledTimes(1);
 
-        // Stripe: PI autorizado (no capturado) con el depósito fijo
+        // Stripe: PI created AFTER transaction commit (Bug 11 fix)
         expect(mockStripeService.createPaymentIntent).toHaveBeenCalledWith(
           DEPOSIT_EUR_CENTS,
           expect.any(String),
           expect.any(Object),
         );
+
+        // Update called to persist Stripe data after PI creation
+        expect(mockReservationsRepo.update).toHaveBeenCalled();
 
         // BullMQ: job de expiración a exactamente 15 minutos
         expect(mockExpiryQueue.add).toHaveBeenCalledWith(
@@ -316,7 +353,7 @@ describe("ReservationsService", () => {
       const saved = qr._repoMocks.createdData;
       expect(saved).toBeDefined();
 
-      const days = Math.round(
+      const days = Math.ceil(
         (new Date(threeDaysLater).getTime() - new Date(tomorrow).getTime()) /
           (1000 * 60 * 60 * 24),
       );
@@ -352,6 +389,7 @@ describe("ReservationsService", () => {
       const result = await service.cancel("res-999", makeUser());
 
       expect(result.status).toBe(ReservationStatus.CANCELLED);
+      // Stripe cancel is async fire-and-forget; verify it was called
       expect(mockStripeService.cancelPaymentIntent).toHaveBeenCalledWith(
         "pi_test_abc123",
       );
@@ -453,6 +491,8 @@ describe("ReservationsService", () => {
       });
 
       await service.cancel("res-999", makeUser());
+      // Wait for any async fire-and-forget
+      await new Promise((r) => setTimeout(r, 50));
       expect(mockStripeService.cancelPaymentIntent).not.toHaveBeenCalled();
     });
   });

@@ -8,8 +8,6 @@
   "setupFiles": ["<rootDir>/test/setup/load-env.ts"],
   "testEnvironment": "node",
   "testTimeout": 60000,
-  "runInBand": true,
-  "forceExit": true,
   "verbose": true,
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/src/$1"

@@ -1,12 +1,12 @@
-/**
- * auth.e2e.spec.ts — Journey 2: Authentication Flow
+﻿/**
+ * auth.e2e.spec.ts â€” Journey 2: Authentication Flow
  *
- * Tests the complete register → login → logout cycle via the browser UI.
+ * Tests the complete register â†’ login â†’ logout cycle via the browser UI.
  * Also tests redirect behavior for protected routes.
  *
  * Prerequisites:
  *   - Next.js running (started by webServer)
- *   - NestJS backend running at http://localhost:3900
+ *   - NestJS backend running at http://localhost:3902
  *   - nexus_e2e_db accessible
  */
 
@@ -26,14 +26,14 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await db.end();
+  if (db) await db.end();
 });
 
 test.beforeEach(async () => {
   await truncateAllE2ETables(db);
 });
 
-// ── Register via UI ────────────────────────────────────────
+// â”€â”€ Register via UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('register page renders the form', async ({ page }) => {
   const register = new RegisterPage(page);
@@ -68,7 +68,7 @@ test('duplicate email shows error on register', async ({ page }) => {
 
   // Create the user via API first
   await page.request.post(
-    `${process.env.E2E_API_URL ?? 'http://localhost:3900/api/v1'}/auth/register`,
+    `${process.env.E2E_API_URL ?? 'http://localhost:3902/api/v1'}/auth/register`,
     { data: { email, password: 'SecurePass123!', fullName: 'First User' } },
   );
 
@@ -81,7 +81,7 @@ test('duplicate email shows error on register', async ({ page }) => {
   await register.expectEmailTakenError();
 });
 
-// ── Login via UI ────────────────────────────────────────────
+// â”€â”€ Login via UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('login page renders the form', async ({ page }) => {
   const login = new LoginPage(page);
@@ -98,7 +98,7 @@ test('successful login via UI redirects away from /login', async ({ page }) => {
 
   // Register via API first
   await page.request.post(
-    `${process.env.E2E_API_URL ?? 'http://localhost:3900/api/v1'}/auth/register`,
+    `${process.env.E2E_API_URL ?? 'http://localhost:3902/api/v1'}/auth/register`,
     { data: { email, password, fullName: 'Login Tester' } },
   );
 
@@ -115,7 +115,7 @@ test('successful login via UI redirects away from /login', async ({ page }) => {
 test('wrong password shows 401 toast on login page', async ({ page }) => {
   const email = uniqueEmail('wrong-pw');
   await page.request.post(
-    `${process.env.E2E_API_URL ?? 'http://localhost:3900/api/v1'}/auth/register`,
+    `${process.env.E2E_API_URL ?? 'http://localhost:3902/api/v1'}/auth/register`,
     { data: { email, password: 'CorrectPass123!', fullName: 'PW Test' } },
   );
 
@@ -127,7 +127,7 @@ test('wrong password shows 401 toast on login page', async ({ page }) => {
   await expect(page).toHaveURL(/\/login/, { timeout: 5_000 });
 });
 
-// ── Auth API shortcut (fast login for use in other tests) ────
+// â”€â”€ Auth API shortcut (fast login for use in other tests) â”€â”€â”€â”€
 
 test('API shortcut registers user and grants access to /dashboard', async ({ page }) => {
   const email = uniqueEmail('api-shortcut');
@@ -144,7 +144,7 @@ test('API shortcut registers user and grants access to /dashboard', async ({ pag
   expect(page.url()).not.toContain('/login');
 });
 
-// ── Protected route redirect ─────────────────────────────────
+// â”€â”€ Protected route redirect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('unauthenticated user is redirected away from /dashboard', async ({ page }) => {
   // Navigate to dashboard without being logged in
@@ -156,3 +156,4 @@ test('unauthenticated user is redirected away from /dashboard', async ({ page })
   });
   expect(page.url()).toContain('/login');
 });
+

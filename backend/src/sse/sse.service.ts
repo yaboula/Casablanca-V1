@@ -1,7 +1,10 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { Subject, interval, Observable, merge } from 'rxjs';
-import { map, share, takeUntil } from 'rxjs/operators';
-import { DocumentStatus } from '../documents/reservation-document.entity';
+import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Subject, interval, Observable, merge } from "rxjs";
+import { map, share, takeUntil } from "rxjs/operators";
+import {
+  DocumentStatus,
+  DocumentType,
+} from "../documents/reservation-document.entity";
 
 export interface SseEvent {
   data: Record<string, unknown>;
@@ -20,6 +23,9 @@ export class SseService implements OnModuleDestroy {
   /** Operator chat stream — single shared stream for all operators */
   private readonly operatorChatSubject = new Subject<SseEvent>();
 
+  /** Operator deliveries stream — emitted on check-in / scan-qr state changes */
+  private readonly operatorDeliveriesSubject = new Subject<SseEvent>();
+
   // ── Reservation stream ───────────────────────────────────────
 
   /**
@@ -33,7 +39,7 @@ export class SseService implements OnModuleDestroy {
 
     const subject$ = this.reservationSubjects.get(reservationId)!;
     const keepalive$ = interval(15_000).pipe(
-      map(() => ({ data: { type: 'ping', timestamp: Date.now() } })),
+      map(() => ({ data: { type: "ping", timestamp: Date.now() } })),
     );
 
     return merge(subject$.asObservable(), keepalive$).pipe(share());
@@ -45,8 +51,9 @@ export class SseService implements OnModuleDestroy {
    */
   emitDocumentStatus(
     reservationId: string,
-    status: DocumentStatus | 'AWAITING_CAPTURE',
+    status: DocumentStatus | "AWAITING_CAPTURE",
     rejectionReason?: string | null,
+    documentType?: DocumentType,
   ): void {
     const subject = this.reservationSubjects.get(reservationId);
 
@@ -59,20 +66,17 @@ export class SseService implements OnModuleDestroy {
 
     subject.next({
       data: {
-        type: 'DOCUMENT_STATUS_UPDATE',
+        type: "DOCUMENT_STATUS_UPDATE",
         documentStatus: status,
+        documentType: documentType ?? null,
         rejectionReason: rejectionReason ?? null,
         timestamp: Date.now(),
       },
     });
 
-    // Close the stream after a final decision (APPROVED or REJECTED from capture)
-    if (status === DocumentStatus.APPROVED || status === DocumentStatus.REJECTED) {
-      setTimeout(() => {
-        subject.complete();
-        this.reservationSubjects.delete(reservationId);
-      }, 1000);
-    }
+    // Bug 4 fix: Do NOT close on individual doc APPROVED/REJECTED.
+    // Stream must stay open to deliver the SECOND document's status.
+    // Stream is closed only on terminal reservation states (see emitReservationStatus).
   }
 
   /**
@@ -87,12 +91,21 @@ export class SseService implements OnModuleDestroy {
     if (subject) {
       subject.next({
         data: {
-          type: 'RESERVATION_STATUS_UPDATE',
+          type: "RESERVATION_STATUS_UPDATE",
           status,
           ...payload,
           timestamp: Date.now(),
         },
       });
+
+      // Bug 4 fix: Close stream on terminal reservation states
+      const terminalStatuses = ["CONFIRMED", "COMPLETED", "CANCELLED"];
+      if (terminalStatuses.includes(status)) {
+        setTimeout(() => {
+          subject.complete();
+          this.reservationSubjects.delete(reservationId);
+        }, 2000); // Allow event to flush before closing
+      }
     }
   }
 
@@ -101,15 +114,49 @@ export class SseService implements OnModuleDestroy {
   /** Observable for the operator panel — receives all new chat messages */
   subscribeOperatorChat(): Observable<SseEvent> {
     const keepalive$ = interval(15_000).pipe(
-      map(() => ({ data: { type: 'ping', timestamp: Date.now() } })),
+      map(() => ({ data: { type: "ping", timestamp: Date.now() } })),
     );
-    return merge(this.operatorChatSubject.asObservable(), keepalive$).pipe(share());
+    return merge(this.operatorChatSubject.asObservable(), keepalive$).pipe(
+      share(),
+    );
   }
 
   /** Called by ChatService when a new message arrives */
   emitNewChatMessage(message: Record<string, unknown>): void {
     this.operatorChatSubject.next({
-      data: { type: 'NEW_MESSAGE', message },
+      data: { type: "NEW_MESSAGE", message },
+    });
+  }
+
+  // ── Operator delivery stream ─────────────────────────────────────
+
+  /**
+   * Observable for the operator dashboard delivery list.
+   * Emits when any reservation transitions state (check-in, QR scan).
+   * Operators subscribe to trigger a router.refresh() on their client.
+   */
+  subscribeOperatorDeliveries(): Observable<SseEvent> {
+    const keepalive$ = interval(15_000).pipe(
+      map(() => ({ data: { type: "ping", timestamp: Date.now() } })),
+    );
+    return merge(
+      this.operatorDeliveriesSubject.asObservable(),
+      keepalive$,
+    ).pipe(share());
+  }
+
+  /**
+   * Called by OperatorDeliveryService after manualCheckin() or scanQr().
+   * Broadcasts to all connected operators so their dashboards update.
+   */
+  emitDeliveryUpdate(reservationId: string, newStatus: string): void {
+    this.operatorDeliveriesSubject.next({
+      data: {
+        type: "DELIVERY_UPDATE",
+        reservationId,
+        newStatus,
+        timestamp: Date.now(),
+      },
     });
   }
 
@@ -121,5 +168,6 @@ export class SseService implements OnModuleDestroy {
     }
     this.reservationSubjects.clear();
     this.operatorChatSubject.complete();
+    this.operatorDeliveriesSubject.complete();
   }
 }

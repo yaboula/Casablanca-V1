@@ -25,7 +25,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Center quote */}
         <div className="relative z-10 space-y-4">
           <blockquote className="text-3xl font-bold text-white leading-snug">
-            "Tu coche te espera.<br />Tu vuelo acaba de aterrizar."
+            &quot;Tu coche te espera.<br />Tu vuelo acaba de aterrizar.&quot;
           </blockquote>
           <p className="text-brand-muted text-sm">
             Aeropuerto Mohammed V · CMN · Casablanca

@@ -4,19 +4,22 @@ import {
   ForbiddenException,
   ConflictException,
   BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import {
   ReservationDocument,
   DocumentType,
   DocumentStatus,
-} from './reservation-document.entity';
-import { Reservation, ReservationStatus } from '../reservations/reservation.entity';
-import { User, UserRole } from '../users/user.entity';
-import { S3Service } from '../s3/s3.service';
-import { PresignDocumentDto } from './dto/presign-document.dto';
-import { ConfirmDocumentDto } from './dto/confirm-document.dto';
+} from "./reservation-document.entity";
+import {
+  Reservation,
+  ReservationStatus,
+} from "../reservations/reservation.entity";
+import { User, UserRole } from "../users/user.entity";
+import { S3Service } from "../s3/s3.service";
+import { PresignDocumentDto } from "./dto/presign-document.dto";
+import { ConfirmDocumentDto } from "./dto/confirm-document.dto";
 
 /** Statuses that allow document uploads */
 const UPLOAD_ALLOWED_STATUSES: ReservationStatus[] = [
@@ -48,11 +51,13 @@ export class DocumentsService {
     });
 
     if (!reservation) {
-      throw new NotFoundException(`Reserva ${dto.reservationId} no encontrada.`);
+      throw new NotFoundException(
+        `Reserva ${dto.reservationId} no encontrada.`,
+      );
     }
 
     if (reservation.userId !== user.id) {
-      throw new ForbiddenException('Esta reserva no te pertenece.');
+      throw new ForbiddenException("Esta reserva no te pertenece.");
     }
 
     if (!UPLOAD_ALLOWED_STATUSES.includes(reservation.status)) {
@@ -80,7 +85,7 @@ export class DocumentsService {
       user.id,
       dto.reservationId,
       dto.type,
-      dto.mimeType ?? 'image/jpeg',
+      dto.mimeType ?? "image/jpeg",
     );
   }
 
@@ -88,13 +93,29 @@ export class DocumentsService {
    * Step 2: After the frontend uploads the file to S3, confirm the document.
    * Creates the ReservationDocument record with PENDING_REVIEW status.
    */
-  async confirm(dto: ConfirmDocumentDto, user: User): Promise<ReservationDocument> {
+  async confirm(
+    dto: ConfirmDocumentDto,
+    user: User,
+  ): Promise<ReservationDocument> {
     const reservation = await this.reservationsRepo.findOne({
       where: { id: dto.reservationId },
     });
 
     if (!reservation || reservation.userId !== user.id) {
-      throw new ForbiddenException('Reserva inválida.');
+      throw new ForbiddenException("Reserva inválida.");
+    }
+
+    // Bug 8 fix: Prevent document confirmation for cancelled/completed reservations
+    if (!UPLOAD_ALLOWED_STATUSES.includes(reservation.status)) {
+      throw new BadRequestException(
+        `No se pueden confirmar documentos para reservas en estado ${reservation.status}.`,
+      );
+    }
+
+    // BUG-09 fix: Validate fileKey to prevent path traversal
+    const expectedPrefix = `docs/${user.id}/${dto.reservationId}/`;
+    if (dto.fileKey.includes("..") || !dto.fileKey.startsWith(expectedPrefix)) {
+      throw new BadRequestException("fileKey inválido.");
     }
 
     // If there's an existing PENDING_REVIEW/REJECTED doc of same type, replace it
@@ -141,7 +162,7 @@ export class DocumentsService {
   async findByReservation(
     reservationId: string,
     user: User,
-  ): Promise<(ReservationDocument & { fileUrl: string })[]> {
+  ): Promise<(Omit<ReservationDocument, "fileKey"> & { fileUrl: string })[]> {
     const reservation = await this.reservationsRepo.findOne({
       where: { id: reservationId },
     });
@@ -150,25 +171,24 @@ export class DocumentsService {
       throw new NotFoundException(`Reserva ${reservationId} no encontrada.`);
     }
 
-    if (
-      user.role === UserRole.USER &&
-      reservation.userId !== user.id
-    ) {
-      throw new ForbiddenException('No tienes acceso a esta reserva.');
+    if (user.role === UserRole.USER && reservation.userId !== user.id) {
+      throw new ForbiddenException("No tienes acceso a esta reserva.");
     }
 
     const docs = await this.docsRepo.find({
       where: { reservationId },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
 
-    // Attach fresh presigned read URL — never return the raw fileKey
+    // Bug 5 fix: Properly exclude fileKey using destructuring instead of unsafe assertion
     return Promise.all(
-      docs.map(async (doc) => ({
-        ...doc,
-        fileKey: undefined as unknown as string, // strip raw key from response
-        fileUrl: await this.s3Service.generatePresignedRead(doc.fileKey),
-      })),
+      docs.map(async (doc) => {
+        const { fileKey, ...safeDoc } = doc;
+        return {
+          ...safeDoc,
+          fileUrl: await this.s3Service.generatePresignedRead(fileKey),
+        };
+      }),
     );
   }
 }

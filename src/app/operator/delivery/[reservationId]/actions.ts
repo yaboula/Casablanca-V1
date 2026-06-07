@@ -2,15 +2,16 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { SERVER_API_BASE } from "@/lib/config";
 
-const API_URL = process.env.API_URL ?? "http://localhost:3001/api/v1";
+const API_URL = SERVER_API_BASE;
 
 export async function completeReservation(reservationId: string) {
   const jar = await cookies();
   const token = jar.get("nexus_token")?.value;
   if (!token) throw new Error("No auth token");
 
-  const res = await fetch(`${API_URL}/operator/reservations/${reservationId}/complete`, {
+  const res = await fetch(`${API_URL}/operator/delivery/${reservationId}/checkin`, {
     method: "PATCH",
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",

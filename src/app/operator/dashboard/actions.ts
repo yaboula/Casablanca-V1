@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { SERVER_API_BASE } from "@/lib/config";
 
-const BASE = process.env.API_URL ?? "http://localhost:3001/api/v1";
+const BASE = SERVER_API_BASE;
 
 async function getOperatorToken(): Promise<string> {
   const token = (await cookies()).get("nexus_token")?.value;
@@ -14,7 +15,7 @@ async function getOperatorToken(): Promise<string> {
 export async function checkinReservation(reservationId: string): Promise<void> {
   const token = await getOperatorToken();
   const res = await fetch(
-    `${BASE}/operator/reservations/${reservationId}/checkin`,
+    `${BASE}/operator/delivery/${reservationId}/checkin`,
     {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
@@ -27,7 +28,7 @@ export async function checkinReservation(reservationId: string): Promise<void> {
 export async function completeReservation(reservationId: string): Promise<void> {
   const token = await getOperatorToken();
   const res = await fetch(
-    `${BASE}/operator/reservations/${reservationId}/complete`,
+    `${BASE}/operator/delivery/${reservationId}/checkin`,
     {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },

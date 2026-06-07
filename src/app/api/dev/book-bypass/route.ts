@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   const db = new Client({
     connectionString:
       process.env.DATABASE_URL ??
-      "postgresql://nexus:nexus_secret@localhost:5432/nexus_db",
+      "postgresql://nexus:nexus_secret@localhost:5433/nexus_db",
   });
 
   try {
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
           NOW(), NOW())
        RETURNING id`,
       [
-        userId,
+        resolvedUserId,
         vehicleId,
         pickup,
         returns,

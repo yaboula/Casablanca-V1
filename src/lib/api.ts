@@ -37,19 +37,14 @@ export async function apiFetch<T>(
   path: string,
   init: RequestInit & { auth?: boolean } = {},
 ): Promise<T> {
+  // Bug 20 fix: Token injection removed — handled by Next.js proxy.
+  // `auth` is still used for 401 retry / redirect logic below.
   const { auth = false, headers: extraHeaders, ...rest } = init;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(extraHeaders as Record<string, string>),
   };
-
-  if (auth) {
-    const token = getJwtFromCookie();
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-  }
 
   const url = `${BASE}${path.startsWith("/") ? path : `/${path}`}`;
 

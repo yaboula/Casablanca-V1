@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // ================================================================
 // Environment variable validation schema
@@ -8,52 +8,76 @@ import { z } from 'zod';
 
 const EnvSchema = z.object({
   // App
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
-  API_PREFIX: z.string().default('api/v1'),
+  API_PREFIX: z.string().default("api/v1"),
 
   // PostgreSQL
-  DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid postgresql:// URL' }),
+  DATABASE_URL: z
+    .string()
+    .url({ message: "DATABASE_URL must be a valid postgresql:// URL" }),
   DATABASE_SSL: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((v) => v === 'true'),
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   // Redis
   REDIS_URL: z
     .string()
-    .refine((v) => v.startsWith('redis://') || v.startsWith('rediss://'), {
-      message: 'REDIS_URL must start with redis:// or rediss://',
+    .refine((v) => v.startsWith("redis://") || v.startsWith("rediss://"), {
+      message: "REDIS_URL must start with redis:// or rediss://",
     }),
 
   // JWT
   JWT_SECRET: z
     .string()
-    .min(32, { message: 'JWT_SECRET must be at least 32 characters' }),
-  JWT_EXPIRES_IN: z.string().default('7d'),
+    .min(32, { message: "JWT_SECRET must be at least 32 characters" }),
+  JWT_EXPIRES_IN: z.string().default("7d"),
   JWT_REFRESH_SECRET: z
     .string()
-    .min(32, { message: 'JWT_REFRESH_SECRET must be at least 32 characters' }),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
+    .min(32, { message: "JWT_REFRESH_SECRET must be at least 32 characters" }),
+  JWT_REFRESH_EXPIRES_IN: z.string().default("30d"),
 
   // Stripe
   STRIPE_SECRET_KEY: z
     .string()
-    .refine((v) => v.startsWith('sk_'), { message: 'STRIPE_SECRET_KEY must start with sk_' }),
+    .refine((v) => v.startsWith("sk_"), {
+      message: "STRIPE_SECRET_KEY must start with sk_",
+    })
+    .optional(),
   STRIPE_WEBHOOK_SECRET: z
     .string()
-    .refine((v) => v.startsWith('whsec_'), { message: 'STRIPE_WEBHOOK_SECRET must start with whsec_' }),
+    .refine((v) => v.startsWith("whsec_"), {
+      message: "STRIPE_WEBHOOK_SECRET must start with whsec_",
+    })
+    .optional(),
   STRIPE_DEPOSIT_EUR: z.coerce.number().int().positive().default(10),
+  BYPASS_STRIPE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  BYPASS_S3: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   // AWS S3
   AWS_ACCESS_KEY_ID: z.string().min(1),
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
-  AWS_REGION: z.string().default('eu-west-3'),
+  AWS_REGION: z.string().default("eu-west-3"),
   AWS_S3_BUCKET: z.string().min(1),
-  AWS_S3_PRESIGN_EXPIRES_SECONDS: z.coerce.number().int().positive().default(900),
+  AWS_S3_PRESIGN_EXPIRES_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(900),
 
   // QR
-  QR_SIGNING_SECRET: z.string().min(32, { message: 'QR_SIGNING_SECRET must be at least 32 chars' }),
+  QR_SIGNING_SECRET: z
+    .string()
+    .min(32, { message: "QR_SIGNING_SECRET must be at least 32 chars" }),
 
   // CORS
   FRONTEND_URL: z.string().url(),
@@ -69,10 +93,10 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
 
   if (!result.success) {
     const errors = result.error.issues
-      .map((issue) => `  ✗ ${issue.path.join('.')}: ${issue.message}`)
-      .join('\n');
+      .map((issue) => `  ✗ ${issue.path.join(".")}: ${issue.message}`)
+      .join("\n");
 
-    console.error('\n❌ Invalid environment variables:\n' + errors + '\n');
+    console.error("\n❌ Invalid environment variables:\n" + errors + "\n");
     process.exit(1);
   }
 

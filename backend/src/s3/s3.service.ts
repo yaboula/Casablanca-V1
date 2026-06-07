@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { DocumentType } from '../documents/reservation-document.entity';
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { DocumentType } from "../documents/reservation-document.entity";
 
 @Injectable()
 export class S3Service {
@@ -19,30 +19,41 @@ export class S3Service {
 
   constructor(private readonly config: ConfigService) {
     this.s3 = new S3Client({
-      region: this.config.get<string>('AWS_REGION', 'eu-west-3'),
+      region: this.config.get<string>("AWS_REGION", "eu-west-3"),
       credentials: {
-        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID')!,
-        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY')!,
+        accessKeyId: this.config.get<string>("AWS_ACCESS_KEY_ID")!,
+        secretAccessKey: this.config.get<string>("AWS_SECRET_ACCESS_KEY")!,
       },
     });
-    this.bucket = this.config.get<string>('AWS_S3_BUCKET', 'nexus-documents');
+    this.bucket = this.config.get<string>("AWS_S3_BUCKET", "nexus-documents");
     this.uploadExpiry = Number(
-      this.config.get<string>('AWS_S3_PRESIGN_EXPIRES_SECONDS', '900'),
+      this.config.get<string>("AWS_S3_PRESIGN_EXPIRES_SECONDS", "900"),
     );
   }
 
   /**
    * Generates a presigned PUT URL so the frontend can upload directly to S3.
    * The fileKey encodes userId/reservationId/type to prevent path traversal.
+   *
+   * When BYPASS_S3=true (dev mode), returns uploadUrl='bypass' to signal the
+   * frontend to skip the actual S3 PUT and call /documents/confirm directly.
    */
   async generatePresignedUpload(
     userId: string,
     reservationId: string,
     type: DocumentType,
-    mimeType = 'image/jpeg',
+    mimeType = "image/jpeg",
   ): Promise<{ uploadUrl: string; fileKey: string; expiresIn: number }> {
     const ext = S3Service.mimeToExtension(mimeType);
     const fileKey = `docs/${userId}/${reservationId}/${type}-${Date.now()}.${ext}`;
+
+    // Dev bypass: skip real S3 presigning
+    if (
+      process.env.BYPASS_S3 === "true" ||
+      process.env.BYPASS_STRIPE === "true"
+    ) {
+      return { uploadUrl: "bypass", fileKey, expiresIn: 900 };
+    }
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,
@@ -61,11 +72,11 @@ export class S3Service {
   /** Maps a MIME type to a file extension for the S3 key. */
   private static mimeToExtension(mimeType: string): string {
     const map: Record<string, string> = {
-      'image/jpeg': 'jpg',
-      'image/png': 'png',
-      'application/pdf': 'pdf',
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "application/pdf": "pdf",
     };
-    return map[mimeType] ?? 'bin';
+    return map[mimeType] ?? "bin";
   }
 
   /**
@@ -73,6 +84,13 @@ export class S3Service {
    * Never returns the raw file key.
    */
   async generatePresignedRead(fileKey: string): Promise<string> {
+    // Dev bypass: return a placeholder instead of a real S3 signed URL
+    if (
+      process.env.BYPASS_S3 === "true" ||
+      process.env.BYPASS_STRIPE === "true"
+    ) {
+      return "https://via.placeholder.com/400x300?text=Dev+Doc";
+    }
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: fileKey,

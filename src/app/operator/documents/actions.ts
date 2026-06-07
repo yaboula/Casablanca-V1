@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { SERVER_API_BASE } from "@/lib/config";
 
-const BASE = process.env.API_URL ?? "http://localhost:3001/api/v1";
+const BASE = SERVER_API_BASE;
 
 async function getOperatorToken(): Promise<string> {
   const token = (await cookies()).get("nexus_token")?.value;

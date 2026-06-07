@@ -8,11 +8,16 @@ export const metadata: Metadata = {
 };
 
 interface Props {
-  searchParams: Promise<{ reservationId?: string; retry?: string }>;
+  searchParams: Promise<{ reservationId?: string; retryType?: string }>;
 }
 
 export default async function CheckInPage({ searchParams }: Props) {
-  const { reservationId } = await searchParams;
+  const { reservationId, retryType } = await searchParams;
 
-  return <CheckInFlow reservationId={reservationId ?? null} />;
+  return (
+    <CheckInFlow
+      reservationId={reservationId ?? null}
+      retryType={retryType ?? null}
+    />
+  );
 }

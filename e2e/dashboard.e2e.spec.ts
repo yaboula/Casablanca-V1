@@ -1,5 +1,5 @@
-/**
- * dashboard.e2e.spec.ts — Journey 4: Customer Dashboard UI
+﻿/**
+ * dashboard.e2e.spec.ts â€” Journey 4: Customer Dashboard UI
  *
  * Tests that the /dashboard page:
  *   - Requires authentication (redirects to /login)
@@ -8,7 +8,7 @@
  *
  * Prerequisites:
  *   - Next.js running (webServer)
- *   - NestJS backend at http://localhost:3900
+ *   - NestJS backend at http://localhost:3902
  */
 
 import { test, expect } from '@playwright/test';
@@ -21,7 +21,7 @@ import {
 import { registerUser, uniqueEmail } from './fixtures/auth.fixture';
 import { DashboardPage } from './pages/dashboard.page';
 
-const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3900/api/v1';
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3902/api/v1';
 
 let db: Client;
 
@@ -30,7 +30,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await db.end();
+  if (db) await db.end();
 });
 
 test.beforeEach(async () => {
@@ -44,7 +44,7 @@ function futureDate(daysFromNow: number): string {
   return d.toISOString();
 }
 
-// ── Tests ─────────────────────────────────────────────────────
+// â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('unauthenticated request to /dashboard redirects to /login', async ({ page }) => {
   await page.goto('/dashboard');
@@ -99,7 +99,7 @@ test('user A cannot see user B reservations in their dashboard', async ({
 }) => {
   const vehicleId = await seedE2EVehicle(db, { brand: 'Ford', model: 'Mustang' });
 
-  // ── User A: create reservation ──
+  // â”€â”€ User A: create reservation â”€â”€
   const contextA = await browser.newContext();
   const pageA = await contextA.newPage();
   const { accessToken: tokenA } = await registerUser(pageA, {
@@ -117,7 +117,7 @@ test('user A cannot see user B reservations in their dashboard', async ({
     headers: { Authorization: `Bearer ${tokenA}` },
   });
 
-  // ── User B: no reservations ──
+  // â”€â”€ User B: no reservations â”€â”€
   const contextB = await browser.newContext();
   const pageB = await contextB.newPage();
   await registerUser(pageB, {
@@ -149,3 +149,4 @@ test('dashboard page title includes NEXUS or Dashboard keyword', async ({
   await page.waitForURL(/\/dashboard/, { timeout: 10_000 });
   await expect(page).toHaveTitle(/.+/, { timeout: 5_000 });
 });
+

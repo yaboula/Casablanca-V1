@@ -4,8 +4,9 @@
  */
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { SERVER_API_BASE } from "@/lib/config";
 
-const BASE = process.env.API_URL ?? "http://localhost:3001/api/v1";
+const BASE = SERVER_API_BASE;
 
 export async function serverFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const cookieStore = await cookies();

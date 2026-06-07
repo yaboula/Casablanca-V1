@@ -85,8 +85,13 @@ function ConfirmedContent() {
         if (res.status === "CONFIRMED" || res.status === "IN_PROGRESS") {
           setReservation(res);
           setStatus("confirmed");
+          // Bug 19 fix: Clear booking store after successful confirmation
+          useBookingStore.getState().reset();
         } else if (res.status === "CANCELLED") {
           setStatus("error");
+        } else if (res.status === "AWAITING_CAPTURE") {
+          // Bug 18 fix: Payment is being captured — keep polling without counting attempt
+          timer = setTimeout(poll, POLL_INTERVAL_MS);
         } else {
           // PENDING_DEPOSIT — webhook hasn't arrived yet
           attempt++;
@@ -243,7 +248,7 @@ function ConfirmedContent() {
             ¡Reserva confirmada!
           </h1>
           <p className="text-brand-muted text-sm text-center mt-1.5">
-            En breve recibirás la confirmación por WhatsApp.
+            {searchParams.get("demo") === "1" || process.env.NEXT_PUBLIC_BYPASS_PAYMENT === "true" ? "Modo demo local: la reserva quedó confirmada sin cobrar Stripe." : "En breve recibirás la confirmación por WhatsApp."}
           </p>
         </motion.div>
 
@@ -280,16 +285,20 @@ function ConfirmedContent() {
             <div className="h-px bg-slate-100" />
 
             <div className="flex justify-between text-sm">
-              <span className="text-brand-muted">Señal pagada</span>
-              <span className="font-black text-emerald-600">
-                {depositEur} € ✓
+              <span className="text-brand-muted">
+                {searchParams.get("demo") === "1" || process.env.NEXT_PUBLIC_BYPASS_PAYMENT === "true" ? "Demo deposit" : "Deposit paid"}
+              </span>
+              <span
+                className={searchParams.get("demo") === "1" || process.env.NEXT_PUBLIC_BYPASS_PAYMENT === "true" ? "font-black text-amber-700" : "font-black text-emerald-600"}
+              >
+                {depositEur} EUR {searchParams.get("demo") === "1" || process.env.NEXT_PUBLIC_BYPASS_PAYMENT === "true" ? "demo" : "ok"}
               </span>
             </div>
             {totalEur > depositEur && (
               <div className="flex justify-between text-sm">
                 <span className="text-brand-muted">Resto al recoger</span>
                 <span className="font-semibold text-brand-dark">
-                  {(totalEur - depositEur).toFixed(2)} €
+                  {(totalEur - depositEur).toFixed(2)} EUR
                 </span>
               </div>
             )}
@@ -373,3 +382,5 @@ function Row({
     </div>
   );
 }
+
+

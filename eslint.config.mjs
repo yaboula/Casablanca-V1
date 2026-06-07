@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The NestJS backend has its own package-level lint/test scripts.
+    "backend/**",
+    "playwright-report/**",
+    "playwright-output/**",
   ]),
 ]);
 

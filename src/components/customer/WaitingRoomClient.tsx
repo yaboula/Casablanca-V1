@@ -83,13 +83,15 @@ export default function WaitingRoomClient({ reservationId }: Props) {
     // One-time REST check: sync document status that changed before SSE connected
     async function initialCheck() {
       try {
-        const reservations = await apiFetch<ApiReservation[]>(
+        // Bug 17 fix: Backend returns { data: [...], total, page, limit } not a flat array
+        const response = await apiFetch<{ data: ApiReservation[] }>(
           "/reservations/my",
           {
             auth: true,
             cache: "no-store",
           },
         );
+        const reservations = response.data ?? [];
         const reservation = reservations.find((r) => r.id === reservationId);
         if (!reservation) return;
         const docs = reservation.documents ?? [];

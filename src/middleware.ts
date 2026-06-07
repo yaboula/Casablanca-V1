@@ -33,7 +33,7 @@ function getSessionRole(req: NextRequest): SessionRole {
 
 // ── Middleware ───────────────────────────────────────────────────
 
-export function proxy(req: NextRequest) {
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const role = getSessionRole(req);
 

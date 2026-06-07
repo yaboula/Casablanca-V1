@@ -97,10 +97,10 @@ function DateTimeField({
         {label}
       </span>
 
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div className="flex items-center gap-2">
-            {/* Date trigger button */}
+      {/* Date + Time side by side — each is its own Popover (NOT nested) */}
+      <div className="flex items-center gap-2">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
             <button
               type="button"
               className="flex items-center gap-2.5 flex-[2] h-12 px-4 rounded-2xl border border-slate-200
@@ -114,42 +114,45 @@ function DateTimeField({
                 {displayText}
               </span>
             </button>
+          </PopoverTrigger>
 
-            {/* Time selector — custom popover */}
-            <TimeSelect value={time} onChange={onTimeChange} />
-          </div>
-        </PopoverTrigger>
-
-        {/* Calendar Popover */}
-        <PopoverContent
-          className="w-auto p-0 rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
-          align="start"
-          sideOffset={8}
-        >
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={(d) => {
-              if (d) {
-                onDateChange(d);
-                setOpen(false);
+          {/* Calendar Popover */}
+          <PopoverContent
+            className="w-auto p-0 rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+            align="start"
+            sideOffset={8}
+          >
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(d) => {
+                if (d) {
+                  onDateChange(d);
+                  setOpen(false);
+                }
+              }}
+              defaultMonth={defaultMonth ?? date ?? new Date()}
+              disabled={(d) =>
+                isBefore(
+                  startOfDay(d),
+                  startOfDay(disabledBefore ?? new Date()),
+                )
               }
-            }}
-            defaultMonth={defaultMonth ?? date ?? new Date()}
-            disabled={(d) =>
-              isBefore(startOfDay(d), startOfDay(disabledBefore ?? new Date()))
-            }
-            locale={dateFnsLocale}
-            className="p-4 [--cell-size:--spacing(10)]"
-            classNames={{
-              day_selected:
-                "bg-brand-primary text-white hover:bg-brand-primary focus:bg-brand-primary rounded-full",
-              day_today: "font-extrabold underline underline-offset-2",
-              day: "rounded-full transition-colors",
-            }}
-          />
-        </PopoverContent>
-      </Popover>
+              locale={dateFnsLocale}
+              className="p-4 [--cell-size:--spacing(10)]"
+              classNames={{
+                day_selected:
+                  "bg-brand-primary text-white hover:bg-brand-primary focus:bg-brand-primary rounded-full",
+                day_today: "font-extrabold underline underline-offset-2",
+                day: "rounded-full transition-colors",
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Time selector — its own Popover, NOT nested inside date trigger */}
+        <TimeSelect value={time} onChange={onTimeChange} />
+      </div>
     </div>
   );
 }

@@ -8,11 +8,17 @@ export class StripeService {
   private readonly webhookSecret: string;
 
   constructor(private readonly config: ConfigService) {
-    this.stripe = new Stripe(this.config.get<string>("STRIPE_SECRET_KEY")!, {
-      apiVersion: "2023-10-16",
-      typescript: true,
-    });
-    this.webhookSecret = this.config.get<string>("STRIPE_WEBHOOK_SECRET")!;
+    const secretKey = this.config.get<string>("STRIPE_SECRET_KEY");
+    if (secretKey) {
+      this.stripe = new Stripe(secretKey, {
+        apiVersion: "2023-10-16",
+        typescript: true,
+      });
+    } else {
+      // BYPASS_STRIPE mode: no real Stripe client
+      this.stripe = null as unknown as Stripe;
+    }
+    this.webhookSecret = this.config.get<string>("STRIPE_WEBHOOK_SECRET") ?? "";
   }
 
   /**

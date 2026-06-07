@@ -1,4 +1,4 @@
-/**
+﻿/**
  * auth.fixture.ts
  *
  * Provides a fast "API-shortcut" login that:
@@ -26,7 +26,7 @@ export interface AuthResult {
   refreshToken: string;
 }
 
-const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3900/api/v1';
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3902/api/v1';
 
 /**
  * Register a brand-new user via NestJS API and set session cookies
@@ -134,3 +134,4 @@ export async function logoutUser(page: Page) {
 export function uniqueEmail(prefix = 'e2e'): string {
   return `${prefix}+${Date.now()}@nexus-e2e-test.com`;
 }
+

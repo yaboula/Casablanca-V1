@@ -122,10 +122,14 @@ export default function DocumentUploadStep({
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     if (mode === "camera" && state === "IDLE") {
-      startCamera();
+      queueMicrotask(() => {
+        if (!cancelled) void startCamera();
+      });
     }
     return () => {
+      cancelled = true;
       if (mode === "camera") stopCamera();
     };
   }, [mode, state, startCamera, stopCamera]);
@@ -229,24 +233,7 @@ export default function DocumentUploadStep({
 
   async function doUpload(file: File, resId: string) {
     try {
-      // DEV BYPASS: skip S3 entirely — insert directly in Postgres
-      if (process.env.NEXT_PUBLIC_BYPASS_PAYMENT === "true") {
-        const bypassRes = await fetch("/api/dev/doc-bypass", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reservationId: resId, type }),
-        });
-        if (!bypassRes.ok) {
-          const err = await bypassRes.json().catch(() => ({}));
-          throw new Error(err.detail ?? err.error ?? "Doc bypass failed");
-        }
-        setState("UPLOADED");
-        localStorage.removeItem(`nexus-pending-${type}`);
-        setTimeout(() => onComplete(), 800);
-        return;
-      }
-
-      // Step 1: Get presigned URL
+      // Step 1: Get presigned URL (backend returns uploadUrl='bypass' when BYPASS_S3=true)
       const presign = await apiFetch<{ uploadUrl: string; fileKey: string }>(
         "/documents/presign",
         {
@@ -256,8 +243,12 @@ export default function DocumentUploadStep({
         },
       );
 
-      // Step 2: PUT directly to S3 with progress tracking
-      await uploadToS3WithProgress(presign.uploadUrl, file, setProgress);
+      // Step 2: PUT directly to S3 — skipped in dev bypass mode
+      if (presign.uploadUrl !== "bypass") {
+        await uploadToS3WithProgress(presign.uploadUrl, file, setProgress);
+      } else {
+        setProgress(100);
+      }
 
       // Step 3: Confirm upload to backend
       await apiFetch("/documents/confirm", {

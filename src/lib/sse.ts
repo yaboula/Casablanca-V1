@@ -60,22 +60,43 @@ export function createSSEConnection(
       retryTimer = setTimeout(connect, delay);
     };
 
-    // Bind named SSE event listeners
-    bindEvent("document.approved", handlers.onDocumentApproved);
-    bindEvent("document.rejected", handlers.onDocumentRejected);
-    bindEvent("reservation.confirmed", handlers.onReservationConfirmed);
-    bindEvent("reservation.completed", handlers.onReservationCompleted);
-  }
-
-  function bindEvent<T>(event: string, handler?: (data: T) => void) {
-    if (!handler || !es) return;
-    es.addEventListener(event, (e: MessageEvent) => {
+    // Bug 16 fix: NestJS @Sse sends UNNAMED events (no "event:" field).
+    // Use onmessage instead of addEventListener for named events.
+    es.onmessage = (e: MessageEvent) => {
       try {
-        handler(JSON.parse(e.data) as T);
+        const data = JSON.parse(e.data);
+        if (data.type === "ping") return; // ignore keepalive
+
+        if (data.type === "DOCUMENT_STATUS_UPDATE") {
+          if (data.documentStatus === "APPROVED") {
+            handlers.onDocumentApproved?.({
+              documentType: data.documentType ?? "",
+              reservationId: data.reservationId,
+            });
+          } else if (data.documentStatus === "REJECTED") {
+            handlers.onDocumentRejected?.({
+              documentType: data.documentType ?? "",
+              reason: data.rejectionReason ?? "",
+              reservationId: data.reservationId,
+            });
+          }
+        }
+
+        if (data.type === "RESERVATION_STATUS_UPDATE") {
+          if (data.status === "CONFIRMED") {
+            handlers.onReservationConfirmed?.({
+              reservationId: data.reservationId,
+            });
+          } else if (data.status === "COMPLETED") {
+            handlers.onReservationCompleted?.({
+              reservationId: data.reservationId,
+            });
+          }
+        }
       } catch {
         /* malformed payload — skip silently */
       }
-    });
+    };
   }
 
   connect();

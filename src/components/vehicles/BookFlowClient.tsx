@@ -132,48 +132,67 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
   // T3-3 — Step 2 → Step 3: create reservation in backend
   const handleContactNext = useCallback(async () => {
     if (!contactValid || processing) return;
+
+    // BUG-14 fix: If reservation was already created (user went Back from step 3),
+    // skip re-creation and just advance to payment step.
+    if (clientSecret && serverReservationId) {
+      goNext();
+      return;
+    }
+
     setProcessing(true);
     try {
+      // In bypass mode, ensure dates are in the future (backend still validates)
+      let resolvedPickup = new Date(pickupDate!);
+      let resolvedReturn = new Date(returnDate!);
+      if (bypassPayment && resolvedPickup <= new Date()) {
+        const now = new Date();
+        const diffMs = resolvedReturn.getTime() - resolvedPickup.getTime();
+        resolvedPickup = new Date(now.getTime() + 60 * 60 * 1000); // +1h from now
+        resolvedReturn = new Date(
+          resolvedPickup.getTime() + Math.max(diffMs, 24 * 60 * 60 * 1000),
+        );
+      }
+
       const payload = {
         vehicleId: vehicle.id,
-        pickupDate: new Date(pickupDate!).toISOString(),
-        returnDate: new Date(returnDate!).toISOString(),
+        pickupDate: resolvedPickup.toISOString(),
+        returnDate: resolvedReturn.toISOString(),
         pickupLocation,
         customerName: name.trim(),
         customerPhone: phone,
-        // DEV bypass: send price so the route doesn't need to query the DB
-        pricePerDayCents: Math.round(vehicle.pricePerDay * 100),
       };
 
-      if (bypassPayment) {
-        // DEV: skip NestJS + Stripe — insert directly into DB as CONFIRMED
-        const devRes = await fetch("/api/dev/book-bypass", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!devRes.ok) {
-          const err = await devRes.json().catch(() => ({}));
-          throw new Error(err.detail ?? err.error ?? "Dev bypass failed");
-        }
-        const { id } = await devRes.json();
-        setReservationId(id);
-        router.push(`/booking/confirmed?id=${id}`);
-        return;
-      }
-
       // Normal flow: create via NestJS (Stripe PaymentIntent inside)
-      const res = await apiFetch<{
-        id: string;
-        stripeClientSecret: string;
-        totalPriceEurCents: number;
+      // BUG-18 fix: Backend returns { data: { id, stripeClientSecret, … } }
+      const raw = await apiFetch<{
+        data: {
+          id: string;
+          stripeClientSecret: string;
+          totalPriceEurCents: number;
+        };
       }>("/reservations", {
         method: "POST",
         auth: true,
         body: JSON.stringify(payload),
       });
-      setClientSecret(res.stripeClientSecret);
-      setServerReservationId(res.id);
+
+      if (bypassPayment) {
+        const confirmRes = await fetch(`/api/dev/confirm-reservation/${raw.data.id}`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!confirmRes.ok) {
+          throw new Error(`demo confirmation failed: ${confirmRes.status}`);
+        }
+        setServerReservationId(raw.data.id);
+        setReservationId(raw.data.id);
+        router.push(`/booking/confirmed?id=${raw.data.id}&demo=1`);
+        return;
+      }
+
+      setClientSecret(raw.data.stripeClientSecret);
+      setServerReservationId(raw.data.id);
       goNext();
     } catch (err) {
       if (err instanceof NexusApiError && err.statusCode === 409) {
@@ -188,6 +207,8 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
   }, [
     contactValid,
     processing,
+    clientSecret,
+    serverReservationId,
     vehicle.id,
     pickupDate,
     returnDate,
@@ -363,6 +384,14 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                   Te enviaremos la confirmación por WhatsApp y email.
                 </p>
 
+                {bypassPayment && (
+                  <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Modo demo local activo. Esta reserva se confirmará sin
+                    Stripe y quedará marcada como demo para revisar el flujo
+                    completo.
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <Field
                     label="Nombre completo"
@@ -419,7 +448,9 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                       </>
                     ) : (
                       <>
-                        Continuar al pago
+                        {bypassPayment
+                          ? "Crear reserva demo"
+                          : "Continuar al pago"}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -443,6 +474,7 @@ export default function BookFlowClient({ vehicle }: { vehicle: Vehicle }) {
                   <StripeProvider clientSecret={clientSecret}>
                     <PaymentStep
                       reservationId={serverReservationId!}
+                      clientSecret={clientSecret!}
                       onSuccess={handlePaymentSuccess}
                       onBack={goBack}
                     />
@@ -565,3 +597,5 @@ function Field({
     </div>
   );
 }
+
+

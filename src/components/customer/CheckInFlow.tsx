@@ -20,12 +20,16 @@ const slideVariants = {
 
 interface Props {
   reservationId: string | null;
+  retryType: string | null;
 }
 
-export default function CheckInFlow({ reservationId }: Props) {
+export default function CheckInFlow({ reservationId, retryType }: Props) {
   const router = useRouter();
   const tCheckin = useTranslations("checkin");
-  const [step, setStep] = useState<1 | 2>(1);
+  // BUG-15 fix: If retryType is DRIVING_LICENSE, start at step 2 (skip passport)
+  const [step, setStep] = useState<1 | 2>(
+    retryType === "DRIVING_LICENSE" ? 2 : 1,
+  );
   const [direction, setDirection] = useState(1);
 
   const handlePassportComplete = useCallback(() => {
@@ -41,16 +45,19 @@ export default function CheckInFlow({ reservationId }: Props) {
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-10 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-5 md:p-7 flex flex-col gap-6 relative overflow-hidden">
-
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center shrink-0">
             <ShieldCheck className="w-5 h-5 text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-brand-dark">{tCheckin.title}</h1>
+            <h1 className="text-lg font-bold text-brand-dark">
+              {tCheckin.title}
+            </h1>
             <p className="text-xs text-brand-muted">
-              {reservationId ? `${tCheckin.reservationLabel}${reservationId}` : tCheckin.verifyIdentity}
+              {reservationId
+                ? `${tCheckin.reservationLabel}${reservationId}`
+                : tCheckin.verifyIdentity}
             </p>
           </div>
         </div>
@@ -75,12 +82,18 @@ export default function CheckInFlow({ reservationId }: Props) {
                 <p className="text-sm font-semibold text-brand-primary tracking-wider uppercase">
                   {tCheckin.step1of2}
                 </p>
-                <h2 className="text-xl font-bold text-brand-dark mt-1">{tCheckin.passport}</h2>
+                <h2 className="text-xl font-bold text-brand-dark mt-1">
+                  {tCheckin.passport}
+                </h2>
                 <p className="text-sm text-brand-muted mt-1">
                   {tCheckin.passportDesc}
                 </p>
               </div>
-              <DocumentUploadStep type="PASSPORT" reservationId={reservationId} onComplete={handlePassportComplete} />
+              <DocumentUploadStep
+                type="PASSPORT"
+                reservationId={reservationId}
+                onComplete={handlePassportComplete}
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -97,12 +110,18 @@ export default function CheckInFlow({ reservationId }: Props) {
                 <p className="text-sm font-semibold text-brand-primary tracking-wider uppercase">
                   {tCheckin.step2of2}
                 </p>
-                <h2 className="text-xl font-bold text-brand-dark mt-1">{tCheckin.license}</h2>
+                <h2 className="text-xl font-bold text-brand-dark mt-1">
+                  {tCheckin.license}
+                </h2>
                 <p className="text-sm text-brand-muted mt-1">
                   {tCheckin.licenseDesc}
                 </p>
               </div>
-              <DocumentUploadStep type="DRIVING_LICENSE" reservationId={reservationId} onComplete={handleLicenseComplete} />
+              <DocumentUploadStep
+                type="DRIVING_LICENSE"
+                reservationId={reservationId}
+                onComplete={handleLicenseComplete}
+              />
               <button
                 type="button"
                 onClick={() => {

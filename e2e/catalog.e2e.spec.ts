@@ -1,5 +1,5 @@
-/**
- * catalog.e2e.spec.ts — Journey 1: Public Catalog Browse
+﻿/**
+ * catalog.e2e.spec.ts â€” Journey 1: Public Catalog Browse
  *
  * Tests that run without authentication. Verifies:
  *   - Catalog page loads and renders vehicle cards
@@ -9,7 +9,7 @@
  *
  * Prerequisites:
  *   - Next.js running (started by webServer)
- *   - NestJS backend running at http://localhost:3900
+ *   - NestJS backend running at http://localhost:3902
  *   - nexus_e2e_db accessible (E2E_DATABASE_URL)
  */
 
@@ -29,14 +29,14 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await db.end();
+  if (db) await db.end();
 });
 
 test.beforeEach(async () => {
   await truncateAllE2ETables(db);
 });
 
-// ── Tests ─────────────────────────────────────────────────────
+// â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('displays empty state when no vehicles are seeded', async ({ page }) => {
   const catalog = new CatalogPage(page);
@@ -81,7 +81,7 @@ test('filters catalog by category via URL param', async ({ page }) => {
   await catalog.goto({ category: 'SEDAN' });
   await catalog.expectVehicleCount(1);
 
-  // No filter — both shown
+  // No filter â€” both shown
   await catalog.goto();
   await catalog.expectVehicleCount(2);
 });
@@ -115,5 +115,6 @@ test('clicking a vehicle card navigates to detail page', async ({ page }) => {
 
 test('catalog page title is visible', async ({ page }) => {
   await page.goto('/catalog');
-  await expect(page).toHaveTitle(/NEXUS|Catálogo/i, { timeout: 10_000 });
+  await expect(page).toHaveTitle(/NEXUS|CatÃ¡logo/i, { timeout: 10_000 });
 });
+

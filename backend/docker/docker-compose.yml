@@ -12,6 +12,7 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_db"]
       interval: 10s
@@ -51,7 +52,7 @@ services:
       DATABASE_URL: postgresql://nexus:nexus_secret@postgres:5432/nexus_db
       REDIS_URL: redis://redis:6379
     ports:
-      - "3900:3001"
+      - "3900:3900"
     volumes:
       # In dev, mount source for hot reload
       - ../src:/app/src:ro

@@ -17,11 +17,19 @@ import { randomUUID } from 'crypto';
 
 const E2E_DATABASE_URL =
   process.env.E2E_DATABASE_URL ??
-  'postgresql://nexus:nexus_secret@localhost:5432/nexus_e2e_db';
+  'postgresql://nexus:nexus_secret@localhost:5433/nexus_e2e_db';
 
 export async function connectE2EDb(): Promise<Client> {
   const client = new Client({ connectionString: E2E_DATABASE_URL });
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (err) {
+    throw new Error(
+      `Unable to connect to E2E database at ${E2E_DATABASE_URL}. ` +
+        `Run "npm run docker:dev" and "npm run db:e2e:prepare" before Playwright. ` +
+        `Original error: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
   return client;
 }
 

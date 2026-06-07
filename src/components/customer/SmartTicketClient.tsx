@@ -47,7 +47,8 @@ interface Props {
 export default function SmartTicketClient({ reservationId }: Props) {
   const tSmartTicket = useTranslations("smartTicket");
   const { locale } = useLocaleStore();
-  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
+  const dateFnsLocale =
+    locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
   const {
     pickupDate: storePickupDate,
     returnDate: storeReturnDate,
@@ -63,27 +64,35 @@ export default function SmartTicketClient({ reservationId }: Props) {
 
   useEffect(() => {
     if (!reservationId || reservationId === "CMN-2026-001") return;
-    apiFetch<ReservationData>(`/reservations/${reservationId}`, { auth: true })
-      .then(setResv)
+    // BUG-17 fix: Backend returns { data: ReservationData }, unwrap it
+    apiFetch<{ data: ReservationData }>(`/reservations/${reservationId}`, {
+      auth: true,
+    })
+      .then((raw) => setResv(raw.data))
       .catch(() => {}); // falls back to booking store data
   }, [reservationId]);
 
   // Resolved display values — API takes priority over booking store
   const toTs = (d: string | number | undefined): number | undefined =>
-    d === undefined ? undefined : typeof d === "string" ? new Date(d).getTime() : d;
+    d === undefined
+      ? undefined
+      : typeof d === "string"
+        ? new Date(d).getTime()
+        : d;
 
-  const vehicleBrand   = resv?.vehicle?.brand ?? "Vehículo";
-  const vehicleModel   = resv?.vehicle?.model ?? "";
-  const pickupDate     = toTs(resv?.pickupDate)  ?? storePickupDate;
-  const returnDate     = toTs(resv?.returnDate)  ?? storeReturnDate;
-  const pickupLocation = resv?.pickupLocation    ?? storePickupLocation;
-  const totalDays      = resv?.totalDays         ?? storeTotalDays;
-  const balanceDueEUR  = resv?.balanceDueEUR     ?? (totalPriceEUR ? totalPriceEUR - DEPOSIT_AMOUNT_EUR : 0);
+  const vehicleBrand = resv?.vehicle?.brand ?? "Vehículo";
+  const vehicleModel = resv?.vehicle?.model ?? "";
+  const pickupDate = toTs(resv?.pickupDate) ?? storePickupDate;
+  const returnDate = toTs(resv?.returnDate) ?? storeReturnDate;
+  const pickupLocation = resv?.pickupLocation ?? storePickupLocation;
+  const totalDays = resv?.totalDays ?? storeTotalDays;
+  const balanceDueEUR =
+    resv?.balanceDueEUR ??
+    (totalPriceEUR ? totalPriceEUR - DEPOSIT_AMOUNT_EUR : 0);
   const balanceDue =
-    currency === "MAD"
-      ? Math.round(balanceDueEUR * madRate)
-      : balanceDueEUR;
-  const balanceLabel = currency === "MAD" ? `${balanceDue} DH` : `${balanceDue}€`;
+    currency === "MAD" ? Math.round(balanceDueEUR * madRate) : balanceDueEUR;
+  const balanceLabel =
+    currency === "MAD" ? `${balanceDue} DH` : `${balanceDue}€`;
 
   // ── QR Code ────────────────────────────────────────────────
 
@@ -127,7 +136,9 @@ export default function SmartTicketClient({ reservationId }: Props) {
   // ── Dates formatted ────────────────────────────────────────
 
   const fmtPickup = pickupDate
-    ? format(new Date(pickupDate), "EEE d MMM · HH:mm", { locale: dateFnsLocale })
+    ? format(new Date(pickupDate), "EEE d MMM · HH:mm", {
+        locale: dateFnsLocale,
+      })
     : "—";
   const fmtReturn = returnDate
     ? format(new Date(returnDate), "EEE d MMM", { locale: dateFnsLocale })
@@ -140,14 +151,14 @@ export default function SmartTicketClient({ reservationId }: Props) {
       tSmartTicket.whatsappMsg
         .replace("{id}", reservationId)
         .replace("{brand}", vehicleBrand)
-        .replace("{model}", vehicleModel)
+        .replace("{model}", vehicleModel),
     );
     return `https://wa.me/${OPERATOR_PHONE}?text=${msg}`;
-  }, [reservationId, vehicleBrand, vehicleModel]);
+  }, [reservationId, tSmartTicket.whatsappMsg, vehicleBrand, vehicleModel]);
 
   const handleWallet = useCallback(() => {
     toast.info(tSmartTicket.walletSoon);
-  }, []);
+  }, [tSmartTicket.walletSoon]);
 
   // ── Copy reservation ID ───────────────────────────────────
   const [copied, setCopied] = useState(false);
@@ -181,7 +192,9 @@ export default function SmartTicketClient({ reservationId }: Props) {
         {/* Header */}
         <div className="relative bg-brand-dark px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-white font-black text-base tracking-tight">NEXUS</span>
+            <span className="text-white font-black text-base tracking-tight">
+              NEXUS
+            </span>
             <span className="text-brand-primary font-black text-base">.</span>
           </div>
           <div className="flex items-center gap-1.5 bg-emerald-500/20 px-2.5 py-1 rounded-full">
@@ -194,14 +207,27 @@ export default function SmartTicketClient({ reservationId }: Props) {
 
         {/* Passenger & Vehicle info */}
         <div className="px-5 py-4 grid grid-cols-2 gap-4 border-b border-slate-100">
-          <InfoBlock label={tSmartTicket.passenger} value={tSmartTicket.clientLabel} />
-          <InfoBlock label={tSmartTicket.vehicle} value={`${vehicleBrand} ${vehicleModel}`.trim()} />
+          <InfoBlock
+            label={tSmartTicket.passenger}
+            value={tSmartTicket.clientLabel}
+          />
+          <InfoBlock
+            label={tSmartTicket.vehicle}
+            value={`${vehicleBrand} ${vehicleModel}`.trim()}
+          />
           <InfoBlock label={tSmartTicket.pickup} value={fmtPickup} />
           <InfoBlock label={tSmartTicket.return} value={fmtReturn} />
-          <InfoBlock label={tSmartTicket.terminal} value={PICKUP_LOCATION_LABELS[pickupLocation]} />
+          <InfoBlock
+            label={tSmartTicket.terminal}
+            value={PICKUP_LOCATION_LABELS[pickupLocation]}
+          />
           <InfoBlock
             label={tSmartTicket.duration}
-            value={totalDays ? `${totalDays} ${totalDays === 1 ? tSmartTicket.day : tSmartTicket.days}` : "—"}
+            value={
+              totalDays
+                ? `${totalDays} ${totalDays === 1 ? tSmartTicket.day : tSmartTicket.days}`
+                : "—"
+            }
           />
         </div>
 
@@ -258,8 +284,12 @@ export default function SmartTicketClient({ reservationId }: Props) {
         {/* Balance & Countdown */}
         <div className="px-5 py-4 space-y-4">
           <div className="flex justify-between items-center bg-brand-primary/5 border border-brand-primary/15 rounded-xl px-4 py-3">
-            <span className="text-sm font-semibold text-brand-dark">{tSmartTicket.balanceDue}</span>
-            <span className="text-xl font-black text-brand-primary">{balanceLabel}</span>
+            <span className="text-sm font-semibold text-brand-dark">
+              {tSmartTicket.balanceDue}
+            </span>
+            <span className="text-xl font-black text-brand-primary">
+              {balanceLabel}
+            </span>
           </div>
 
           <div
@@ -267,9 +297,13 @@ export default function SmartTicketClient({ reservationId }: Props) {
               ${isNow ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-100"}`}
           >
             <div className="flex items-center gap-2">
-              <Clock className={`w-4 h-4 ${isNow ? "text-brand-success" : "text-brand-muted"}`} />
+              <Clock
+                className={`w-4 h-4 ${isNow ? "text-brand-success" : "text-brand-muted"}`}
+              />
               <span className="text-sm font-semibold text-brand-dark">
-                {isNow ? tSmartTicket.operatorWaiting : tSmartTicket.timeToPickup}
+                {isNow
+                  ? tSmartTicket.operatorWaiting
+                  : tSmartTicket.timeToPickup}
               </span>
             </div>
             {pickupDate ? (
@@ -282,7 +316,10 @@ export default function SmartTicketClient({ reservationId }: Props) {
                 {countdown}
               </motion.span>
             ) : (
-              <Link href="/catalog" className="text-xs font-bold text-brand-primary hover:underline">
+              <Link
+                href="/catalog"
+                className="text-xs font-bold text-brand-primary hover:underline"
+              >
                 {tSmartTicket.completarReserva}
               </Link>
             )}
@@ -300,7 +337,7 @@ export default function SmartTicketClient({ reservationId }: Props) {
                        shadow-[0_4px_16px_rgba(37,211,102,0.25)] transition-all"
           >
             <MessageCircle className="w-4 h-4" />
-              {tSmartTicket.whatsappLanded}
+            {tSmartTicket.whatsappLanded}
           </a>
 
           <button
@@ -330,7 +367,9 @@ export default function SmartTicketClient({ reservationId }: Props) {
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold text-brand-muted uppercase tracking-wider">{label}</p>
+      <p className="text-[10px] font-semibold text-brand-muted uppercase tracking-wider">
+        {label}
+      </p>
       <p className="text-sm font-bold text-brand-dark mt-0.5">{value}</p>
     </div>
   );

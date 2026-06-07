@@ -4,6 +4,7 @@
 
 export type ReservationStatus =
   | "PENDING_DEPOSIT"
+  | "AWAITING_CAPTURE"
   | "CONFIRMED"
   | "IN_PROGRESS"
   | "COMPLETED"
@@ -129,4 +130,31 @@ export interface BookingDraft {
   selectedVehicleId: string | null;
   totalDays: number | null;
   totalPriceEUR: number | null;
+}
+
+// ── Admin types ──────────────────────────────────────────────
+
+/** B2.4 — Mirrors backend AdminStats from admin-stats.service.ts */
+export interface AdminStatsKpi {
+  totalRevenueEurCents: number;
+  totalBookings: number;
+  activeUsers: number;
+  activeVehicles: number;
+}
+
+export interface AdminStats {
+  kpi: AdminStatsKpi;
+  bookingsByStatus: Array<{ status: string; count: number }>;
+  weeklyTrend: Array<{
+    week: string;
+    bookings: number;
+    revenueEurCents: number;
+  }>;
+  topVehicles: Array<{
+    id: string;
+    brand: string;
+    model: string;
+    category: string;
+    bookings: number;
+  }>;
 }

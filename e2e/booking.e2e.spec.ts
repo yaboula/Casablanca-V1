@@ -1,8 +1,8 @@
-/**
- * booking.e2e.spec.ts — Journey 3: Reservation Creation Flow
+﻿/**
+ * booking.e2e.spec.ts â€” Journey 3: Reservation Creation Flow
  *
  * Tests the complete booking cycle:
- *   register → auth shortcut → POST reservation via API → verify in dashboard
+ *   register â†’ auth shortcut â†’ POST reservation via API â†’ verify in dashboard
  *
  * Note: The payment step (Stripe) is excluded from these tests because
  * it requires Stripe test card interaction. Those would be in a dedicated
@@ -10,7 +10,7 @@
  *
  * Prerequisites:
  *   - Next.js running (webServer)
- *   - NestJS backend at http://localhost:3900 (with nexus_e2e_db)
+ *   - NestJS backend at http://localhost:3902 (with nexus_e2e_db)
  *   - Redis running
  */
 
@@ -25,7 +25,7 @@ import {
 import { registerUser, uniqueEmail } from './fixtures/auth.fixture';
 import { DashboardPage } from './pages/dashboard.page';
 
-const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3900/api/v1';
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3902/api/v1';
 
 let db: Client;
 
@@ -34,14 +34,14 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await db.end();
+  if (db) await db.end();
 });
 
 test.beforeEach(async () => {
   await truncateAllE2ETables(db);
 });
 
-// ── Helpers ──────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function futureDate(daysFromNow: number): string {
   const d = new Date();
@@ -50,7 +50,7 @@ function futureDate(daysFromNow: number): string {
   return d.toISOString();
 }
 
-// ── Tests ─────────────────────────────────────────────────────
+// â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test(
   'unauthenticated POST /reservations returns 401',
@@ -180,7 +180,7 @@ test(
 
     const res = await page.request.post(`${API_URL}/reservations`, {
       data: {
-        vehicleId: randomUUID(), // v4 UUID not in DB → 404
+        vehicleId: randomUUID(), // v4 UUID not in DB â†’ 404
         pickupDate: futureDate(5),
         returnDate: futureDate(8),
         pickupLocation: 'CMN_T1',
@@ -226,3 +226,4 @@ test(
     expect(cancelled.status).toBe('CANCELLED');
   },
 );
+

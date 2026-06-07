@@ -78,6 +78,7 @@ const STATUS_CONFIG: Record<
   { bg: string; text: string; icon: React.ElementType }
 > = {
   PENDING_DEPOSIT: { bg: "bg-amber-50", text: "text-amber-600", icon: Clock },
+  AWAITING_CAPTURE: { bg: "bg-amber-50", text: "text-amber-600", icon: Clock },
   CONFIRMED: { bg: "bg-blue-50", text: "text-blue-600", icon: CheckCircle2 },
   IN_PROGRESS: {
     bg: "bg-emerald-50",
@@ -95,10 +96,11 @@ const STATUS_CONFIG: Record<
 function getStatusLabel(
   status: ReservationStatus,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  t: any
+  t: any,
 ): string {
   const map: Record<ReservationStatus, string> = {
     PENDING_DEPOSIT: t.statusPending ?? "Pendiente",
+    AWAITING_CAPTURE: t.statusPending ?? "Procesando pago",
     CONFIRMED: t.statusConfirmed ?? "Confirmada",
     IN_PROGRESS: t.statusInProgress ?? "En curso",
     COMPLETED: t.statusCompleted ?? "Completada",
@@ -126,26 +128,29 @@ export default function DashboardClient({
 }) {
   const tDB = useTranslations("dashboard");
   const { locale } = useLocaleStore();
-  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
+  const dateFnsLocale =
+    locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
   const activeReservation = useMemo(
     () =>
       reservations.find(
         (r) =>
           r.status === "CONFIRMED" ||
           r.status === "IN_PROGRESS" ||
-          r.status === "PENDING_DEPOSIT"
+          r.status === "PENDING_DEPOSIT",
       ),
-    [reservations]
+    [reservations],
   );
 
   const pastReservations = useMemo(
     () =>
-      reservations.filter((r) => r.status === "COMPLETED" || r.status === "CANCELLED"),
-    [reservations]
+      reservations.filter(
+        (r) => r.status === "COMPLETED" || r.status === "CANCELLED",
+      ),
+    [reservations],
   );
 
   // Live countdown ticker (60 s interval)
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);
@@ -161,7 +166,6 @@ export default function DashboardClient({
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-3xl mx-auto px-4 md:px-8 py-6 md:py-10">
-
         {/* ── §1 Welcome Header ─────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -173,9 +177,7 @@ export default function DashboardClient({
               {tDB.greeting.replace("{name}", user.fullName.split(" ")[0])}
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              {activeReservation
-                ? tDB.nextTripReady
-                : tDB.nextAdventure}
+              {activeReservation ? tDB.nextTripReady : tDB.nextAdventure}
             </p>
           </div>
           <Link
@@ -229,12 +231,15 @@ export default function DashboardClient({
                   {tDB.checkinProgress}
                 </span>
                 <span className="text-[11px] font-bold text-blue-600">
-                  {tDB.verifiedCount.replace("{n}", String(
-                    [
-                      activeReservation.documents.passport,
-                      activeReservation.documents.license,
-                    ].filter((s) => s === "APPROVED").length
-                  ))}
+                  {tDB.verifiedCount.replace(
+                    "{n}",
+                    String(
+                      [
+                        activeReservation.documents.passport,
+                        activeReservation.documents.license,
+                      ].filter((s) => s === "APPROVED").length,
+                    ),
+                  )}
                 </span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -279,7 +284,9 @@ export default function DashboardClient({
           transition={{ delay: 0.2 }}
           className="mb-5"
         >
-          <h2 className="text-sm font-bold text-slate-900 mb-3">{tDB.quickActionsTitle}</h2>
+          <h2 className="text-sm font-bold text-slate-900 mb-3">
+            {tDB.quickActionsTitle}
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <QuickAction
               icon={QrCode}
@@ -317,7 +324,7 @@ export default function DashboardClient({
               label="WhatsApp"
               description={tDB.whatsappDirect}
               href={`https://wa.me/${OPERATOR_WHATSAPP}?text=${encodeURIComponent(
-                tDB.whatsappHelpMsg
+                tDB.whatsappHelpMsg,
               )}`}
               color="green"
               external
@@ -353,11 +360,9 @@ export default function DashboardClient({
           >
             <Car className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <h3 className="text-base font-bold text-slate-900 mb-1">
-                {tDB.noBookings}
-              </h3>
-              <p className="text-sm text-slate-500 mb-4">
-                {tDB.noBookingsFirst}
-              </p>
+              {tDB.noBookings}
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">{tDB.noBookingsFirst}</p>
             <Link
               href="/catalog"
               className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold text-sm
@@ -391,27 +396,33 @@ export default function DashboardClient({
             {total > limit && (
               <div className="mt-4 flex items-center justify-between">
                 <Link
-                  href={currentPage > 1 ? `?page=${currentPage - 1}` : '#'}
+                  href={currentPage > 1 ? `?page=${currentPage - 1}` : "#"}
                   aria-disabled={currentPage <= 1}
                   className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
                     currentPage <= 1
-                      ? 'border-slate-200 text-slate-300 pointer-events-none'
-                      : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                      ? "border-slate-200 text-slate-300 pointer-events-none"
+                      : "border-slate-300 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
                   <ChevronLeft className="w-4 h-4" />
                   {tDB.paginationPrev}
                 </Link>
                 <span className="text-xs text-slate-400">
-                  {tDB.paginationPage.replace("{current}", String(currentPage)).replace("{total}", String(Math.ceil(total / limit)))}
+                  {tDB.paginationPage
+                    .replace("{current}", String(currentPage))
+                    .replace("{total}", String(Math.ceil(total / limit)))}
                 </span>
                 <Link
-                  href={currentPage < Math.ceil(total / limit) ? `?page=${currentPage + 1}` : '#'}
+                  href={
+                    currentPage < Math.ceil(total / limit)
+                      ? `?page=${currentPage + 1}`
+                      : "#"
+                  }
                   aria-disabled={currentPage >= Math.ceil(total / limit)}
                   className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
                     currentPage >= Math.ceil(total / limit)
-                      ? 'border-slate-200 text-slate-300 pointer-events-none'
-                      : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                      ? "border-slate-200 text-slate-300 pointer-events-none"
+                      : "border-slate-300 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
                   {tDB.paginationNext}
@@ -431,9 +442,7 @@ export default function DashboardClient({
         >
           <Plane className="w-8 h-8 text-white/80 mx-auto mb-2" />
           <h3 className="text-lg font-bold text-white mb-1">{tDB.planTrip}</h3>
-          <p className="text-sm text-blue-100 mb-4">
-            {tDB.planTripDesc}
-          </p>
+          <p className="text-sm text-blue-100 mb-4">{tDB.planTripDesc}</p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 bg-white text-blue-600 font-bold text-sm
@@ -441,8 +450,8 @@ export default function DashboardClient({
                        shadow-md transition-all"
           >
             <Plus className="w-4 h-4" />
-              {tDB.newBooking}
-            </Link>
+            {tDB.newBooking}
+          </Link>
         </motion.div>
 
         {/* ── §9 Member Stats Footer ──────────────────────── */}
@@ -454,8 +463,12 @@ export default function DashboardClient({
         >
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-2xl font-black text-slate-900">{user.totalTrips}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">{tDB.tripsCount}</p>
+              <p className="text-2xl font-black text-slate-900">
+                {user.totalTrips}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {tDB.tripsCount}
+              </p>
             </div>
             <div>
               <p className="text-2xl font-black text-emerald-600">
@@ -464,19 +477,25 @@ export default function DashboardClient({
                   4.9
                 </span>
               </p>
-              <p className="text-[11px] text-slate-500 mt-0.5">{tDB.ratingLabel}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {tDB.ratingLabel}
+              </p>
             </div>
             <div>
               <p className="text-2xl font-black text-blue-600">VIP</p>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {user.memberSince
-                  ? tDB.memberSinceDate.replace("{date}", format(new Date(user.memberSince), "MMM yyyy", { locale: dateFnsLocale }))
+                  ? tDB.memberSinceDate.replace(
+                      "{date}",
+                      format(new Date(user.memberSince), "MMM yyyy", {
+                        locale: dateFnsLocale,
+                      }),
+                    )
                   : tDB.activeMember}
               </p>
             </div>
           </div>
         </motion.div>
-
       </div>
     </div>
   );
@@ -499,25 +518,44 @@ function ActiveReservationHero({
 }) {
   const tDB = useTranslations("dashboard");
   const { locale } = useLocaleStore();
-  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
+  const dateFnsLocale =
+    locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
   const config = STATUS_CONFIG[reservation.status];
   const StatusIcon = config.icon;
-  const pickupFmt = format(new Date(reservation.pickupDate), "EEE d MMM · HH:mm", {
-    locale: dateFnsLocale,
-  });
-  const returnFmt = format(new Date(reservation.returnDate), "EEE d MMM · HH:mm", {
-    locale: dateFnsLocale,
-  });
+  const pickupFmt = format(
+    new Date(reservation.pickupDate),
+    "EEE d MMM · HH:mm",
+    {
+      locale: dateFnsLocale,
+    },
+  );
+  const returnFmt = format(
+    new Date(reservation.returnDate),
+    "EEE d MMM · HH:mm",
+    {
+      locale: dateFnsLocale,
+    },
+  );
   const pickupPast = isPast(new Date(reservation.pickupDate));
 
   let countdownLabel = "";
   if (!pickupPast && hoursUntilPickup !== null && daysUntilPickup !== null) {
     if (daysUntilPickup >= 1) {
-      countdownLabel = daysUntilPickup > 1
-        ? (tDB.inDays ?? `en ${daysUntilPickup} días`).replace("{n}", String(daysUntilPickup))
-        : (tDB.inDay ?? `en ${daysUntilPickup} día`).replace("{n}", String(daysUntilPickup));
+      countdownLabel =
+        daysUntilPickup > 1
+          ? (tDB.inDays ?? `en ${daysUntilPickup} días`).replace(
+              "{n}",
+              String(daysUntilPickup),
+            )
+          : (tDB.inDay ?? `en ${daysUntilPickup} día`).replace(
+              "{n}",
+              String(daysUntilPickup),
+            );
     } else if (hoursUntilPickup >= 1) {
-      countdownLabel = (tDB.inHours ?? `en ${hoursUntilPickup}h`).replace("{n}", String(hoursUntilPickup));
+      countdownLabel = (tDB.inHours ?? `en ${hoursUntilPickup}h`).replace(
+        "{n}",
+        String(hoursUntilPickup),
+      );
     } else {
       countdownLabel = tDB.pickupToday ?? "¡Hoy!";
     }
@@ -544,7 +582,10 @@ function ActiveReservationHero({
         </span>
         {countdownLabel && (
           <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
-            {(tDB.pickupCountdown ?? "Recogida {countdown}").replace("{countdown}", countdownLabel)}
+            {(tDB.pickupCountdown ?? "Recogida {countdown}").replace(
+              "{countdown}",
+              countdownLabel,
+            )}
           </span>
         )}
       </div>
@@ -553,8 +594,12 @@ function ActiveReservationHero({
       <div className="px-5 pb-4">
         <div className="flex items-start gap-4">
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-slate-900">{reservation.vehicleName}</h2>
-            <p className="text-xs text-slate-400 mt-0.5 font-mono">#{reservation.id}</p>
+            <h2 className="text-lg font-bold text-slate-900">
+              {reservation.vehicleName}
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5 font-mono">
+              #{reservation.id}
+            </p>
 
             <div className="mt-3 space-y-1.5">
               <div className="flex items-center gap-2 text-xs text-slate-600">
@@ -595,7 +640,8 @@ function ActiveReservationHero({
         <div className="flex items-center gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1">
             <MapPin className="w-3 h-3" />
-            {PICKUP_LOCATION_LABELS[reservation.pickupLocation] ?? reservation.pickupLocation}
+            {PICKUP_LOCATION_LABELS[reservation.pickupLocation] ??
+              reservation.pickupLocation}
           </span>
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
@@ -603,9 +649,14 @@ function ActiveReservationHero({
           </span>
         </div>
         <div className="text-right">
-          <p className="text-lg font-black text-slate-900">{reservation.totalPriceEUR} €</p>
+          <p className="text-lg font-black text-slate-900">
+            {reservation.totalPriceEUR} €
+          </p>
           <p className="text-[10px] text-slate-400">
-            {(tDB.depositPaidLabel ?? "Señal pagada: {amount}€").replace("{amount}", String(reservation.depositPaidEUR))}
+            {(tDB.depositPaidLabel ?? "Señal pagada: {amount}€").replace(
+              "{amount}",
+              String(reservation.depositPaidEUR),
+            )}
           </p>
         </div>
       </div>
@@ -633,7 +684,10 @@ function ActiveReservationHero({
         </Link>
         <a
           href={`https://wa.me/${OPERATOR_WHATSAPP}?text=${encodeURIComponent(
-            (tDB.whatsappLandedMsg ?? `Hola, tengo la reserva ${reservation.id}. He aterrizado.`).replace("{id}", reservation.id)
+            (
+              tDB.whatsappLandedMsg ??
+              `Hola, tengo la reserva ${reservation.id}. He aterrizado.`
+            ).replace("{id}", reservation.id),
           )}`}
           target="_blank"
           rel="noopener noreferrer"
@@ -662,8 +716,18 @@ function DocumentRow({
   reservationId: string;
 }) {
   const tDB = useTranslations("dashboard");
-  const docLabel = status === "APPROVED" ? (tDB.docApproved ?? "Verificado") : status === "REJECTED" ? (tDB.docRejected ?? "Acción requerida") : (tDB.docPendingReview ?? "En revisión");
-  const docColor = status === "APPROVED" ? "text-emerald-600" : status === "REJECTED" ? "text-red-600" : "text-amber-600";
+  const docLabel =
+    status === "APPROVED"
+      ? (tDB.docApproved ?? "Verificado")
+      : status === "REJECTED"
+        ? (tDB.docRejected ?? "Acción requerida")
+        : (tDB.docPendingReview ?? "En revisión");
+  const docColor =
+    status === "APPROVED"
+      ? "text-emerald-600"
+      : status === "REJECTED"
+        ? "text-red-600"
+        : "text-amber-600";
 
   return (
     <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
@@ -672,7 +736,9 @@ function DocumentRow({
         <span className="text-sm font-semibold text-slate-900">{label}</span>
       </div>
       <div className="flex items-center gap-1.5">
-        {status === "APPROVED" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+        {status === "APPROVED" && (
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+        )}
         {status === "PENDING_REVIEW" && (
           <motion.span
             animate={{ opacity: [1, 0.5, 1] }}
@@ -704,11 +770,31 @@ function DocumentRow({
 
 const COLOR_MAP: Record<string, { bg: string; icon: string; hover: string }> = {
   blue: { bg: "bg-blue-50", icon: "text-blue-600", hover: "hover:bg-blue-100" },
-  emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", hover: "hover:bg-emerald-100" },
-  green: { bg: "bg-green-50", icon: "text-green-600", hover: "hover:bg-green-100" },
-  violet: { bg: "bg-violet-50", icon: "text-violet-600", hover: "hover:bg-violet-100" },
-  amber: { bg: "bg-amber-50", icon: "text-amber-600", hover: "hover:bg-amber-100" },
-  slate: { bg: "bg-slate-100", icon: "text-slate-600", hover: "hover:bg-slate-200" },
+  emerald: {
+    bg: "bg-emerald-50",
+    icon: "text-emerald-600",
+    hover: "hover:bg-emerald-100",
+  },
+  green: {
+    bg: "bg-green-50",
+    icon: "text-green-600",
+    hover: "hover:bg-green-100",
+  },
+  violet: {
+    bg: "bg-violet-50",
+    icon: "text-violet-600",
+    hover: "hover:bg-violet-100",
+  },
+  amber: {
+    bg: "bg-amber-50",
+    icon: "text-amber-600",
+    hover: "hover:bg-amber-100",
+  },
+  slate: {
+    bg: "bg-slate-100",
+    icon: "text-slate-600",
+    hover: "hover:bg-slate-200",
+  },
 };
 
 function QuickAction({
@@ -733,7 +819,9 @@ function QuickAction({
   const c = COLOR_MAP[color] ?? COLOR_MAP.slate;
   const content = (
     <>
-      <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center mb-2`}>
+      <div
+        className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center mb-2`}
+      >
         <Icon className={`w-5 h-5 ${c.icon}`} />
       </div>
       <p className="text-sm font-bold text-slate-900">{label}</p>
@@ -791,9 +879,18 @@ function QuickAction({
 function TripInfoCard({ reservation }: { reservation: DashboardReservation }) {
   const tDB = useTranslations("dashboard");
   const features = [
-    reservation.includesJawaz && { icon: CreditCard, label: tDB.jawazTag ?? "Tag Jawaz autopista" },
-    reservation.includesSIM && { icon: Wifi, label: tDB.simData ?? "SIM 5GB datos" },
-    reservation.includesInsurance && { icon: Shield, label: tDB.insuranceFull ?? "Seguro todo riesgo" },
+    reservation.includesJawaz && {
+      icon: CreditCard,
+      label: tDB.jawazTag ?? "Tag Jawaz autopista",
+    },
+    reservation.includesSIM && {
+      icon: Wifi,
+      label: tDB.simData ?? "SIM 5GB datos",
+    },
+    reservation.includesInsurance && {
+      icon: Shield,
+      label: tDB.insuranceFull ?? "Seguro todo riesgo",
+    },
   ].filter(Boolean) as Array<{ icon: React.ElementType; label: string }>;
 
   if (features.length === 0) return null;
@@ -818,14 +915,23 @@ function TripInfoCard({ reservation }: { reservation: DashboardReservation }) {
             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
               <FIcon className="w-4 h-4 text-blue-600" />
             </div>
-            <span className="text-xs font-semibold text-slate-700">{label}</span>
+            <span className="text-xs font-semibold text-slate-700">
+              {label}
+            </span>
           </div>
         ))}
       </div>
       <div className="mt-3 flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5">
         <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
         <span className="text-xs font-semibold text-emerald-700">
-          {(tDB.pickupAtLocation ?? "Recogida en {location} — nuestro operador te espera en la puerta").replace("{location}", PICKUP_LOCATION_LABELS[reservation.pickupLocation] ?? reservation.pickupLocation)}
+          {(
+            tDB.pickupAtLocation ??
+            "Recogida en {location} — nuestro operador te espera en la puerta"
+          ).replace(
+            "{location}",
+            PICKUP_LOCATION_LABELS[reservation.pickupLocation] ??
+              reservation.pickupLocation,
+          )}
         </span>
       </div>
     </motion.div>
@@ -843,10 +949,15 @@ function PastReservationCard({
 }) {
   const tDB = useTranslations("dashboard");
   const { locale } = useLocaleStore();
-  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
+  const dateFnsLocale =
+    locale === "fr" ? frLocale : locale === "en" ? enUSLocale : esLocale;
   const config = STATUS_CONFIG[reservation.status];
-  const pickupFmt = format(new Date(reservation.pickupDate), "d MMM", { locale: dateFnsLocale });
-  const returnFmt = format(new Date(reservation.returnDate), "d MMM yyyy", { locale: dateFnsLocale });
+  const pickupFmt = format(new Date(reservation.pickupDate), "d MMM", {
+    locale: dateFnsLocale,
+  });
+  const returnFmt = format(new Date(reservation.returnDate), "d MMM yyyy", {
+    locale: dateFnsLocale,
+  });
 
   return (
     <motion.div
@@ -870,11 +981,13 @@ function PastReservationCard({
       )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <p className="text-sm font-bold text-slate-900 truncate">{reservation.vehicleName}</p>
+          <p className="text-sm font-bold text-slate-900 truncate">
+            {reservation.vehicleName}
+          </p>
           <span
             className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0 ${config.bg} ${config.text}`}
           >
-          {getStatusLabel(reservation.status, tDB)}
+            {getStatusLabel(reservation.status, tDB)}
           </span>
         </div>
         <p className="text-xs text-slate-500 flex items-center gap-1">
@@ -882,7 +995,9 @@ function PastReservationCard({
           {pickupFmt} – {returnFmt}
         </p>
       </div>
-      <p className="text-sm font-bold text-slate-900 shrink-0">{reservation.totalPriceEUR} €</p>
+      <p className="text-sm font-bold text-slate-900 shrink-0">
+        {reservation.totalPriceEUR} €
+      </p>
     </motion.div>
   );
 }

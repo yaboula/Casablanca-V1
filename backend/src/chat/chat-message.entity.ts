@@ -6,51 +6,68 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
-} from 'typeorm';
-import { User } from '../users/user.entity';
-import { Reservation } from '../reservations/reservation.entity';
+} from "typeorm";
+import { User } from "../users/user.entity";
+import { Reservation } from "../reservations/reservation.entity";
 
-export type ChatSender = 'user' | 'operator' | 'system';
-export type ChatMessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'error';
+export type ChatSender = "user" | "operator" | "system";
+export type ChatMessageStatus =
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "error";
 
-@Entity('chat_messages')
+@Entity("chat_messages")
 export class ChatMessage {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Index()
-  @Column({ name: 'user_id', type: 'uuid' })
+  @Column({ name: "user_id", type: "uuid" })
   userId: string;
 
-  @ManyToOne(() => User, { eager: false, nullable: false })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, {
+    eager: false,
+    nullable: false,
+    onDelete: "RESTRICT",
+  })
+  @JoinColumn({ name: "user_id" })
   user: User;
 
+  // Bug 13 fix: Client-side idempotency key to prevent duplicate messages
+  @Column({ name: "message_id", type: "varchar", nullable: true, unique: true })
+  messageId: string | null;
+
   @Index()
-  @Column({ name: 'reservation_id', type: 'uuid', nullable: true })
+  @Column({ name: "reservation_id", type: "uuid", nullable: true })
   reservationId: string | null;
 
-  @ManyToOne(() => Reservation, { eager: false, nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'reservation_id' })
+  @ManyToOne(() => Reservation, {
+    eager: false,
+    nullable: true,
+    onDelete: "SET NULL",
+  })
+  @JoinColumn({ name: "reservation_id" })
   reservation: Reservation | null;
 
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   text: string;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     length: 10,
-    default: 'user',
+    default: "user",
   })
   sender: ChatSender;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     length: 10,
-    default: 'sent',
+    default: "sent",
   })
   status: ChatMessageStatus;
 
-  @CreateDateColumn({ name: 'timestamp' })
+  @CreateDateColumn({ name: "timestamp" })
   timestamp: Date;
 }

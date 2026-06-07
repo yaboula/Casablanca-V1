@@ -3,6 +3,9 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { BullModule } from "@nestjs/bullmq";
+import { CacheModule } from "@nestjs/cache-manager";
+import { redisInsStore } from "cache-manager-ioredis-yet";
+import Redis from "ioredis";
 import { validateEnv } from "./config/env.validation";
 import { databaseConfig } from "./config/database.config";
 import { HealthModule } from "./health/health.module";
@@ -51,6 +54,25 @@ import { AdminModule } from "./admin/admin.module";
             removeOnComplete: true,
             removeOnFail: false,
           },
+        };
+      },
+      inject: [ConfigService],
+    }),
+
+    // ── Cache (Redis, TTL 60 s) — consumed by AdminStatsService ─────
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => {
+        const url = config.get<string>("REDIS_URL", "redis://localhost:6379");
+        const isTls = url.startsWith("rediss://");
+        const client = new Redis(url, {
+          family: 0,
+          ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+        });
+        return {
+          store: redisInsStore(client, { ttl: 60_000 }),
+          ttl: 60_000,
         };
       },
       inject: [ConfigService],

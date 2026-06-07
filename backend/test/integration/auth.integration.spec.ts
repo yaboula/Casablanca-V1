@@ -33,7 +33,7 @@ describe('Auth — Integration', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   beforeEach(async () => {
@@ -149,7 +149,8 @@ describe('Auth — Integration', () => {
       // Register + get refresh token
       const registerRes = await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
-        .send(VALID_USER);
+        .send(VALID_USER)
+        .expect(201);
 
       const { refreshToken } = registerRes.body;
 
@@ -176,7 +177,8 @@ describe('Auth — Integration', () => {
     it('200 — con Bearer válido devuelve el usuario actual', async () => {
       const registerRes = await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
-        .send(VALID_USER);
+        .send(VALID_USER)
+        .expect(201);
 
       const { accessToken } = registerRes.body;
 

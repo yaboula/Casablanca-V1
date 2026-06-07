@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/playwright-report/
 
 # next.js
 /.next/
@@ -29,6 +30,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.nexus-front.log
+.nexus-front.log.err
+.nexus-front.pid
+/backend/testsprite_tests/
 
 # env files
 .env*

@@ -28,7 +28,6 @@ const threeDays = () => new Date(Date.now() + 3 * 86_400_000).toISOString();
 async function registerAndLogin(
   app: INestApplication,
   email = 'user@nexus-test.com',
-  role = 'USER',
 ): Promise<{ accessToken: string; refreshToken: string; userId: string }> {
   const res = await request(app.getHttpServer())
     .post(`${BASE}/auth/register`)
@@ -37,7 +36,8 @@ async function registerAndLogin(
       password: 'SecurePass123!',
       fullName: 'Integration Tester',
       phone: '+34600000001',
-    });
+    })
+    .expect(201);
 
   return {
     accessToken: res.body.accessToken,
@@ -61,7 +61,8 @@ async function createReservation(
       pickupLocation: 'CMN_T1',
       customerName: 'Integration Tester',
       customerPhone: '+34600000001',
-    });
+    })
+    .expect(201);
 
   return res.body.data;
 }
@@ -76,7 +77,7 @@ describe('Reservations — Integration', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   beforeEach(async () => {

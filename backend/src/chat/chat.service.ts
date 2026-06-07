@@ -2,14 +2,14 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ChatMessage } from './chat-message.entity';
-import { Reservation } from '../reservations/reservation.entity';
-import { User, UserRole } from '../users/user.entity';
-import { SseService } from '../sse/sse.service';
-import { CreateMessageDto } from './dto/create-message.dto';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { ChatMessage } from "./chat-message.entity";
+import { Reservation } from "../reservations/reservation.entity";
+import { User, UserRole } from "../users/user.entity";
+import { SseService } from "../sse/sse.service";
+import { CreateMessageDto } from "./dto/create-message.dto";
 
 @Injectable()
 export class ChatService {
@@ -33,21 +33,32 @@ export class ChatService {
       });
 
       if (!reservation) {
-        throw new NotFoundException(`Reserva ${dto.reservationId} no encontrada.`);
+        throw new NotFoundException(
+          `Reserva ${dto.reservationId} no encontrada.`,
+        );
       }
 
       // User can only send messages for their own reservations
       if (user.role === UserRole.USER && reservation.userId !== user.id) {
-        throw new ForbiddenException('No tienes acceso a esta reserva.');
+        throw new ForbiddenException("No tienes acceso a esta reserva.");
       }
+    }
+
+    // Bug 13 fix: Idempotency — if messageId provided, check for duplicate
+    if (dto.messageId) {
+      const existing = await this.chatRepo.findOne({
+        where: { messageId: dto.messageId },
+      });
+      if (existing) return existing; // idempotent: return same message
     }
 
     const message = this.chatRepo.create({
       userId: user.id,
       reservationId: dto.reservationId ?? null,
       text: dto.text,
-      sender: user.role === UserRole.USER ? 'user' : 'operator',
-      status: 'sent',
+      sender: user.role === UserRole.USER ? "user" : "operator",
+      status: "sent",
+      messageId: dto.messageId ?? null,
     });
 
     const saved = await this.chatRepo.save(message);
@@ -81,16 +92,13 @@ export class ChatService {
       throw new NotFoundException(`Reserva ${reservationId} no encontrada.`);
     }
 
-    if (
-      user.role === UserRole.USER &&
-      reservation.userId !== user.id
-    ) {
-      throw new ForbiddenException('No tienes acceso a esta reserva.');
+    if (user.role === UserRole.USER && reservation.userId !== user.id) {
+      throw new ForbiddenException("No tienes acceso a esta reserva.");
     }
 
     return this.chatRepo.find({
       where: { reservationId },
-      order: { timestamp: 'ASC' },
+      order: { timestamp: "ASC" },
     });
   }
 }

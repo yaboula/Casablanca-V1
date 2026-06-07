@@ -24,9 +24,9 @@ COPY --from=builder /app/dist ./dist
 
 USER nexus
 
-EXPOSE 3001
+EXPOSE 3900
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:3001/api/v1/health || exit 1
+  CMD wget -qO- http://localhost:3900/api/v1/health || exit 1
 
 CMD ["node", "dist/main"]

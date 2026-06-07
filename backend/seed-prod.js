@@ -1,12 +1,14 @@
+require("dotenv").config();
 const { Client } = require("pg");
 const { randomUUID } = require("crypto");
 
-const E2E_DATABASE_URL =
-  "postgresql://neondb_owner:npg_fNjszMT8Pvl1@ep-young-wind-al228xlc-pooler.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+const DATABASE_URL = process.env.DATABASE_URL;
 
 async function createSchemaAndSeed() {
-  console.log("Connecting to NEON Production Database...");
-  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  console.log(
+    "Connecting to Database at " + DATABASE_URL.split("@")[1] + "...",
+  );
+  const client = new Client({ connectionString: DATABASE_URL });
   await client.connect();
 
   console.log("Dropping existing tables to fix corruption...");

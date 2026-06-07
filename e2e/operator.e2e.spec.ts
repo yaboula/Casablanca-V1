@@ -1,5 +1,5 @@
-/**
- * operator.e2e.spec.ts — Journey 5: Operator Panel
+﻿/**
+ * operator.e2e.spec.ts â€” Journey 5: Operator Panel
  *
  * Tests OPERATOR-role access and business logic:
  *   - Regular USER is forbidden from /operator (403/redirect)
@@ -10,7 +10,7 @@
  *
  * Prerequisites:
  *   - Next.js running (webServer)
- *   - NestJS backend at http://localhost:3900
+ *   - NestJS backend at http://localhost:3902
  */
 
 import { test, expect } from '@playwright/test';
@@ -22,7 +22,7 @@ import {
 } from './fixtures/db.fixture';
 import { registerUser, uniqueEmail } from './fixtures/auth.fixture';
 
-const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3900/api/v1';
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3902/api/v1';
 
 let db: Client;
 
@@ -31,14 +31,14 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await db.end();
+  if (db) await db.end();
 });
 
 test.beforeEach(async () => {
   await truncateAllE2ETables(db);
 });
 
-// ── Helpers ──────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function futureDate(daysFromNow: number): string {
   const d = new Date();
@@ -70,9 +70,9 @@ async function seedOperatorUser(
   return opts;
 }
 
-// ── Tests ─────────────────────────────────────────────────────
+// â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-test('PATCH /reservations/:id/complete — USER role gets 403', async ({ page }) => {
+test('PATCH /reservations/:id/complete â€” USER role gets 403', async ({ page }) => {
   const vehicleId = await seedE2EVehicle(db);
 
   const { accessToken } = await registerUser(page, {
@@ -94,7 +94,7 @@ test('PATCH /reservations/:id/complete — USER role gets 403', async ({ page })
   expect(resCreate.status()).toBe(201);
   const { id: reservationId } = await resCreate.json();
 
-  // USER trying to complete → 403
+  // USER trying to complete â†’ 403
   const resComplete = await page.request.patch(
     `${API_URL}/reservations/${reservationId}/complete`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -143,7 +143,7 @@ test('OPERATOR can complete a reservation', async ({ page }) => {
   expect(opLoginRes.status()).toBe(200);
   const { accessToken: operatorToken } = await opLoginRes.json();
 
-  // OPERATOR completes the reservation → 200
+  // OPERATOR completes the reservation â†’ 200
   const resComplete = await page.request.patch(
     `${API_URL}/reservations/${reservationId}/complete`,
     { headers: { Authorization: `Bearer ${operatorToken}` } },
@@ -185,3 +185,4 @@ test('/operator UI page redirects USER role to /login or returns 403', async ({ 
   );
   expect(page.url()).not.toMatch(/^http:\/\/localhost:3000\/operator$/);
 });
+

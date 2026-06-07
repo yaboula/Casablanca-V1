@@ -9,11 +9,17 @@ import { DEPOSIT_AMOUNT_EUR } from "@/lib/constants";
 
 interface Props {
   reservationId: string;
+  clientSecret: string;
   onSuccess: () => void;
   onBack: () => void;
 }
 
-export default function PaymentStep({ reservationId: _reservationId, onSuccess, onBack }: Props) {
+export default function PaymentStep({
+  reservationId: _reservationId,
+  clientSecret,
+  onSuccess,
+  onBack,
+}: Props) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -27,12 +33,14 @@ export default function PaymentStep({ reservationId: _reservationId, onSuccess, 
 
     setProcessing(true);
 
-    const { error } = await stripe.confirmCardPayment(undefined as unknown as string, {
+    const { error } = await stripe.confirmCardPayment(clientSecret, {
       payment_method: { card },
     });
 
     if (error) {
-      toast.error(error.message ?? "Error al procesar el pago. Inténtalo de nuevo.");
+      toast.error(
+        error.message ?? "Error al procesar el pago. Inténtalo de nuevo.",
+      );
       setProcessing(false);
     } else {
       onSuccess();

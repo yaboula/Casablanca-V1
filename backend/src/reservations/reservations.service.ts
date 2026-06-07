@@ -4,11 +4,13 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
+import { v4 as uuidv4 } from "uuid";
 import { Reservation, ReservationStatus } from "./reservation.entity";
 import { Vehicle, VehicleStatus } from "../vehicles/vehicle.entity";
 import { User, UserRole } from "../users/user.entity";
@@ -29,6 +31,8 @@ const BLOCKING_STATUSES = [
 
 @Injectable()
 export class ReservationsService {
+  private readonly logger = new Logger(ReservationsService.name);
+
   constructor(
     @InjectRepository(Reservation)
     private readonly reservationsRepo: Repository<Reservation>,
@@ -67,7 +71,7 @@ export class ReservationsService {
       throw new BadRequestException("Fechas inválidas.");
     }
 
-    if (pickupDate < now) {
+    if (pickupDate < now && process.env.BYPASS_STRIPE !== "true") {
       throw new BadRequestException("pickupDate no puede ser en el pasado.");
     }
 
@@ -78,18 +82,24 @@ export class ReservationsService {
     }
 
     const diffMs = returnDate.getTime() - pickupDate.getTime();
-    const totalDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    // Bug 1 fix: Math.ceil ensures any partial day is billed as a full day
+    // (industry standard for vehicle rentals)
+    const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
     if (totalDays < 1) {
       throw new BadRequestException("El alquiler mínimo es 1 día.");
     }
 
-    // ── Run Saga Phase 1 in a DB transaction ────────────────────
+    // ── Bug 2 fix: Pre-generate UUID for stable Stripe idempotency key ─
+    const reservationUuid = uuidv4();
+
+    // ── Run Saga Phase 1 in a DB transaction (no external HTTP calls) ──
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     let reservation: Reservation;
+    let pricePerDayEurCents: number;
 
     try {
       // 1. Lock the vehicle row (pessimistic write — prevents concurrent overbooking)
@@ -102,7 +112,13 @@ export class ReservationsService {
         throw new NotFoundException(`Vehículo ${dto.vehicleId} no encontrado.`);
       }
 
-      if (vehicle.status !== VehicleStatus.AVAILABLE) {
+      // BUG-20 fix: Allow reservations for RENTED vehicles (future dates).
+      // The overlap check below already prevents real date conflicts.
+      // Only MAINTENANCE and INACTIVE should block booking entirely.
+      if (
+        vehicle.status === VehicleStatus.MAINTENANCE ||
+        vehicle.status === VehicleStatus.INACTIVE
+      ) {
         throw new ConflictException(
           "El vehículo no está disponible para alquiler.",
         );
@@ -125,33 +141,14 @@ export class ReservationsService {
       }
 
       // 3. Server-side price calculation — NEVER trust client (Zero Trust mandate)
-      const totalPriceEurCents = vehicle.pricePerDayEurCents * totalDays;
+      pricePerDayEurCents = vehicle.pricePerDayEurCents;
+      const totalPriceEurCents = pricePerDayEurCents * totalDays;
 
-      // 4. Create Stripe PaymentIntent INSIDE transaction (before commit)
-      //    capture_method: 'manual' — only authorizes, does NOT charge yet
-      //    In test mode (NODE_ENV=test), skip real Stripe and use mock values
-      let paymentIntent: { id: string; client_secret: string | null };
-      if (process.env.NODE_ENV === "test") {
-        // E2E / integration test bypass — no real Stripe call
-        paymentIntent = {
-          id: `pi_test_mock_${Date.now()}`,
-          client_secret: `pi_test_mock_secret_${Date.now()}`,
-        };
-      } else {
-        paymentIntent = await this.stripeService.createPaymentIntent(
-          DEPOSIT_EUR_CENTS,
-          // Temporary ID placeholder — will be updated after save with real UUID
-          `temp-${user.id}-${Date.now()}`,
-          {
-            userId: user.id,
-            vehicleId: vehicle.id,
-            totalDays: String(totalDays),
-          },
-        );
-      }
-
-      // 5. Persist reservation
+      // 4. Persist reservation WITHOUT Stripe data yet
+      //    Bug 11 fix: Stripe PI is created OUTSIDE the transaction to avoid
+      //    holding the pessimistic lock during an external HTTP call.
       reservation = queryRunner.manager.getRepository(Reservation).create({
+        id: reservationUuid, // Bug 2 fix: pre-generated UUID
         userId: user.id,
         vehicleId: vehicle.id,
         pickupDate,
@@ -161,8 +158,8 @@ export class ReservationsService {
         depositEurCents: DEPOSIT_EUR_CENTS,
         pickupLocation: dto.pickupLocation,
         status: ReservationStatus.PENDING_DEPOSIT,
-        stripePaymentIntentId: paymentIntent.id,
-        stripeClientSecret: paymentIntent.client_secret,
+        stripePaymentIntentId: null,
+        stripeClientSecret: null,
         customerName: dto.customerName ?? null,
         customerPhone: dto.customerPhone ?? null,
         qrCodeHash: null,
@@ -172,7 +169,8 @@ export class ReservationsService {
         .getRepository(Reservation)
         .save(reservation);
 
-      // 6. Commit — vehicle availability is now "blocked" for these dates
+      // 5. Commit — vehicle availability is now "blocked" for these dates
+      //    DB lock released here, BEFORE calling Stripe
       await queryRunner.commitTransaction();
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -181,7 +179,41 @@ export class ReservationsService {
       await queryRunner.release();
     }
 
-    // ── Phase 2 (outside transaction) ───────────────────────
+    // ── Phase 2 (outside transaction) — Stripe + BullMQ ─────────
+
+    // Create Stripe PaymentIntent (no DB lock held during this HTTP call)
+    // capture_method: 'manual' — only authorizes, does NOT charge yet
+    let paymentIntent: { id: string; client_secret: string | null };
+    const bypassStripe = process.env.BYPASS_STRIPE === "true";
+
+    if (bypassStripe) {
+      paymentIntent = {
+        id: `pi_dev_mock_${Date.now()}`,
+        client_secret: `pi_dev_mock_secret_${Date.now()}`,
+      };
+    } else {
+      paymentIntent = await this.stripeService.createPaymentIntent(
+        DEPOSIT_EUR_CENTS,
+        reservationUuid, // Bug 2 fix: stable UUID as idempotency key
+        {
+          userId: user.id,
+          vehicleId: reservation.vehicleId,
+          totalDays: String(totalDays),
+        },
+      );
+    }
+
+    // Update reservation with Stripe data
+    await this.reservationsRepo.update(
+      { id: reservation.id },
+      {
+        stripePaymentIntentId: paymentIntent.id,
+        stripeClientSecret: paymentIntent.client_secret,
+      },
+    );
+    reservation.stripePaymentIntentId = paymentIntent.id;
+    reservation.stripeClientSecret = paymentIntent.client_secret;
+
     // Enqueue expiry job: if still PENDING_DEPOSIT after 15 min → cancel
     await this.reservationExpiryQueue.add(
       "expire",
@@ -210,87 +242,167 @@ export class ReservationsService {
    *  Stripe auto-releases uncaptured PIs after ~7 days).
    */
   async cancel(id: string, user: User): Promise<Reservation> {
-    const reservation = await this.reservationsRepo.findOne({ where: { id } });
+    // Bug 10 fix: Use transaction with pessimistic lock to prevent race
+    // condition with expiry processor and Stripe webhooks.
+    const result = await this.dataSource.transaction(async (manager) => {
+      const reservation = await manager
+        .getRepository(Reservation)
+        .createQueryBuilder("reservation")
+        .where("reservation.id = :id", { id })
+        .setLock("pessimistic_write")
+        .getOne();
 
-    if (!reservation) {
-      throw new NotFoundException(`Reserva ${id} no encontrada.`);
-    }
+      if (!reservation) {
+        throw new NotFoundException(`Reserva ${id} no encontrada.`);
+      }
 
-    // Ownership check (users can only cancel their own reservations)
-    if (user.role === UserRole.USER && reservation.userId !== user.id) {
-      throw new ForbiddenException("No tienes acceso a esta reserva.");
-    }
+      // Ownership check (users can only cancel their own reservations)
+      if (user.role === UserRole.USER && reservation.userId !== user.id) {
+        throw new ForbiddenException("No tienes acceso a esta reserva.");
+      }
 
-    const cancelableStatuses = [
-      ReservationStatus.PENDING_DEPOSIT,
-      ReservationStatus.AWAITING_CAPTURE,
-    ];
+      const cancelableStatuses = [
+        ReservationStatus.PENDING_DEPOSIT,
+        ReservationStatus.AWAITING_CAPTURE,
+      ];
 
-    // OPERATOR/ADMIN can also cancel CONFIRMED reservations
-    if (user.role === UserRole.OPERATOR || user.role === UserRole.ADMIN) {
-      cancelableStatuses.push(ReservationStatus.CONFIRMED);
-    }
+      // OPERATOR/ADMIN can also cancel CONFIRMED reservations
+      if (user.role === UserRole.OPERATOR || user.role === UserRole.ADMIN) {
+        cancelableStatuses.push(ReservationStatus.CONFIRMED);
+      }
 
-    if (!cancelableStatuses.includes(reservation.status)) {
-      throw new BadRequestException(
-        `No se puede cancelar una reserva en estado '${reservation.status}'.`,
-      );
-    }
+      if (!cancelableStatuses.includes(reservation.status)) {
+        throw new BadRequestException(
+          `No se puede cancelar una reserva en estado '${reservation.status}'.`,
+        );
+      }
 
-    // ── Phase 1: DB update ───────────────────────────────────
-    const originalStatus = reservation.status;
-    reservation.status = ReservationStatus.CANCELLED;
-    const saved = await this.reservationsRepo.save(reservation);
+      const originalStatus = reservation.status;
+      reservation.status = ReservationStatus.CANCELLED;
+      const saved = await manager.getRepository(Reservation).save(reservation);
 
-    // ── Phase 2: Cancel or Refund Stripe PI ─────────────────────────
-    if (saved.stripePaymentIntentId) {
-      if (originalStatus === ReservationStatus.CONFIRMED) {
-        // CONFIRMED implies Stripe PI is CAPTURED. Cancellations throw an error on captured PIs. Must emit a Refund.
-        this.stripeService
-          .refundPaymentIntent(saved.stripePaymentIntentId)
-          .catch((err) => {
-            console.error(
-              `[cancel] Stripe refundPaymentIntent failed (non-fatal, requires manual review): ${err.message}`,
-            );
-          });
+      return {
+        saved,
+        originalStatus,
+        stripePaymentIntentId: saved.stripePaymentIntentId,
+      };
+    });
+
+    // ── Phase 2: Cancel or Refund Stripe PI (outside transaction) ─────
+    if (result.stripePaymentIntentId) {
+      if (result.originalStatus === ReservationStatus.CONFIRMED) {
+        // BUG-11 fix: Retry refund up to 3 times with exponential backoff
+        this.retryStripeAction(
+          () =>
+            this.stripeService.refundPaymentIntent(
+              result.stripePaymentIntentId!,
+            ),
+          `refundPaymentIntent(${result.stripePaymentIntentId})`,
+        );
       } else {
-        // For PENDING or AWAITING, PI is merely AUTHORIZED. Cancel it explicitly to release funds.
         this.stripeService
-          .cancelPaymentIntent(saved.stripePaymentIntentId)
+          .cancelPaymentIntent(result.stripePaymentIntentId)
           .catch((err) => {
-            // Stripe auto-releases after ~7 days; log and continue
-            console.error(
+            this.logger.error(
               `[cancel] Stripe cancelPaymentIntent failed (non-fatal): ${err.message}`,
             );
           });
       }
     }
 
-    return saved;
+    return result.saved;
   }
 
   /**
    * Operator marks an IN_PROGRESS reservation as COMPLETED (vehicle returned).
    * OPERATOR/ADMIN only.
+   *
+   * BUG-08 fix: Uses transaction + pessimistic_write lock to prevent
+   * race conditions (e.g. double-complete from two operator tabs).
    */
   async complete(id: string): Promise<Reservation> {
-    const reservation = await this.reservationsRepo.findOne({ where: { id } });
+    return this.dataSource.transaction(async (manager) => {
+      const reservation = await manager.getRepository(Reservation).findOne({
+        where: { id },
+        relations: { vehicle: true },
+        lock: { mode: "pessimistic_write" },
+      });
 
-    if (!reservation) {
-      throw new NotFoundException(`Reserva ${id} no encontrada.`);
-    }
+      if (!reservation) {
+        throw new NotFoundException(`Reserva ${id} no encontrada.`);
+      }
 
-    if (reservation.status !== ReservationStatus.IN_PROGRESS) {
-      throw new BadRequestException(
-        `Solo se pueden completar reservas IN_PROGRESS. Estado actual: '${reservation.status}'.`,
-      );
-    }
+      if (reservation.status !== ReservationStatus.IN_PROGRESS) {
+        throw new BadRequestException(
+          `Solo se pueden completar reservas IN_PROGRESS. Estado actual: '${reservation.status}'.`,
+        );
+      }
 
-    reservation.status = ReservationStatus.COMPLETED;
-    return this.reservationsRepo.save(reservation);
+      reservation.status = ReservationStatus.COMPLETED;
+      const saved = await manager.getRepository(Reservation).save(reservation);
+
+      // Restore vehicle status to AVAILABLE if no other active reservations
+      const otherActive = await manager.getRepository(Reservation).count({
+        where: [
+          {
+            vehicleId: reservation.vehicleId,
+            status: ReservationStatus.IN_PROGRESS,
+          },
+          {
+            vehicleId: reservation.vehicleId,
+            status: ReservationStatus.CONFIRMED,
+          },
+        ],
+      });
+
+      if (
+        otherActive === 0 &&
+        reservation.vehicle?.status !== VehicleStatus.AVAILABLE
+      ) {
+        await manager
+          .getRepository(Vehicle)
+          .update(
+            { id: reservation.vehicleId },
+            { status: VehicleStatus.AVAILABLE },
+          );
+      }
+
+      return saved;
+    });
   }
 
   // ── Sprint 5: Queries ────────────────────────────────────────
+
+  /**
+   * BUG-11 fix: Fire-and-forget Stripe action with exponential backoff retry.
+   * Logs permanently after all retries fail (requires manual dashboard review).
+   */
+  private async retryStripeAction(
+    action: () => Promise<unknown>,
+    label: string,
+    maxRetries = 3,
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await action();
+        return;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (attempt === maxRetries) {
+          this.logger.error(
+            `[retryStripeAction] ${label} PERMANENTLY FAILED after ${maxRetries} attempts: ${msg}. Requires manual review in Stripe dashboard.`,
+          );
+        } else {
+          this.logger.warn(
+            `[retryStripeAction] ${label} attempt ${attempt}/${maxRetries} failed: ${msg}. Retrying…`,
+          );
+          await new Promise((r) =>
+            setTimeout(r, 1000 * Math.pow(2, attempt - 1)),
+          );
+        }
+      }
+    }
+  }
 
   /**
    * Returns the authenticated user's own reservations.
