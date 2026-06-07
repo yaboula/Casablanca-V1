@@ -1,9 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { SlidersHorizontal } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { useTranslations } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -38,12 +38,11 @@ export default function FilterBar({
   const tCatalog = useTranslations("catalog");
 
   return (
-    <div className="w-full">
-      {/* Pills row */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none
+    <div className="w-full flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+      {/* Categories */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-none
                       [-ms-overflow-style:none] [scrollbar-width:none]
-                      [&::-webkit-scrollbar]:hidden">
-        {/* Category pills */}
+                      [&::-webkit-scrollbar]:hidden flex-wrap">
         {CATEGORIES.map((cat) => {
           const active = activeCategory === cat;
           const label = tCatalog.filters[CAT_KEY_MAP[cat]];
@@ -52,58 +51,37 @@ export default function FilterBar({
               key={cat}
               type="button"
               onClick={() => onCategoryChange(cat)}
-              className={`relative min-h-[40px] px-4 rounded-full text-sm font-semibold whitespace-nowrap
-                         transition-colors duration-200
-                         ${active ? "text-white" : "text-brand-dark hover:bg-slate-100"}`}
-            >
-              {active && (
-                <motion.span
-                  layoutId="active-filter"
-                  className="absolute inset-0 bg-brand-primary rounded-full"
-                  transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
-                />
+              className={cn(
+                "px-4 py-2 rounded-full text-[0.9rem] font-medium border transition-colors duration-300",
+                active
+                  ? "bg-neutral-900 text-white border-neutral-900"
+                  : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400"
               )}
-              <span className="relative z-10">{label}</span>
+            >
+              {label}
             </button>
           );
         })}
-
-        {/* Separator */}
-        <span className="w-px h-6 bg-slate-200 flex-shrink-0 mx-1" />
-
-        {/* Sort pills */}
-        <button
-          type="button"
-          onClick={() => onSortChange(sortMode === "price_asc" ? "default" : "price_asc")}
-          className={`flex items-center gap-1.5 min-h-[40px] px-4 rounded-full text-sm font-semibold
-                     whitespace-nowrap transition-colors duration-200
-                     ${sortMode === "price_asc"
-                       ? "bg-slate-900 text-white"
-                       : "text-brand-dark hover:bg-slate-100 border border-slate-200"}`}
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          {tCatalog.sortPriceAsc}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onSortChange(sortMode === "price_desc" ? "default" : "price_desc")}
-          className={`flex items-center gap-1.5 min-h-[40px] px-4 rounded-full text-sm font-semibold
-                     whitespace-nowrap transition-colors duration-200
-                     ${sortMode === "price_desc"
-                       ? "bg-slate-900 text-white"
-                       : "text-brand-dark hover:bg-slate-100 border border-slate-200"}`}
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          {tCatalog.sortPriceDesc}
-        </button>
       </div>
 
-      {/* Result count */}
-      <p className="text-sm text-brand-muted mt-3">
-        <span className="font-bold text-brand-dark">{resultCount}</span>{" "}
-        {resultCount === 1 ? tCatalog.carAvailable : tCatalog.carsAvailable}
-      </p>
+      {/* Results & Sort */}
+      <div className="flex items-center gap-4 shrink-0">
+        <span className="nx-meta text-neutral-500">
+          {resultCount} {resultCount === 1 ? tCatalog.carAvailable : tCatalog.carsAvailable}
+        </span>
+        <div className="flex items-center gap-2 text-neutral-500">
+          <SlidersHorizontal className="w-4 h-4" />
+          <select
+            value={sortMode}
+            onChange={(e) => onSortChange(e.target.value as SortMode)}
+            className="bg-white border border-neutral-200 rounded-full px-4 py-2 text-[0.9rem] font-medium text-neutral-900 outline-none focus:border-[#1E41FC] cursor-pointer"
+          >
+            <option value="default">{tCatalog.filters.all}</option>
+            <option value="price_asc">{tCatalog.sortPriceAsc}</option>
+            <option value="price_desc">{tCatalog.sortPriceDesc}</option>
+          </select>
+        </div>
+      </div>
     </div>
   );
 }
