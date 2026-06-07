@@ -19,6 +19,17 @@
   --radius-brand-container:     1.5rem;
   --radius-brand-pill:          9999px;
 
+  /* Nexus tokens (Emergent) */
+  --color-nx-ink: #0a0a0a;
+  --color-nx-ink-soft: #525252;
+  --color-nx-line: #e5e5e5;
+  --color-nx-line-soft: #f0f0f0;
+  --color-nx-bg: #ffffff;
+  --color-nx-bg-soft: #fafafa;
+  --color-nx-accent: #1e41fc;
+  --color-nx-accent-hover: #0d2de0;
+  --color-nx-accent-soft: rgba(30, 65, 252, 0.08);
+
   /* Shadows */
   --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
 
@@ -100,3 +111,84 @@
   }
 }
 
+/* ── Emergent Utilities & Animations ───────────────────────────────── */
+@layer utilities {
+  .font-display {
+    font-family: "Outfit", "Satoshi", sans-serif;
+    letter-spacing: -0.03em;
+  }
+  .font-body {
+    font-family: "Satoshi", "Outfit", sans-serif;
+  }
+
+  /* Fluid typography */
+  .nx-display {
+    font-size: clamp(3.25rem, 4.2vw + 1.4rem, 7rem);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+  }
+  .nx-h2 {
+    font-size: clamp(2.5rem, 3.2vw + 1rem, 4.75rem);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+  }
+  .nx-h3 {
+    font-size: clamp(1.6rem, 1.4vw + 1rem, 2.75rem);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+  }
+  .nx-meta {
+    font-size: clamp(0.8125rem, 0.2vw + 0.75rem, 0.9375rem);
+  }
+  .nx-eyebrow {
+    font-size: clamp(0.75rem, 0.2vw + 0.7rem, 0.8125rem);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  /* Structural */
+  .nx-container {
+    width: 100%;
+    max-width: 1500px;
+    margin-inline: auto;
+    padding-inline: clamp(1.5rem, 4.5vw, 5rem);
+  }
+  .nx-section {
+    padding-block: clamp(4.5rem, 8vh + 1.5rem, 9rem);
+  }
+  
+  /* Animations */
+  .nx-rise {
+    animation: nx-rise 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .nx-fade {
+    animation: nx-fade 1.2s ease-out both;
+  }
+  .nx-lift {
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
+  }
+  .nx-lift:hover {
+    transform: translateY(-4px);
+  }
+  
+  .nx-no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .nx-no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes nx-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes nx-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+html {
+  scroll-behavior: smooth;
+}
