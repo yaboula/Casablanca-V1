@@ -55,6 +55,17 @@ export class AuthController {
   }
 
   /**
+   * POST /api/v1/auth/logout
+   * Invalidates the current refresh-token family for the authenticated user.
+   */
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post("logout")
+  async logout(@CurrentUser() user: User) {
+    await this.authService.logout(user.id);
+  }
+
+  /**
    * GET /api/v1/auth/me
    * Returns the currently authenticated user (token must be valid).
    */

@@ -152,6 +152,15 @@ export class Reservation {
   })
   customerPhone: string | null;
 
+  @Column({
+    name: "idempotency_key",
+    type: "varchar",
+    nullable: true,
+    length: 100,
+    select: false,
+  })
+  idempotencyKey: string | null;
+
   // ── Timestamps ─────────────────────────────────────────────
 
   @CreateDateColumn({ name: "created_at" })

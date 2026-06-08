@@ -1,19 +1,7 @@
-/**
- * Auth Integration Tests — Level 2
- * =====================================================================
- * Tests the full HTTP request lifecycle:
- *   Client → Controller → Service → Repository → Real PostgreSQL
- *
- * External mocks: Stripe (not used here), BullMQ (not used here)
- * Isolation: truncateAllTables() before each test
- * =====================================================================
- */
-import * as request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp } from '../setup/test-app';
+import * as request from 'supertest';
 import { truncateAllTables } from '../setup/db-helpers';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { createTestApp } from '../setup/test-app';
 
 const BASE = '/api/v1';
 const VALID_USER = {
@@ -23,9 +11,7 @@ const VALID_USER = {
   phone: '+34600000000',
 };
 
-// ─── Suite ────────────────────────────────────────────────────────────────────
-
-describe('Auth — Integration', () => {
+describe('Auth - Integration', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -33,17 +19,17 @@ describe('Auth — Integration', () => {
   });
 
   afterAll(async () => {
-    if (app) await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   beforeEach(async () => {
     await truncateAllTables(app);
   });
 
-  // ── POST /auth/register ─────────────────────────────────────────────────────
-
   describe('POST /auth/register', () => {
-    it('201 — devuelve accessToken + refreshToken + user sin passwordHash', async () => {
+    it('returns accessToken + refreshToken + user without passwordHash', async () => {
       const res = await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
         .send(VALID_USER)
@@ -54,43 +40,39 @@ describe('Auth — Integration', () => {
       expect(res.body.expiresIn).toBeDefined();
       expect(res.body.user.email).toBe('john@nexus-test.com');
       expect(res.body.user.role).toBe('USER');
-      // passwordHash NUNCA debe estar en la respuesta
       expect(res.body.user.passwordHash).toBeUndefined();
+      expect(res.body.user.tokenVersion).toBeUndefined();
     });
 
-    it('201 — email normalizado a lowercase en la BD (case-insensitive)', async () => {
-      // Send uppercase email — service normalizes to lowercase before saving
+    it('normalizes email to lowercase', async () => {
       const res = await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
         .send({ ...VALID_USER, email: 'JOHN@NEXUS-TEST.COM' })
         .expect(201);
 
-      // Stored as lowercase
       expect(res.body.user.email).toBe('john@nexus-test.com');
     });
 
-    it('409 — email duplicado devuelve Conflict', async () => {
-      // Primera vez: ok
+    it('returns 409 for a duplicate email', async () => {
       await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
         .send(VALID_USER)
         .expect(201);
 
-      // Segunda vez: conflict
       await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
         .send(VALID_USER)
         .expect(409);
     });
 
-    it('400 — cuerpo inválido (sin email) devuelve Bad Request', async () => {
+    it('returns 400 for an invalid body', async () => {
       await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
         .send({ password: 'SecurePass123!', fullName: 'Test' })
         .expect(400);
     });
 
-    it('400 — password corto (<8 chars) devuelve Bad Request', async () => {
+    it('returns 400 for a short password', async () => {
       await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
         .send({ ...VALID_USER, password: 'short' })
@@ -98,17 +80,15 @@ describe('Auth — Integration', () => {
     });
   });
 
-  // ── POST /auth/login ────────────────────────────────────────────────────────
-
   describe('POST /auth/login', () => {
     beforeEach(async () => {
-      // Seed a user for login tests
       await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
-        .send(VALID_USER);
+        .send(VALID_USER)
+        .expect(201);
     });
 
-    it('200 — credenciales correctas devuelven tokens', async () => {
+    it('returns tokens for valid credentials', async () => {
       const res = await request(app.getHttpServer())
         .post(`${BASE}/auth/login`)
         .send({ email: VALID_USER.email, password: VALID_USER.password })
@@ -117,9 +97,10 @@ describe('Auth — Integration', () => {
       expect(res.body.accessToken).toBeDefined();
       expect(res.body.refreshToken).toBeDefined();
       expect(res.body.user.passwordHash).toBeUndefined();
+      expect(res.body.user.tokenVersion).toBeUndefined();
     });
 
-    it('401 — contraseña incorrecta (mismo mensaje que usuario inexistente — anti-enum)', async () => {
+    it('uses the same message for wrong password and unknown user', async () => {
       const resWrongPass = await request(app.getHttpServer())
         .post(`${BASE}/auth/login`)
         .send({ email: VALID_USER.email, password: 'WrongPass999!' })
@@ -130,11 +111,10 @@ describe('Auth — Integration', () => {
         .send({ email: 'nobody@nexus-test.com', password: 'AnyPass123!' })
         .expect(401);
 
-      // El mensaje debe ser idéntico — prevención de user enumeration
       expect(resWrongPass.body.message).toBe(resNoUser.body.message);
     });
 
-    it('401 — usuario no existe devuelve Unauthorized', async () => {
+    it('returns 401 for an unknown user', async () => {
       await request(app.getHttpServer())
         .post(`${BASE}/auth/login`)
         .send({ email: 'nonexistent@nexus.com', password: 'AnyPass123!' })
@@ -142,28 +122,31 @@ describe('Auth — Integration', () => {
     });
   });
 
-  // ── POST /auth/refresh ──────────────────────────────────────────────────────
-
   describe('POST /auth/refresh', () => {
-    it('200 — refresh token válido emite nuevos tokens', async () => {
-      // Register + get refresh token
+    it('rotates refresh tokens and rejects refresh-token reuse', async () => {
       const registerRes = await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
         .send(VALID_USER)
         .expect(201);
 
-      const { refreshToken } = registerRes.body;
+      const initialRefreshToken = registerRes.body.refreshToken;
 
-      const res = await request(app.getHttpServer())
+      const refreshRes = await request(app.getHttpServer())
         .post(`${BASE}/auth/refresh`)
-        .send({ refreshToken })
+        .send({ refreshToken: initialRefreshToken })
         .expect(200);
 
-      expect(res.body.accessToken).toBeDefined();
-      expect(res.body.refreshToken).toBeDefined();
+      expect(refreshRes.body.accessToken).toBeDefined();
+      expect(refreshRes.body.refreshToken).toBeDefined();
+      expect(refreshRes.body.refreshToken).not.toBe(initialRefreshToken);
+
+      await request(app.getHttpServer())
+        .post(`${BASE}/auth/refresh`)
+        .send({ refreshToken: initialRefreshToken })
+        .expect(401);
     });
 
-    it('401 — refresh token inválido/manipulado devuelve Unauthorized', async () => {
+    it('returns 401 for an invalid refresh token', async () => {
       await request(app.getHttpServer())
         .post(`${BASE}/auth/refresh`)
         .send({ refreshToken: 'this.is.not.a.valid.jwt' })
@@ -171,33 +154,55 @@ describe('Auth — Integration', () => {
     });
   });
 
-  // ── GET /auth/me ────────────────────────────────────────────────────────────
-
-  describe('GET /auth/me', () => {
-    it('200 — con Bearer válido devuelve el usuario actual', async () => {
+  describe('POST /auth/logout', () => {
+    it('invalidates the current refresh-token family', async () => {
       const registerRes = await request(app.getHttpServer())
         .post(`${BASE}/auth/register`)
         .send(VALID_USER)
         .expect(201);
 
-      const { accessToken } = registerRes.body;
+      await request(app.getHttpServer())
+        .post(`${BASE}/auth/logout`)
+        .set('Authorization', `Bearer ${registerRes.body.accessToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .post(`${BASE}/auth/refresh`)
+        .send({ refreshToken: registerRes.body.refreshToken })
+        .expect(401);
+    });
+
+    it('returns 401 without a bearer token', async () => {
+      await request(app.getHttpServer())
+        .post(`${BASE}/auth/logout`)
+        .expect(401);
+    });
+  });
+
+  describe('GET /auth/me', () => {
+    it('returns the current user for a valid bearer token', async () => {
+      const registerRes = await request(app.getHttpServer())
+        .post(`${BASE}/auth/register`)
+        .send(VALID_USER)
+        .expect(201);
 
       const res = await request(app.getHttpServer())
         .get(`${BASE}/auth/me`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Authorization', `Bearer ${registerRes.body.accessToken}`)
         .expect(200);
 
       expect(res.body.user.email).toBe('john@nexus-test.com');
       expect(res.body.user.passwordHash).toBeUndefined();
+      expect(res.body.user.tokenVersion).toBeUndefined();
     });
 
-    it('401 — sin Authorization header devuelve Unauthorized', async () => {
+    it('returns 401 without Authorization', async () => {
       await request(app.getHttpServer())
         .get(`${BASE}/auth/me`)
         .expect(401);
     });
 
-    it('401 — Bearer manipulado devuelve Unauthorized', async () => {
+    it('returns 401 for a tampered bearer token', async () => {
       await request(app.getHttpServer())
         .get(`${BASE}/auth/me`)
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiJ9.fake.payload')

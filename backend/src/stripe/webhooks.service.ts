@@ -4,7 +4,13 @@ import { Repository, DataSource, EntityManager } from 'typeorm';
 import Stripe from 'stripe';
 import { StripeWebhookLog } from './entities/stripe-webhook-log.entity';
 import { Reservation, ReservationStatus } from '../reservations/reservation.entity';
+import { isReservationTransitionAllowed } from '../reservations/reservation-policy';
 import { SseService } from '../sse/sse.service';
+
+const WEBHOOK_CANCELLATION_STATUSES: readonly ReservationStatus[] = [
+  ReservationStatus.PENDING_DEPOSIT,
+  ReservationStatus.AWAITING_CAPTURE,
+];
 
 /**
  * Processes Stripe webhook events with full idempotency.
@@ -134,7 +140,12 @@ export class WebhooksService {
     }
 
     // Safety-net: only transition if BullMQ hasn't done it already
-    if (reservation.status === ReservationStatus.AWAITING_CAPTURE) {
+    if (
+      isReservationTransitionAllowed(
+        reservation.status,
+        ReservationStatus.CONFIRMED,
+      )
+    ) {
       await manager
         .getRepository(Reservation)
         .update({ id: reservation.id }, { status: ReservationStatus.CONFIRMED });
@@ -163,7 +174,7 @@ export class WebhooksService {
 
     if (!reservation) return;
 
-    if (reservation.status === ReservationStatus.PENDING_DEPOSIT) {
+    if (WEBHOOK_CANCELLATION_STATUSES.includes(reservation.status)) {
       await manager
         .getRepository(Reservation)
         .update({ id: reservation.id }, { status: ReservationStatus.CANCELLED });
@@ -193,12 +204,7 @@ export class WebhooksService {
 
     if (!reservation) return;
 
-    const cancelableStatuses: ReservationStatus[] = [
-      ReservationStatus.PENDING_DEPOSIT,
-      ReservationStatus.AWAITING_CAPTURE,
-    ];
-
-    if (cancelableStatuses.includes(reservation.status)) {
+    if (WEBHOOK_CANCELLATION_STATUSES.includes(reservation.status)) {
       await manager
         .getRepository(Reservation)
         .update({ id: reservation.id }, { status: ReservationStatus.CANCELLED });

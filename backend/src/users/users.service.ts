@@ -27,12 +27,22 @@ export class UsersService {
     return this.usersRepo
       .createQueryBuilder('user')
       .addSelect('user.passwordHash')
+      .addSelect('user.tokenVersion')
       .where('user.email = :email', { email: email.toLowerCase().trim() })
       .getOne();
   }
 
   async findById(id: string): Promise<User | null> {
     return this.usersRepo.findOne({ where: { id, isActive: true } });
+  }
+
+  async findByIdWithTokenVersion(id: string): Promise<User | null> {
+    return this.usersRepo
+      .createQueryBuilder('user')
+      .addSelect('user.tokenVersion')
+      .where('user.id = :id', { id })
+      .andWhere('user.isActive = true')
+      .getOne();
   }
 
   async updateMe(
@@ -63,5 +73,9 @@ export class UsersService {
     });
 
     return this.usersRepo.save(user);
+  }
+
+  async incrementTokenVersion(id: string): Promise<void> {
+    await this.usersRepo.increment({ id }, 'tokenVersion', 1);
   }
 }

@@ -7,6 +7,7 @@ import {
   Reservation,
   ReservationStatus,
 } from "../../reservations/reservation.entity";
+import { isReservationTransitionAllowed } from "../../reservations/reservation-policy";
 import { StripeService } from "../../stripe/stripe.service";
 import { SseService } from "../../sse/sse.service";
 
@@ -83,6 +84,17 @@ export class CaptureStripeProcessor extends WorkerHost {
     }
 
     // Update reservation to CONFIRMED
+    if (
+      !isReservationTransitionAllowed(
+        reservation.status,
+        ReservationStatus.CONFIRMED,
+      )
+    ) {
+      throw new Error(
+        `Invalid reservation transition ${reservation.status} -> ${ReservationStatus.CONFIRMED}`,
+      );
+    }
+
     await this.reservationsRepo.update(
       { id: reservation.id },
       { status: ReservationStatus.CONFIRMED },

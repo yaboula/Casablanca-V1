@@ -1,31 +1,29 @@
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
-  ConflictException,
-  BadRequestException,
 } from "@nestjs/common";
+import { InjectQueue } from "@nestjs/bullmq";
 import { InjectRepository } from "@nestjs/typeorm";
+import { Queue } from "bullmq";
 import { Repository } from "typeorm";
-import {
-  ReservationDocument,
-  DocumentType,
-  DocumentStatus,
-} from "./reservation-document.entity";
-import {
-  Reservation,
-  ReservationStatus,
-} from "../reservations/reservation.entity";
-import { User, UserRole } from "../users/user.entity";
+import { Reservation, ReservationStatus } from "../reservations/reservation.entity";
 import { S3Service } from "../s3/s3.service";
-import { PresignDocumentDto } from "./dto/presign-document.dto";
+import { User, UserRole } from "../users/user.entity";
 import { ConfirmDocumentDto } from "./dto/confirm-document.dto";
+import { PresignDocumentDto } from "./dto/presign-document.dto";
+import {
+  DocumentStatus,
+  ReservationDocument,
+} from "./reservation-document.entity";
 
-/** Statuses that allow document uploads */
 const UPLOAD_ALLOWED_STATUSES: ReservationStatus[] = [
   ReservationStatus.PENDING_DEPOSIT,
   ReservationStatus.CONFIRMED,
 ];
+const ORPHAN_UPLOAD_CLEANUP_DELAY_MS = 2 * 60 * 60 * 1000;
 
 @Injectable()
 export class DocumentsService {
@@ -34,17 +32,11 @@ export class DocumentsService {
     private readonly docsRepo: Repository<ReservationDocument>,
     @InjectRepository(Reservation)
     private readonly reservationsRepo: Repository<Reservation>,
+    @InjectQueue("orphan-upload-cleanup")
+    private readonly orphanUploadCleanupQueue: Queue,
     private readonly s3Service: S3Service,
   ) {}
 
-  /**
-   * Step 1: Generate a presigned PUT URL so the frontend can upload directly to S3.
-   *
-   * Validations:
-   * - Reservation exists and belongs to the authenticated user
-   * - Reservation is in an uploadable state (not CANCELLED or COMPLETED)
-   * - No APPROVED document of the same type exists for this reservation
-   */
   async presign(dto: PresignDocumentDto, user: User) {
     const reservation = await this.reservationsRepo.findOne({
       where: { id: dto.reservationId },
@@ -66,7 +58,6 @@ export class DocumentsService {
       );
     }
 
-    // Check if an APPROVED document of same type already exists
     const existingApproved = await this.docsRepo.findOne({
       where: {
         reservationId: dto.reservationId,
@@ -81,18 +72,28 @@ export class DocumentsService {
       );
     }
 
-    return this.s3Service.generatePresignedUpload(
+    const presignedUpload = await this.s3Service.generatePresignedUpload(
       user.id,
       dto.reservationId,
       dto.type,
       dto.mimeType ?? "image/jpeg",
     );
+
+    await this.orphanUploadCleanupQueue.add(
+      "cleanup-orphan-upload",
+      { fileKey: presignedUpload.fileKey },
+      {
+        delay: ORPHAN_UPLOAD_CLEANUP_DELAY_MS,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 10_000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
+
+    return presignedUpload;
   }
 
-  /**
-   * Step 2: After the frontend uploads the file to S3, confirm the document.
-   * Creates the ReservationDocument record with PENDING_REVIEW status.
-   */
   async confirm(
     dto: ConfirmDocumentDto,
     user: User,
@@ -105,20 +106,22 @@ export class DocumentsService {
       throw new ForbiddenException("Reserva inválida.");
     }
 
-    // Bug 8 fix: Prevent document confirmation for cancelled/completed reservations
     if (!UPLOAD_ALLOWED_STATUSES.includes(reservation.status)) {
       throw new BadRequestException(
         `No se pueden confirmar documentos para reservas en estado ${reservation.status}.`,
       );
     }
 
-    // BUG-09 fix: Validate fileKey to prevent path traversal
     const expectedPrefix = `docs/${user.id}/${dto.reservationId}/`;
     if (dto.fileKey.includes("..") || !dto.fileKey.startsWith(expectedPrefix)) {
       throw new BadRequestException("fileKey inválido.");
     }
+    if (!dto.fileKey.includes(`/${dto.type}-`)) {
+      throw new BadRequestException(
+        "fileKey no coincide con el tipo de documento confirmado.",
+      );
+    }
 
-    // If there's an existing PENDING_REVIEW/REJECTED doc of same type, replace it
     const existing = await this.docsRepo.findOne({
       where: {
         reservationId: dto.reservationId,
@@ -129,18 +132,33 @@ export class DocumentsService {
 
     if (existing && existing.status === DocumentStatus.APPROVED) {
       throw new ConflictException(
-        `Ya existe un ${dto.type} aprobado — no se puede reemplazar.`,
+        `Ya existe un ${dto.type} aprobado - no se puede reemplazar.`,
       );
     }
 
     if (existing) {
-      // Update the existing pending/rejected document
+      const previousFileKey = existing.fileKey;
       existing.fileKey = dto.fileKey;
       existing.status = DocumentStatus.PENDING_REVIEW;
       existing.rejectionReason = null;
       existing.reviewedBy = null;
       existing.reviewedAt = null;
-      return this.docsRepo.save(existing);
+      const saved = await this.docsRepo.save(existing);
+
+      if (previousFileKey !== dto.fileKey) {
+        await this.orphanUploadCleanupQueue.add(
+          "cleanup-replaced-upload",
+          { fileKey: previousFileKey },
+          {
+            attempts: 3,
+            backoff: { type: "exponential", delay: 10_000 },
+            removeOnComplete: true,
+            removeOnFail: false,
+          },
+        );
+      }
+
+      return saved;
     }
 
     const doc = this.docsRepo.create({
@@ -154,11 +172,6 @@ export class DocumentsService {
     return this.docsRepo.save(doc);
   }
 
-  /**
-   * Returns all documents for a reservation, with fresh presigned read URLs.
-   * USER can only view their own reservation's documents.
-   * OPERATOR/ADMIN can view any.
-   */
   async findByReservation(
     reservationId: string,
     user: User,
@@ -180,7 +193,6 @@ export class DocumentsService {
       order: { createdAt: "ASC" },
     });
 
-    // Bug 5 fix: Properly exclude fileKey using destructuring instead of unsafe assertion
     return Promise.all(
       docs.map(async (doc) => {
         const { fileKey, ...safeDoc } = doc;

@@ -10,6 +10,7 @@ import {
   Reservation,
   ReservationStatus,
 } from "../../reservations/reservation.entity";
+import { isReservationTransitionAllowed } from "../../reservations/reservation-policy";
 import { Vehicle, VehicleStatus } from "../../vehicles/vehicle.entity";
 import { QrService } from "../../qr/qr.service";
 import { SseService } from "../../sse/sse.service";
@@ -107,7 +108,12 @@ export class OperatorDeliveryService {
       return reservation;
     }
 
-    if (reservation.status !== ReservationStatus.CONFIRMED) {
+    if (
+      !isReservationTransitionAllowed(
+        reservation.status,
+        ReservationStatus.IN_PROGRESS,
+      )
+    ) {
       throw new ConflictException(
         `No se puede hacer check-in de una reserva en estado ${reservation.status}.`,
       );
@@ -166,7 +172,12 @@ export class OperatorDeliveryService {
       throw new ConflictException("Este vehículo ya fue entregado.");
     }
 
-    if (reservation.status !== ReservationStatus.CONFIRMED) {
+    if (
+      !isReservationTransitionAllowed(
+        reservation.status,
+        ReservationStatus.IN_PROGRESS,
+      )
+    ) {
       throw new ConflictException(
         `No se puede entregar una reserva en estado ${reservation.status}.`,
       );

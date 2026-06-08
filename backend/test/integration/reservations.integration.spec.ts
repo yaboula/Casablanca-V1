@@ -1,29 +1,16 @@
-/**
- * Reservations Integration Tests — Level 2
- * =====================================================================
- * Tests the full HTTP request lifecycle for the reservations module.
- * All endpoints require JWT — tests exercise auth middleware too.
- *
- * External mocks:
- *   - StripeService → mockStripeService (no real Stripe API calls)
- *   - reservation-expiry queue → mockExpiryQueue (no BullMQ enqueue)
- *
- * Isolation: truncateAllTables() before each test
- * DB state: seeded via register + real ReservationsService
- * =====================================================================
- */
-import * as request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp, mockStripeService, mockExpiryQueue } from '../setup/test-app';
-import { truncateAllTables, seedVehicle } from '../setup/db-helpers';
+import * as request from 'supertest';
+import {
+  createTestApp,
+  mockExpiryQueue,
+  mockStripeService,
+} from '../setup/test-app';
+import { seedVehicle, truncateAllTables } from '../setup/db-helpers';
 
 const BASE = '/api/v1';
 
-// Dates always in the future
 const tomorrow = () => new Date(Date.now() + 86_400_000).toISOString();
 const threeDays = () => new Date(Date.now() + 3 * 86_400_000).toISOString();
-
-// ─── Shared helper ────────────────────────────────────────────────────────────
 
 async function registerAndLogin(
   app: INestApplication,
@@ -50,26 +37,38 @@ async function createReservation(
   app: INestApplication,
   token: string,
   vehicleId: string,
+  options: {
+    idempotencyKey?: string;
+    pickupLocation?: 'CMN_T1' | 'CMN_T2';
+    customerName?: string;
+    customerPhone?: string;
+    pickupDate?: string;
+    returnDate?: string;
+  } = {},
 ): Promise<any> {
-  const res = await request(app.getHttpServer())
+  const httpRequest = request(app.getHttpServer())
     .post(`${BASE}/reservations`)
-    .set('Authorization', `Bearer ${token}`)
+    .set('Authorization', `Bearer ${token}`);
+
+  if (options.idempotencyKey) {
+    httpRequest.set('Idempotency-Key', options.idempotencyKey);
+  }
+
+  const res = await httpRequest
     .send({
       vehicleId,
-      pickupDate: tomorrow(),
-      returnDate: threeDays(),
-      pickupLocation: 'CMN_T1',
-      customerName: 'Integration Tester',
-      customerPhone: '+34600000001',
+      pickupDate: options.pickupDate ?? tomorrow(),
+      returnDate: options.returnDate ?? threeDays(),
+      pickupLocation: options.pickupLocation ?? 'CMN_T1',
+      customerName: options.customerName ?? 'Integration Tester',
+      customerPhone: options.customerPhone ?? '+34600000001',
     })
     .expect(201);
 
   return res.body.data;
 }
 
-// ─── Suite ────────────────────────────────────────────────────────────────────
-
-describe('Reservations — Integration', () => {
+describe('Reservations - Integration', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -77,14 +76,15 @@ describe('Reservations — Integration', () => {
   });
 
   afterAll(async () => {
-    if (app) await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   beforeEach(async () => {
     await truncateAllTables(app);
     jest.clearAllMocks();
 
-    // Restore default mocks after potential overrides in individual tests
     mockStripeService.createPaymentIntent.mockResolvedValue({
       id: 'pi_test_integration',
       client_secret: 'pi_test_integration_secret_xxx',
@@ -93,10 +93,8 @@ describe('Reservations — Integration', () => {
     mockExpiryQueue.add.mockResolvedValue({ id: 'job-integration-1' });
   });
 
-  // ── POST /reservations ──────────────────────────────────────────────────────
-
   describe('POST /reservations', () => {
-    it('401 — sin JWT devuelve Unauthorized', async () => {
+    it('returns 401 without JWT', async () => {
       await request(app.getHttpServer())
         .post(`${BASE}/reservations`)
         .send({
@@ -108,7 +106,7 @@ describe('Reservations — Integration', () => {
         .expect(401);
     });
 
-    it('201 — happy path: crea reserva, llama Stripe, encola job de expiración', async () => {
+    it('creates a reservation, calls Stripe, and enqueues expiry', async () => {
       const vehicleId = await seedVehicle(app);
       const { accessToken } = await registerAndLogin(app);
 
@@ -127,16 +125,15 @@ describe('Reservations — Integration', () => {
 
       expect(res.body.data.id).toBeDefined();
       expect(res.body.data.status).toBe('PENDING_DEPOSIT');
-      expect(res.body.data.stripeClientSecret).toBe('pi_test_integration_secret_xxx');
+      expect(res.body.data.stripeClientSecret).toBe(
+        'pi_test_integration_secret_xxx',
+      );
 
-      // Verificar que se llamó a Stripe con el depósito fijo (1000 = 10 €)
       expect(mockStripeService.createPaymentIntent).toHaveBeenCalledWith(
         1000,
         expect.any(String),
         expect.any(Object),
       );
-
-      // Verificar que se encoló el job de expiración a 15 min
       expect(mockExpiryQueue.add).toHaveBeenCalledWith(
         'expire',
         expect.objectContaining({ reservationId: res.body.data.id }),
@@ -144,7 +141,56 @@ describe('Reservations — Integration', () => {
       );
     });
 
-    it('400 — pickupDate en pasado devuelve Bad Request', async () => {
+    it('returns the same reservation when the same Idempotency-Key is retried', async () => {
+      const vehicleId = await seedVehicle(app);
+      const { accessToken } = await registerAndLogin(app);
+      const pickupDate = tomorrow();
+      const returnDate = threeDays();
+
+      const firstReservation = await createReservation(app, accessToken, vehicleId, {
+        idempotencyKey: 'res-create-001',
+        pickupDate,
+        returnDate,
+      });
+      const secondReservation = await createReservation(app, accessToken, vehicleId, {
+        idempotencyKey: 'res-create-001',
+        pickupDate,
+        returnDate,
+      });
+
+      expect(secondReservation.id).toBe(firstReservation.id);
+      expect(mockStripeService.createPaymentIntent).toHaveBeenCalledTimes(1);
+      expect(mockExpiryQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns 409 when the same Idempotency-Key is reused with a different payload', async () => {
+      const vehicleId = await seedVehicle(app);
+      const { accessToken } = await registerAndLogin(app);
+      const pickupDate = tomorrow();
+      const returnDate = threeDays();
+
+      await createReservation(app, accessToken, vehicleId, {
+        idempotencyKey: 'res-create-002',
+        pickupDate,
+        returnDate,
+      });
+
+      await request(app.getHttpServer())
+        .post(`${BASE}/reservations`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Idempotency-Key', 'res-create-002')
+        .send({
+          vehicleId,
+          pickupDate,
+          returnDate,
+          pickupLocation: 'CMN_T2',
+          customerName: 'Integration Tester',
+          customerPhone: '+34600000001',
+        })
+        .expect(409);
+    });
+
+    it('returns 400 when pickupDate is in the past', async () => {
       const vehicleId = await seedVehicle(app);
       const { accessToken } = await registerAndLogin(app);
 
@@ -160,7 +206,7 @@ describe('Reservations — Integration', () => {
         .expect(400);
     });
 
-    it('404 — vehicleId inexistente devuelve Not Found', async () => {
+    it('returns 404 for an unknown vehicleId', async () => {
       const { accessToken } = await registerAndLogin(app);
       const fakeVehicleId = '00000000-0000-4000-a000-000000000001';
 
@@ -177,24 +223,20 @@ describe('Reservations — Integration', () => {
     });
   });
 
-  // ── GET /reservations/my ────────────────────────────────────────────────────
-
   describe('GET /reservations/my', () => {
-    it('401 — sin JWT devuelve Unauthorized', async () => {
+    it('returns 401 without JWT', async () => {
       await request(app.getHttpServer())
         .get(`${BASE}/reservations/my`)
         .expect(401);
     });
 
-    it('200 — user con reservas solo ve las suyas', async () => {
+    it('shows a user only their own reservations', async () => {
       const vehicleId = await seedVehicle(app);
       const user1 = await registerAndLogin(app, 'user1@nexus-test.com');
       const user2 = await registerAndLogin(app, 'user2@nexus-test.com');
 
-      // user1 crea una reserva
       await createReservation(app, user1.accessToken, vehicleId);
 
-      // user2 no ve la reserva de user1
       const res = await request(app.getHttpServer())
         .get(`${BASE}/reservations/my`)
         .set('Authorization', `Bearer ${user2.accessToken}`)
@@ -203,7 +245,7 @@ describe('Reservations — Integration', () => {
       expect(res.body.data).toHaveLength(0);
     });
 
-    it('200 — paginación: page=1&limit=5 devuelve estructura correcta', async () => {
+    it('returns paginated structure', async () => {
       const { accessToken } = await registerAndLogin(app);
 
       const res = await request(app.getHttpServer())
@@ -214,13 +256,12 @@ describe('Reservations — Integration', () => {
       expect(res.body).toHaveProperty('data');
       expect(res.body).toHaveProperty('total');
       expect(res.body).toHaveProperty('page');
+      expect(res.body).toHaveProperty('limit');
     });
   });
 
-  // ── GET /reservations/:id ───────────────────────────────────────────────────
-
   describe('GET /reservations/:id', () => {
-    it('200 — dueño puede ver su propia reserva', async () => {
+    it('lets the owner view their reservation', async () => {
       const vehicleId = await seedVehicle(app);
       const { accessToken } = await registerAndLogin(app);
       const reservation = await createReservation(app, accessToken, vehicleId);
@@ -233,7 +274,7 @@ describe('Reservations — Integration', () => {
       expect(res.body.data.id).toBe(reservation.id);
     });
 
-    it('403 — usuario diferente no puede ver la reserva de otro', async () => {
+    it('returns 403 when another user tries to view the reservation', async () => {
       const vehicleId = await seedVehicle(app);
       const user1 = await registerAndLogin(app, 'owner@nexus-test.com');
       const user2 = await registerAndLogin(app, 'intruder@nexus-test.com');
@@ -247,10 +288,8 @@ describe('Reservations — Integration', () => {
     });
   });
 
-  // ── PATCH /reservations/:id/cancel ─────────────────────────────────────────
-
   describe('PATCH /reservations/:id/cancel', () => {
-    it('200 — usuario cancela su reserva PENDING_DEPOSIT', async () => {
+    it('allows a user to cancel their own PENDING_DEPOSIT reservation', async () => {
       const vehicleId = await seedVehicle(app);
       const { accessToken } = await registerAndLogin(app);
       const reservation = await createReservation(app, accessToken, vehicleId);
@@ -263,7 +302,23 @@ describe('Reservations — Integration', () => {
       expect(res.body.data.status).toBe('CANCELLED');
     });
 
-    it('403 — otro usuario no puede cancelar la reserva ajena', async () => {
+    it('returns 400 when trying to cancel the same reservation twice', async () => {
+      const vehicleId = await seedVehicle(app);
+      const { accessToken } = await registerAndLogin(app);
+      const reservation = await createReservation(app, accessToken, vehicleId);
+
+      await request(app.getHttpServer())
+        .patch(`${BASE}/reservations/${reservation.id}/cancel`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .patch(`${BASE}/reservations/${reservation.id}/cancel`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(400);
+    });
+
+    it('returns 403 when another user tries to cancel the reservation', async () => {
       const vehicleId = await seedVehicle(app);
       const owner = await registerAndLogin(app, 'owner2@nexus-test.com');
       const intruder = await registerAndLogin(app, 'intruder2@nexus-test.com');
@@ -277,10 +332,8 @@ describe('Reservations — Integration', () => {
     });
   });
 
-  // ── PATCH /reservations/:id/complete ───────────────────────────────────────
-
   describe('PATCH /reservations/:id/complete', () => {
-    it('403 — rol USER no puede completar una reserva (OPERATOR only)', async () => {
+    it('returns 403 for USER role', async () => {
       const vehicleId = await seedVehicle(app);
       const { accessToken } = await registerAndLogin(app, 'user3@nexus-test.com');
       const reservation = await createReservation(app, accessToken, vehicleId);

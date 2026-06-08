@@ -12,6 +12,7 @@ import {
   Reservation,
   ReservationStatus,
 } from "../../reservations/reservation.entity";
+import { isReservationTransitionAllowed } from "../../reservations/reservation-policy";
 import {
   ReservationDocument,
   DocumentStatus,
@@ -168,6 +169,17 @@ export class OperatorDocumentService {
             .getOne();
 
           if (reservation) {
+            if (
+              !isReservationTransitionAllowed(
+                reservation.status,
+                ReservationStatus.AWAITING_CAPTURE,
+              )
+            ) {
+              throw new ConflictException(
+                `No se puede mover la reserva ${reservation.id} desde ${reservation.status} a ${ReservationStatus.AWAITING_CAPTURE}.`,
+              );
+            }
+
             reservation.status = ReservationStatus.AWAITING_CAPTURE;
             reservation.qrCodeHash = this.qrService.generateHash(
               reservation.id,

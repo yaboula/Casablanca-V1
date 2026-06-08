@@ -44,6 +44,7 @@ export class CreateReservationsTable1700000003000 implements MigrationInterface 
         "qr_code_hash"              TEXT,
         "customer_name"             VARCHAR(120),
         "customer_phone"            VARCHAR(30),
+        "idempotency_key"           VARCHAR(100),
         "created_at"                TIMESTAMPTZ               NOT NULL DEFAULT NOW(),
         "updated_at"                TIMESTAMPTZ               NOT NULL DEFAULT NOW(),
         CONSTRAINT "pk_reservations" PRIMARY KEY ("id"),
@@ -59,6 +60,9 @@ export class CreateReservationsTable1700000003000 implements MigrationInterface 
       CREATE INDEX IF NOT EXISTS "idx_reservations_user_id"   ON "reservations" ("user_id");
       CREATE INDEX IF NOT EXISTS "idx_reservations_vehicle_id" ON "reservations" ("vehicle_id");
       CREATE INDEX IF NOT EXISTS "idx_reservations_status"    ON "reservations" ("status");
+      CREATE UNIQUE INDEX IF NOT EXISTS "uq_reservations_user_idempotency"
+        ON "reservations" ("user_id", "idempotency_key")
+        WHERE "idempotency_key" IS NOT NULL;
       -- Composite for availability overlap queries (pickup_date, return_date, status)
       CREATE INDEX IF NOT EXISTS "idx_reservations_overlap"
         ON "reservations" ("vehicle_id", "pickup_date", "return_date")

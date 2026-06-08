@@ -1,13 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { WebhooksService } from './webhooks.service';
-import { StripeWebhookLog } from './entities/stripe-webhook-log.entity';
+import Stripe from 'stripe';
 import { Reservation, ReservationStatus } from '../reservations/reservation.entity';
 import { SseService } from '../sse/sse.service';
-import Stripe from 'stripe';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { StripeWebhookLog } from './entities/stripe-webhook-log.entity';
+import { WebhooksService } from './webhooks.service';
 
 function makeStripeEvent(
   type: string,
@@ -33,15 +31,15 @@ function makeStripeEvent(
   } as Stripe.Event;
 }
 
-function makeReservation(status: ReservationStatus = ReservationStatus.AWAITING_CAPTURE) {
+function makeReservation(
+  status: ReservationStatus = ReservationStatus.AWAITING_CAPTURE,
+): Reservation {
   return {
     id: 'res-123',
     stripePaymentIntentId: 'pi_test',
     status,
   } as Reservation;
 }
-
-// ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('WebhooksService', () => {
   let service: WebhooksService;
@@ -56,7 +54,6 @@ describe('WebhooksService', () => {
     emitReservationStatus: jest.fn(),
   };
 
-  // Each test configures its own QueryRunner via this factory
   const makeQueryRunner = (opts: {
     duplicateKey?: boolean;
     reservation?: Reservation | null;
@@ -100,111 +97,138 @@ describe('WebhooksService', () => {
       ],
     }).compile();
 
-    service = module.get<WebhooksService>(WebhooksService);
+    service = module.get(WebhooksService);
   });
 
-  // ── Idempotency ────────────────────────────────────────────────────────────
-
   describe('idempotency', () => {
-    it('should skip (return early) and rollback on duplicate event ID', async () => {
+    it('skips duplicate event IDs safely', async () => {
       const qr = makeQueryRunner({ duplicateKey: true });
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      const event = makeStripeEvent('payment_intent.succeeded', 'pi_test');
-
-      // Should NOT throw — just skip
-      await expect(service.handleEvent(event)).resolves.toBeUndefined();
+      await expect(
+        service.handleEvent(makeStripeEvent('payment_intent.succeeded', 'pi_test')),
+      ).resolves.toBeUndefined();
 
       expect(qr.rollbackTransaction).toHaveBeenCalled();
       expect(qr.commitTransaction).not.toHaveBeenCalled();
     });
   });
 
-  // ── payment_intent.succeeded ───────────────────────────────────────────────
-
   describe('payment_intent.succeeded', () => {
-    it('should set AWAITING_CAPTURE reservation → CONFIRMED', async () => {
+    it('moves AWAITING_CAPTURE to CONFIRMED', async () => {
       const reservation = makeReservation(ReservationStatus.AWAITING_CAPTURE);
       const qr = makeQueryRunner({ reservation });
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      const event = makeStripeEvent('payment_intent.succeeded', 'pi_test');
-      await service.handleEvent(event);
+      await service.handleEvent(
+        makeStripeEvent('payment_intent.succeeded', 'pi_test'),
+      );
 
-      expect(qr.commitTransaction).toHaveBeenCalled();
       expect(mockSseService.emitReservationStatus).toHaveBeenCalledWith(
         reservation.id,
         ReservationStatus.CONFIRMED,
       );
+      expect(qr.commitTransaction).toHaveBeenCalled();
     });
 
-    it('should be a no-op if reservation is already CONFIRMED', async () => {
-      const reservation = makeReservation(ReservationStatus.CONFIRMED);
-      const qr = makeQueryRunner({ reservation });
+    it('does nothing if the reservation is already CONFIRMED', async () => {
+      const qr = makeQueryRunner({
+        reservation: makeReservation(ReservationStatus.CONFIRMED),
+      });
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      const event = makeStripeEvent('payment_intent.succeeded', 'pi_test');
-      await service.handleEvent(event);
+      await service.handleEvent(
+        makeStripeEvent('payment_intent.succeeded', 'pi_test'),
+      );
 
-      // SSE should NOT be emitted again — prevents duplicate client notifications
       expect(mockSseService.emitReservationStatus).not.toHaveBeenCalled();
       expect(qr.commitTransaction).toHaveBeenCalled();
     });
 
-    it('should no-op gracefully if no reservation found for PI', async () => {
+    it('does nothing if no reservation exists for the PI', async () => {
       const qr = makeQueryRunner({ reservation: null });
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      const event = makeStripeEvent('payment_intent.succeeded', 'pi_unknown');
-      await expect(service.handleEvent(event)).resolves.toBeUndefined();
+      await expect(
+        service.handleEvent(makeStripeEvent('payment_intent.succeeded', 'pi_unknown')),
+      ).resolves.toBeUndefined();
+
       expect(qr.commitTransaction).toHaveBeenCalled();
     });
   });
 
-  // ── payment_intent.payment_failed ─────────────────────────────────────────
-
   describe('payment_intent.payment_failed', () => {
-    it('should set PENDING_DEPOSIT → CANCELLED on payment failure', async () => {
+    it('cancels a PENDING_DEPOSIT reservation', async () => {
       const reservation = makeReservation(ReservationStatus.PENDING_DEPOSIT);
       const qr = makeQueryRunner({ reservation });
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      const event = makeStripeEvent('payment_intent.payment_failed', 'pi_test');
-      await service.handleEvent(event);
+      await service.handleEvent(
+        makeStripeEvent('payment_intent.payment_failed', 'pi_test'),
+      );
 
-      expect(qr.commitTransaction).toHaveBeenCalled();
       expect(mockSseService.emitReservationStatus).toHaveBeenCalledWith(
         reservation.id,
         ReservationStatus.CANCELLED,
       );
+      expect(qr.commitTransaction).toHaveBeenCalled();
+    });
+
+    it('does nothing if the reservation is already CONFIRMED', async () => {
+      const qr = makeQueryRunner({
+        reservation: makeReservation(ReservationStatus.CONFIRMED),
+      });
+      mockDataSource.createQueryRunner.mockReturnValue(qr);
+
+      await service.handleEvent(
+        makeStripeEvent('payment_intent.payment_failed', 'pi_test'),
+      );
+
+      expect(mockSseService.emitReservationStatus).not.toHaveBeenCalled();
+      expect(qr.commitTransaction).toHaveBeenCalled();
     });
   });
 
-  // ── payment_intent.canceled ────────────────────────────────────────────────
-
   describe('payment_intent.canceled', () => {
-    it('should cancel AWAITING_CAPTURE reservation on PI cancel', async () => {
+    it('cancels an AWAITING_CAPTURE reservation', async () => {
       const reservation = makeReservation(ReservationStatus.AWAITING_CAPTURE);
       const qr = makeQueryRunner({ reservation });
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      const event = makeStripeEvent('payment_intent.canceled', 'pi_test');
-      await service.handleEvent(event);
+      await service.handleEvent(
+        makeStripeEvent('payment_intent.canceled', 'pi_test'),
+      );
 
-      expect(qr.commitTransaction).toHaveBeenCalled();
       expect(mockSseService.emitReservationStatus).toHaveBeenCalledWith(
         reservation.id,
         ReservationStatus.CANCELLED,
       );
+      expect(qr.commitTransaction).toHaveBeenCalled();
     });
 
-    it('should be a no-op if reservation is already CANCELLED (idempotent)', async () => {
-      const reservation = makeReservation(ReservationStatus.CANCELLED);
-      const qr = makeQueryRunner({ reservation });
+    it('does nothing if the reservation is already CANCELLED', async () => {
+      const qr = makeQueryRunner({
+        reservation: makeReservation(ReservationStatus.CANCELLED),
+      });
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
-      const event = makeStripeEvent('payment_intent.canceled', 'pi_test');
-      await service.handleEvent(event);
+      await service.handleEvent(
+        makeStripeEvent('payment_intent.canceled', 'pi_test'),
+      );
+
+      expect(mockSseService.emitReservationStatus).not.toHaveBeenCalled();
+      expect(qr.commitTransaction).toHaveBeenCalled();
+    });
+
+    it('does nothing if the reservation is already CONFIRMED', async () => {
+      const qr = makeQueryRunner({
+        reservation: makeReservation(ReservationStatus.CONFIRMED),
+      });
+      mockDataSource.createQueryRunner.mockReturnValue(qr);
+
+      await service.handleEvent(
+        makeStripeEvent('payment_intent.canceled', 'pi_test'),
+      );
 
       expect(mockSseService.emitReservationStatus).not.toHaveBeenCalled();
       expect(qr.commitTransaction).toHaveBeenCalled();

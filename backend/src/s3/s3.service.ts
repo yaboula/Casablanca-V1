@@ -102,12 +102,20 @@ export class S3Service {
    * Deletes an S3 object — used by document-cleanup BullMQ job.
    */
   async deleteObject(fileKey: string): Promise<void> {
+    if (
+      process.env.BYPASS_S3 === "true" ||
+      process.env.BYPASS_STRIPE === "true"
+    ) {
+      return;
+    }
+
     try {
       await this.s3.send(
         new DeleteObjectCommand({ Bucket: this.bucket, Key: fileKey }),
       );
     } catch (err) {
       this.logger.error(`Failed to delete S3 object ${fileKey}`, err);
+      throw err;
     }
   }
 }

@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Query,
+  Headers,
   DefaultValuePipe,
   ParseIntPipe,
   Body,
@@ -36,8 +37,13 @@ export class ReservationsController {
   async create(
     @Body() dto: CreateReservationDto,
     @CurrentUser() user: User,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    const reservation = await this.reservationsService.create(dto, user);
+    const reservation = await this.reservationsService.create(
+      dto,
+      user,
+      idempotencyKey,
+    );
     return { data: reservation };
   }
 

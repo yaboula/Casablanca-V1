@@ -9,6 +9,7 @@ export interface JwtPayload {
   sub: string;   // user UUID
   email: string;
   role: string;
+  tokenVersion?: number;
   iat?: number;
   exp?: number;
 }

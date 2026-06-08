@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { Reservation, ReservationStatus } from '../../reservations/reservation.entity';
+import { isReservationTransitionAllowed } from '../../reservations/reservation-policy';
 import { StripeService } from '../../stripe/stripe.service';
 
 interface ReservationExpiryJobData {
@@ -60,6 +61,16 @@ export class ReservationExpiryProcessor extends WorkerHost {
       }
 
       stripePaymentIntentId = reservation.stripePaymentIntentId;
+      if (
+        !isReservationTransitionAllowed(
+          reservation.status,
+          ReservationStatus.CANCELLED,
+        )
+      ) {
+        throw new Error(
+          `Invalid reservation transition ${reservation.status} -> ${ReservationStatus.CANCELLED}`,
+        );
+      }
 
       // Cancel the reservation inside the transaction
       await manager.getRepository(Reservation).update(

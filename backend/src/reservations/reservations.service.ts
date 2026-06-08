@@ -1,33 +1,29 @@
 import {
-  Injectable,
   BadRequestException,
   ConflictException,
-  NotFoundException,
   ForbiddenException,
+  Injectable,
   Logger,
+  NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource } from "typeorm";
 import { InjectQueue } from "@nestjs/bullmq";
+import { InjectRepository } from "@nestjs/typeorm";
 import { Queue } from "bullmq";
 import { v4 as uuidv4 } from "uuid";
-import { Reservation, ReservationStatus } from "./reservation.entity";
-import { Vehicle, VehicleStatus } from "../vehicles/vehicle.entity";
-import { User, UserRole } from "../users/user.entity";
+import { DataSource, Repository } from "typeorm";
+import {
+  BLOCKING_RESERVATION_STATUSES,
+  getAllowedReservationTransitions,
+  isReservationTransitionAllowed,
+} from "./reservation-policy";
 import { CreateReservationDto } from "./dto/create-reservation.dto";
-import { StripeService } from "../stripe/stripe.service";
+import { Reservation, ReservationStatus } from "./reservation.entity";
 import { QrService } from "../qr/qr.service";
+import { StripeService } from "../stripe/stripe.service";
+import { User, UserRole } from "../users/user.entity";
+import { Vehicle, VehicleStatus } from "../vehicles/vehicle.entity";
 
-// Fixed deposit: 10 EUR
 const DEPOSIT_EUR_CENTS = 1000;
-
-// Statuses that "block" a vehicle for a given date range
-const BLOCKING_STATUSES = [
-  ReservationStatus.PENDING_DEPOSIT,
-  ReservationStatus.AWAITING_CAPTURE,
-  ReservationStatus.CONFIRMED,
-  ReservationStatus.IN_PROGRESS,
-];
 
 @Injectable()
 export class ReservationsService {
@@ -36,8 +32,6 @@ export class ReservationsService {
   constructor(
     @InjectRepository(Reservation)
     private readonly reservationsRepo: Repository<Reservation>,
-    @InjectRepository(Vehicle)
-    private readonly vehiclesRepo: Repository<Vehicle>,
     @InjectQueue("reservation-expiry")
     private readonly reservationExpiryQueue: Queue,
     private readonly dataSource: DataSource,
@@ -45,28 +39,27 @@ export class ReservationsService {
     private readonly qrService: QrService,
   ) {}
 
-  /**
-   * Creates a reservation using the 2-phase Saga pattern:
-   *
-   * PHASE 1 (inside DB transaction — ACID):
-   *   1. Lock vehicle row with SELECT FOR UPDATE (prevents overbooking under concurrency)
-   *   2. Verify no overlapping BLOCKING reservations exist
-   *   3. Recalculate price server-side (Zero Trust — never trust client price)
-   *   4. Create Stripe PaymentIntent (authorize only, capture_method:'manual')
-   *   5. Save reservation with PENDING_DEPOSIT + stripePaymentIntentId
-   *   6. Commit transaction
-   *
-   * PHASE 2 (outside DB transaction):
-   *   - Return stripeClientSecret → frontend completes payment
-   *   - Operator reviews documents → triggers AWAITING_CAPTURE transition
-   *   - BullMQ capture-stripe processor captures the PI → CONFIRMED
-   */
-  async create(dto: CreateReservationDto, user: User): Promise<Reservation> {
+  async create(
+    dto: CreateReservationDto,
+    user: User,
+    rawIdempotencyKey?: string,
+  ): Promise<Reservation> {
     const pickupDate = new Date(dto.pickupDate);
     const returnDate = new Date(dto.returnDate);
     const now = new Date();
+    const idempotencyKey = this.normalizeIdempotencyKey(rawIdempotencyKey);
 
-    // ── Date validation ──────────────────────────────────────
+    if (idempotencyKey) {
+      const existingReservation = await this.findReservationByIdempotencyKey(
+        user.id,
+        idempotencyKey,
+      );
+      if (existingReservation) {
+        this.assertSameIdempotentReservation(existingReservation, dto);
+        return existingReservation;
+      }
+    }
+
     if (isNaN(pickupDate.getTime()) || isNaN(returnDate.getTime())) {
       throw new BadRequestException("Fechas inválidas.");
     }
@@ -82,27 +75,21 @@ export class ReservationsService {
     }
 
     const diffMs = returnDate.getTime() - pickupDate.getTime();
-    // Bug 1 fix: Math.ceil ensures any partial day is billed as a full day
-    // (industry standard for vehicle rentals)
     const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
     if (totalDays < 1) {
       throw new BadRequestException("El alquiler mínimo es 1 día.");
     }
 
-    // ── Bug 2 fix: Pre-generate UUID for stable Stripe idempotency key ─
     const reservationUuid = uuidv4();
 
-    // ── Run Saga Phase 1 in a DB transaction (no external HTTP calls) ──
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     let reservation: Reservation;
-    let pricePerDayEurCents: number;
 
     try {
-      // 1. Lock the vehicle row (pessimistic write — prevents concurrent overbooking)
       const vehicle = await queryRunner.manager.getRepository(Vehicle).findOne({
         where: { id: dto.vehicleId },
         lock: { mode: "pessimistic_write" },
@@ -112,9 +99,6 @@ export class ReservationsService {
         throw new NotFoundException(`Vehículo ${dto.vehicleId} no encontrado.`);
       }
 
-      // BUG-20 fix: Allow reservations for RENTED vehicles (future dates).
-      // The overlap check below already prevents real date conflicts.
-      // Only MAINTENANCE and INACTIVE should block booking entirely.
       if (
         vehicle.status === VehicleStatus.MAINTENANCE ||
         vehicle.status === VehicleStatus.INACTIVE
@@ -124,12 +108,13 @@ export class ReservationsService {
         );
       }
 
-      // 2. Check for overlapping reservations (while holding vehicle lock)
       const overlapping = await queryRunner.manager
         .getRepository(Reservation)
         .createQueryBuilder("r")
         .where("r.vehicleId = :vehicleId", { vehicleId: dto.vehicleId })
-        .andWhere("r.status IN (:...statuses)", { statuses: BLOCKING_STATUSES })
+        .andWhere("r.status IN (:...statuses)", {
+          statuses: BLOCKING_RESERVATION_STATUSES,
+        })
         .andWhere("r.pickupDate < :returnDate", { returnDate })
         .andWhere("r.returnDate > :pickupDate", { pickupDate })
         .getCount();
@@ -140,15 +125,10 @@ export class ReservationsService {
         );
       }
 
-      // 3. Server-side price calculation — NEVER trust client (Zero Trust mandate)
-      pricePerDayEurCents = vehicle.pricePerDayEurCents;
-      const totalPriceEurCents = pricePerDayEurCents * totalDays;
+      const totalPriceEurCents = vehicle.pricePerDayEurCents * totalDays;
 
-      // 4. Persist reservation WITHOUT Stripe data yet
-      //    Bug 11 fix: Stripe PI is created OUTSIDE the transaction to avoid
-      //    holding the pessimistic lock during an external HTTP call.
       reservation = queryRunner.manager.getRepository(Reservation).create({
-        id: reservationUuid, // Bug 2 fix: pre-generated UUID
+        id: reservationUuid,
         userId: user.id,
         vehicleId: vehicle.id,
         pickupDate,
@@ -163,47 +143,49 @@ export class ReservationsService {
         customerName: dto.customerName ?? null,
         customerPhone: dto.customerPhone ?? null,
         qrCodeHash: null,
+        idempotencyKey,
       });
 
       reservation = await queryRunner.manager
         .getRepository(Reservation)
         .save(reservation);
 
-      // 5. Commit — vehicle availability is now "blocked" for these dates
-      //    DB lock released here, BEFORE calling Stripe
       await queryRunner.commitTransaction();
-    } catch (err) {
+    } catch (err: unknown) {
       await queryRunner.rollbackTransaction();
+
+      if (this.isIdempotencyConflict(err) && idempotencyKey) {
+        const existingReservation = await this.findReservationByIdempotencyKey(
+          user.id,
+          idempotencyKey,
+        );
+        if (existingReservation) {
+          this.assertSameIdempotentReservation(existingReservation, dto);
+          return existingReservation;
+        }
+      }
+
       throw err;
     } finally {
       await queryRunner.release();
     }
 
-    // ── Phase 2 (outside transaction) — Stripe + BullMQ ─────────
-
-    // Create Stripe PaymentIntent (no DB lock held during this HTTP call)
-    // capture_method: 'manual' — only authorizes, does NOT charge yet
-    let paymentIntent: { id: string; client_secret: string | null };
     const bypassStripe = process.env.BYPASS_STRIPE === "true";
+    const paymentIntent = bypassStripe
+      ? {
+          id: `pi_dev_mock_${Date.now()}`,
+          client_secret: `pi_dev_mock_secret_${Date.now()}`,
+        }
+      : await this.stripeService.createPaymentIntent(
+          DEPOSIT_EUR_CENTS,
+          reservationUuid,
+          {
+            userId: user.id,
+            vehicleId: reservation.vehicleId,
+            totalDays: String(totalDays),
+          },
+        );
 
-    if (bypassStripe) {
-      paymentIntent = {
-        id: `pi_dev_mock_${Date.now()}`,
-        client_secret: `pi_dev_mock_secret_${Date.now()}`,
-      };
-    } else {
-      paymentIntent = await this.stripeService.createPaymentIntent(
-        DEPOSIT_EUR_CENTS,
-        reservationUuid, // Bug 2 fix: stable UUID as idempotency key
-        {
-          userId: user.id,
-          vehicleId: reservation.vehicleId,
-          totalDays: String(totalDays),
-        },
-      );
-    }
-
-    // Update reservation with Stripe data
     await this.reservationsRepo.update(
       { id: reservation.id },
       {
@@ -211,15 +193,15 @@ export class ReservationsService {
         stripeClientSecret: paymentIntent.client_secret,
       },
     );
+
     reservation.stripePaymentIntentId = paymentIntent.id;
     reservation.stripeClientSecret = paymentIntent.client_secret;
 
-    // Enqueue expiry job: if still PENDING_DEPOSIT after 15 min → cancel
     await this.reservationExpiryQueue.add(
       "expire",
       { reservationId: reservation.id },
       {
-        delay: 15 * 60 * 1000, // 15 minutes
+        delay: 15 * 60 * 1000,
         attempts: 3,
         backoff: { type: "exponential", delay: 5_000 },
         removeOnComplete: true,
@@ -227,23 +209,10 @@ export class ReservationsService {
       },
     );
 
-    // stripeClientSecret is returned to frontend so customer can confirm payment.
-    // Capture happens later via BullMQ after operator approves documents.
     return reservation;
   }
 
-  /**
-   * Customer cancels a PENDING_DEPOSIT reservation.
-   * OPERATOR/ADMIN can cancel any cancelable reservation.
-   *
-   * Saga:
-   *  Phase 1 (DB tx): set status CANCELLED.
-   *  Phase 2 (outside tx): cancel Stripe PI (non-blocking — swallow error,
-   *  Stripe auto-releases uncaptured PIs after ~7 days).
-   */
   async cancel(id: string, user: User): Promise<Reservation> {
-    // Bug 10 fix: Use transaction with pessimistic lock to prevent race
-    // condition with expiry processor and Stripe webhooks.
     const result = await this.dataSource.transaction(async (manager) => {
       const reservation = await manager
         .getRepository(Reservation)
@@ -256,26 +225,24 @@ export class ReservationsService {
         throw new NotFoundException(`Reserva ${id} no encontrada.`);
       }
 
-      // Ownership check (users can only cancel their own reservations)
       if (user.role === UserRole.USER && reservation.userId !== user.id) {
         throw new ForbiddenException("No tienes acceso a esta reserva.");
       }
 
-      const cancelableStatuses = [
-        ReservationStatus.PENDING_DEPOSIT,
-        ReservationStatus.AWAITING_CAPTURE,
-      ];
-
-      // OPERATOR/ADMIN can also cancel CONFIRMED reservations
-      if (user.role === UserRole.OPERATOR || user.role === UserRole.ADMIN) {
-        cancelableStatuses.push(ReservationStatus.CONFIRMED);
-      }
-
-      if (!cancelableStatuses.includes(reservation.status)) {
+      if (
+        reservation.status === ReservationStatus.CONFIRMED &&
+        user.role !== UserRole.OPERATOR &&
+        user.role !== UserRole.ADMIN
+      ) {
         throw new BadRequestException(
           `No se puede cancelar una reserva en estado '${reservation.status}'.`,
         );
       }
+
+      this.assertReservationTransition(
+        reservation.status,
+        ReservationStatus.CANCELLED,
+      );
 
       const originalStatus = reservation.status;
       reservation.status = ReservationStatus.CANCELLED;
@@ -288,10 +255,8 @@ export class ReservationsService {
       };
     });
 
-    // ── Phase 2: Cancel or Refund Stripe PI (outside transaction) ─────
     if (result.stripePaymentIntentId) {
       if (result.originalStatus === ReservationStatus.CONFIRMED) {
-        // BUG-11 fix: Retry refund up to 3 times with exponential backoff
         this.retryStripeAction(
           () =>
             this.stripeService.refundPaymentIntent(
@@ -313,13 +278,6 @@ export class ReservationsService {
     return result.saved;
   }
 
-  /**
-   * Operator marks an IN_PROGRESS reservation as COMPLETED (vehicle returned).
-   * OPERATOR/ADMIN only.
-   *
-   * BUG-08 fix: Uses transaction + pessimistic_write lock to prevent
-   * race conditions (e.g. double-complete from two operator tabs).
-   */
   async complete(id: string): Promise<Reservation> {
     return this.dataSource.transaction(async (manager) => {
       const reservation = await manager.getRepository(Reservation).findOne({
@@ -332,16 +290,14 @@ export class ReservationsService {
         throw new NotFoundException(`Reserva ${id} no encontrada.`);
       }
 
-      if (reservation.status !== ReservationStatus.IN_PROGRESS) {
-        throw new BadRequestException(
-          `Solo se pueden completar reservas IN_PROGRESS. Estado actual: '${reservation.status}'.`,
-        );
-      }
+      this.assertReservationTransition(
+        reservation.status,
+        ReservationStatus.COMPLETED,
+      );
 
       reservation.status = ReservationStatus.COMPLETED;
       const saved = await manager.getRepository(Reservation).save(reservation);
 
-      // Restore vehicle status to AVAILABLE if no other active reservations
       const otherActive = await manager.getRepository(Reservation).count({
         where: [
           {
@@ -371,43 +327,6 @@ export class ReservationsService {
     });
   }
 
-  // ── Sprint 5: Queries ────────────────────────────────────────
-
-  /**
-   * BUG-11 fix: Fire-and-forget Stripe action with exponential backoff retry.
-   * Logs permanently after all retries fail (requires manual dashboard review).
-   */
-  private async retryStripeAction(
-    action: () => Promise<unknown>,
-    label: string,
-    maxRetries = 3,
-  ): Promise<void> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        await action();
-        return;
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (attempt === maxRetries) {
-          this.logger.error(
-            `[retryStripeAction] ${label} PERMANENTLY FAILED after ${maxRetries} attempts: ${msg}. Requires manual review in Stripe dashboard.`,
-          );
-        } else {
-          this.logger.warn(
-            `[retryStripeAction] ${label} attempt ${attempt}/${maxRetries} failed: ${msg}. Retrying…`,
-          );
-          await new Promise((r) =>
-            setTimeout(r, 1000 * Math.pow(2, attempt - 1)),
-          );
-        }
-      }
-    }
-  }
-
-  /**
-   * Returns the authenticated user's own reservations.
-   * OPERATOR/ADMIN can see all reservations.
-   */
   async findMy(
     user: User,
     opts: { page: number; limit: number } = { page: 1, limit: 20 },
@@ -438,11 +357,6 @@ export class ReservationsService {
     return { data, total, page, limit };
   }
 
-  /**
-   * Returns a single reservation by ID.
-   * USER can only see their own reservations.
-   * OPERATOR/ADMIN can see any reservation.
-   */
   async findById(id: string, user: User): Promise<Reservation> {
     const reservation = await this.reservationsRepo.findOne({
       where: { id },
@@ -458,5 +372,110 @@ export class ReservationsService {
     }
 
     return reservation;
+  }
+
+  private async retryStripeAction(
+    action: () => Promise<unknown>,
+    label: string,
+    maxRetries = 3,
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await action();
+        return;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (attempt === maxRetries) {
+          this.logger.error(
+            `[retryStripeAction] ${label} PERMANENTLY FAILED after ${maxRetries} attempts: ${msg}. Requires manual review in Stripe dashboard.`,
+          );
+        } else {
+          this.logger.warn(
+            `[retryStripeAction] ${label} attempt ${attempt}/${maxRetries} failed: ${msg}. Retrying...`,
+          );
+          await new Promise((r) =>
+            setTimeout(r, 1000 * Math.pow(2, attempt - 1)),
+          );
+        }
+      }
+    }
+  }
+
+  private normalizeIdempotencyKey(value?: string): string | null {
+    if (value === undefined) {
+      return null;
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    if (normalized.length > 100) {
+      throw new BadRequestException(
+        "Idempotency-Key no puede exceder 100 caracteres.",
+      );
+    }
+
+    return normalized;
+  }
+
+  private async findReservationByIdempotencyKey(
+    userId: string,
+    idempotencyKey: string,
+  ): Promise<Reservation | null> {
+    return this.reservationsRepo
+      .createQueryBuilder("reservation")
+      .addSelect("reservation.idempotencyKey")
+      .leftJoinAndSelect("reservation.vehicle", "vehicle")
+      .leftJoinAndSelect("reservation.documents", "documents")
+      .where("reservation.userId = :userId", { userId })
+      .andWhere("reservation.idempotencyKey = :idempotencyKey", {
+        idempotencyKey,
+      })
+      .getOne();
+  }
+
+  private assertSameIdempotentReservation(
+    reservation: Reservation,
+    dto: CreateReservationDto,
+  ): void {
+    const samePayload =
+      reservation.vehicleId === dto.vehicleId &&
+      reservation.pickupDate.toISOString() ===
+        new Date(dto.pickupDate).toISOString() &&
+      reservation.returnDate.toISOString() ===
+        new Date(dto.returnDate).toISOString() &&
+      reservation.pickupLocation === dto.pickupLocation &&
+      (reservation.customerName ?? null) === (dto.customerName ?? null) &&
+      (reservation.customerPhone ?? null) === (dto.customerPhone ?? null);
+
+    if (!samePayload) {
+      throw new ConflictException(
+        "Idempotency-Key ya fue usada con un payload distinto.",
+      );
+    }
+  }
+
+  private assertReservationTransition(
+    current: ReservationStatus,
+    next: ReservationStatus,
+  ): void {
+    if (!isReservationTransitionAllowed(current, next)) {
+      throw new BadRequestException(
+        `Transición inválida de reserva: '${current}' -> '${next}'. Permitidas: ${
+          getAllowedReservationTransitions(current).join(", ") || "ninguna"
+        }.`,
+      );
+    }
+  }
+
+  private isIdempotencyConflict(err: unknown): boolean {
+    return (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code?: string }).code === "23505"
+    );
   }
 }
