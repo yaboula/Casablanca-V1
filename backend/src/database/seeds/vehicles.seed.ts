@@ -12,6 +12,7 @@ const VEHICLES: Partial<Vehicle>[] = [
   {
     brand: 'Audi',
     model: 'A4',
+    licensePlate: '22145-A-1',
     category: VehicleCategory.SEDAN,
     pricePerDayEurCents: 16000, // 160 EUR
     imageUrl: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800&q=80',
@@ -29,6 +30,7 @@ const VEHICLES: Partial<Vehicle>[] = [
   {
     brand: 'Mercedes',
     model: 'Clase C',
+    licensePlate: '33112-B-7',
     category: VehicleCategory.SEDAN,
     pricePerDayEurCents: 19000,
     imageUrl: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&q=80',
@@ -46,6 +48,7 @@ const VEHICLES: Partial<Vehicle>[] = [
   {
     brand: 'Hyundai',
     model: 'Tucson',
+    licensePlate: '44098-C-3',
     category: VehicleCategory.SUV,
     pricePerDayEurCents: 12000,
     imageUrl: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800&q=80',
@@ -63,6 +66,7 @@ const VEHICLES: Partial<Vehicle>[] = [
   {
     brand: 'BMW',
     model: 'Serie 3',
+    licensePlate: '55877-D-9',
     category: VehicleCategory.LUXURY,
     pricePerDayEurCents: 22000,
     imageUrl: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&q=80',
@@ -80,6 +84,7 @@ const VEHICLES: Partial<Vehicle>[] = [
   {
     brand: 'Renault',
     model: 'Clio',
+    licensePlate: '11904-E-2',
     category: VehicleCategory.COMPACT,
     pricePerDayEurCents: 6500,
     imageUrl: 'https://images.unsplash.com/photo-1471444928139-48c5bf5173f8?w=800&q=80',
@@ -97,6 +102,7 @@ const VEHICLES: Partial<Vehicle>[] = [
   {
     brand: 'Land Rover',
     model: 'Range Rover Evoque',
+    licensePlate: '66721-F-5',
     category: VehicleCategory.SUV,
     pricePerDayEurCents: 28000,
     imageUrl: 'https://images.unsplash.com/photo-1567343483408-c1e60e1f6af5?w=800&q=80',

@@ -1,21 +1,28 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Param,
   ParseUUIDPipe,
   Query,
-  BadRequestException,
 } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
-import { VehicleCategory } from './vehicle.entity';
+import { Vehicle, VehicleCategory } from './vehicle.entity';
+
+type PublicVehicle = Omit<Vehicle, 'licensePlate'>;
 
 @Controller('vehicles')
 export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}
 
+  private toPublicVehicle(vehicle: Vehicle): PublicVehicle {
+    const { licensePlate: _licensePlate, ...publicVehicle } = vehicle;
+    return publicVehicle;
+  }
+
   /**
    * GET /api/v1/vehicles
-   * Public endpoint — no auth required.
+   * Public endpoint - no auth required.
    *
    * Query params:
    *   - pickupDate (ISO 8601, required for availability check)
@@ -30,11 +37,10 @@ export class VehiclesController {
     @Query('returnDate') returnDateStr?: string,
     @Query('category') category?: string,
   ) {
-    // Validate category enum if provided
     let vehicleCategory: VehicleCategory | undefined;
     if (category) {
       if (!Object.values(VehicleCategory).includes(category as VehicleCategory)) {
-        throw new BadRequestException(`Categoría inválida: ${category}`);
+        throw new BadRequestException(`Invalid category: ${category}`);
       }
       vehicleCategory = category as VehicleCategory;
     }
@@ -44,17 +50,17 @@ export class VehiclesController {
       const returnDate = new Date(returnDateStr);
 
       if (isNaN(pickupDate.getTime()) || isNaN(returnDate.getTime())) {
-        throw new BadRequestException('Las fechas deben estar en formato ISO 8601.');
+        throw new BadRequestException('Dates must be valid ISO 8601 timestamps.');
       }
 
       if (returnDate <= pickupDate) {
-        throw new BadRequestException('returnDate debe ser posterior a pickupDate.');
+        throw new BadRequestException('returnDate must be after pickupDate.');
       }
 
       const minRental = new Date(pickupDate);
       minRental.setDate(minRental.getDate() + 1);
       if (returnDate < minRental) {
-        throw new BadRequestException('El alquiler mínimo es 1 día.');
+        throw new BadRequestException('Minimum rental duration is 1 day.');
       }
 
       const vehicles = await this.vehiclesService.findAvailable({
@@ -63,21 +69,26 @@ export class VehiclesController {
         category: vehicleCategory,
       });
 
-      return { data: vehicles, total: vehicles.length };
+      return {
+        data: vehicles.map((vehicle) => this.toPublicVehicle(vehicle)),
+        total: vehicles.length,
+      };
     }
 
-    // No dates — return all available (catalog view)
     const vehicles = await this.vehiclesService.findAll(vehicleCategory);
-    return { data: vehicles, total: vehicles.length };
+    return {
+      data: vehicles.map((vehicle) => this.toPublicVehicle(vehicle)),
+      total: vehicles.length,
+    };
   }
 
   /**
    * GET /api/v1/vehicles/:id
-   * Public — returns vehicle detail regardless of availability.
+   * Public - returns vehicle detail regardless of availability.
    */
   @Get(':id')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const vehicle = await this.vehiclesService.findOne(id);
-    return { data: vehicle };
+    return { data: this.toPublicVehicle(vehicle) };
   }
 }

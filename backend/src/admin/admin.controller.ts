@@ -23,9 +23,10 @@ import {
   UpdateVehicleDto,
 } from "./dto/admin.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "../users/user.entity";
+import { User, UserRole } from "../users/user.entity";
 
 @Controller("admin")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -67,8 +68,9 @@ export class AdminController {
   async updateUser(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
+    @CurrentUser() requester: User,
   ) {
-    const user = await this.adminService.updateUser(id, dto);
+    const user = await this.adminService.updateUser(id, dto, requester.id);
     return { data: user };
   }
 

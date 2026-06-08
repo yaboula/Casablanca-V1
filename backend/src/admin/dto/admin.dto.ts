@@ -9,6 +9,7 @@ import {
   Min,
   MinLength,
   MaxLength,
+  Matches,
   IsUrl,
 } from 'class-validator';
 import { UserRole } from '../../users/user.entity';
@@ -38,6 +39,13 @@ export class CreateVehicleDto {
   @MinLength(1)
   @MaxLength(120)
   model: string;
+
+  @IsString()
+  @Matches(/^[A-Za-z0-9 -]{3,20}$/, {
+    message:
+      'licensePlate must be 3-20 chars using letters, numbers, spaces or hyphens',
+  })
+  licensePlate: string;
 
   @IsEnum(VehicleCategory)
   category: VehicleCategory;
@@ -88,6 +96,14 @@ export class UpdateVehicleDto {
   @MinLength(1)
   @MaxLength(120)
   model?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Za-z0-9 -]{3,20}$/, {
+    message:
+      'licensePlate must be 3-20 chars using letters, numbers, spaces or hyphens',
+  })
+  licensePlate?: string;
 
   @IsOptional()
   @IsEnum(VehicleCategory)

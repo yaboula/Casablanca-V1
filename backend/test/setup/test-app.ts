@@ -11,6 +11,7 @@
  * =====================================================================
  */
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { CacheModule } from '@nestjs/cache-manager';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
@@ -18,13 +19,14 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bullmq';
 import { getQueueToken } from '@nestjs/bullmq';
 import * as path from 'path';
-import { Client } from 'pg';
+const { Client } = require('pg');
 
 import { AuthModule } from '../../src/auth/auth.module';
 import { UsersModule } from '../../src/users/users.module';
 import { VehiclesModule } from '../../src/vehicles/vehicles.module';
 import { ReservationsModule } from '../../src/reservations/reservations.module';
 import { QrModule } from '../../src/qr/qr.module';
+import { AdminModule } from '../../src/admin/admin.module';
 import { StripeService } from '../../src/stripe/stripe.service';
 import { AllExceptionsFilter } from '../../src/common/filters/all-exceptions.filter';
 
@@ -87,6 +89,10 @@ export async function createTestApp(): Promise<INestApplication> {
         validate: undefined,  // skip Zod â€” all values are present
       }),
 
+      CacheModule.register({
+        isGlobal: true,
+      }),
+
       // â”€â”€ Real PostgreSQL â†’ nexus_test_db â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       TypeOrmModule.forRoot({
         type: 'postgres',
@@ -121,6 +127,7 @@ export async function createTestApp(): Promise<INestApplication> {
       VehiclesModule,
       ReservationsModule,
       QrModule,
+      AdminModule,
     ],
   })
     .overrideGuard(ThrottlerGuard)

@@ -13,7 +13,7 @@ export class CreateAuditLogs1700000009000 implements MigrationInterface {
         "id"          UUID          NOT NULL DEFAULT gen_random_uuid(),
         "action"      VARCHAR       NOT NULL,
         "document_id" UUID          NOT NULL REFERENCES "reservation_documents"("id") ON DELETE CASCADE,
-        "operator_id" UUID          NOT NULL REFERENCES "users"("id") ON DELETE SET NULL,
+        "operator_id" UUID          NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
         "reason"      TEXT,
         "created_at"  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
         CONSTRAINT "PK_audit_logs" PRIMARY KEY ("id")

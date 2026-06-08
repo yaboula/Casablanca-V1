@@ -1,23 +1,24 @@
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
+  ConflictException,
+  Injectable,
   Logger,
+  NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Vehicle, VehicleStatus } from "../../vehicles/vehicle.entity";
 import {
   Reservation,
   ReservationStatus,
 } from "../../reservations/reservation.entity";
+import { Vehicle, VehicleStatus } from "../../vehicles/vehicle.entity";
 import { CreateVehicleDto, UpdateVehicleDto } from "../dto/admin.dto";
 
 /**
  * Admin CRUD for the vehicle fleet.
  * Business rules enforced:
  *  - Cannot soft-delete a vehicle with active reservations.
- *  - Cannot hard-delete a vehicle with ANY reservation history.
+ *  - Cannot hard-delete a vehicle with any reservation history.
  *  - listAllVehicles supports pagination (default 20, max 100).
  */
 @Injectable()
@@ -30,6 +31,10 @@ export class AdminVehiclesService {
     @InjectRepository(Reservation)
     private readonly reservationsRepo: Repository<Reservation>,
   ) {}
+
+  private normalizeLicensePlate(value: string): string {
+    return value.trim().toUpperCase().replace(/\s+/g, " ");
+  }
 
   async listAllVehicles(
     page = 1,
@@ -44,14 +49,26 @@ export class AdminVehiclesService {
       take: safeLimit,
     });
 
-    this.logger.log(`listAllVehicles(page=${safePage}) → ${total} total`);
+    this.logger.log(`listAllVehicles(page=${safePage}) -> ${total} total`);
     return { data, total, page: safePage, limit: safeLimit };
   }
 
   async createVehicle(dto: CreateVehicleDto): Promise<Vehicle> {
+    const licensePlate = this.normalizeLicensePlate(dto.licensePlate);
+    const existingVehicle = await this.vehiclesRepo.findOne({
+      where: { licensePlate },
+    });
+
+    if (existingVehicle) {
+      throw new ConflictException(
+        `Vehicle with license plate ${licensePlate} already exists.`,
+      );
+    }
+
     const vehicle = this.vehiclesRepo.create({
       brand: dto.brand,
       model: dto.model,
+      licensePlate,
       category: dto.category,
       pricePerDayEurCents: dto.pricePerDayEurCents,
       imageUrl: dto.imageUrl,
@@ -72,7 +89,22 @@ export class AdminVehiclesService {
 
   async updateVehicle(id: string, dto: UpdateVehicleDto): Promise<Vehicle> {
     const vehicle = await this.vehiclesRepo.findOne({ where: { id } });
-    if (!vehicle) throw new NotFoundException(`Vehículo ${id} no encontrado.`);
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle ${id} not found.`);
+    }
+
+    if (dto.licensePlate !== undefined) {
+      dto.licensePlate = this.normalizeLicensePlate(dto.licensePlate);
+      const existingVehicle = await this.vehiclesRepo.findOne({
+        where: { licensePlate: dto.licensePlate },
+      });
+
+      if (existingVehicle && existingVehicle.id !== id) {
+        throw new ConflictException(
+          `Vehicle with license plate ${dto.licensePlate} already exists.`,
+        );
+      }
+    }
 
     Object.assign(vehicle, dto);
     const saved = await this.vehiclesRepo.save(vehicle);
@@ -80,10 +112,11 @@ export class AdminVehiclesService {
     return saved;
   }
 
-  /** Soft delete — sets status INACTIVE. Blocked if active reservations exist. */
   async deleteVehicle(id: string): Promise<void> {
     const vehicle = await this.vehiclesRepo.findOne({ where: { id } });
-    if (!vehicle) throw new NotFoundException(`Vehículo ${id} no encontrado.`);
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle ${id} not found.`);
+    }
 
     const activeReservations = await this.reservationsRepo.count({
       where: [
@@ -96,19 +129,20 @@ export class AdminVehiclesService {
 
     if (activeReservations > 0) {
       throw new BadRequestException(
-        "No se puede desactivar un vehículo con reservas activas.",
+        "Cannot deactivate a vehicle with active reservations.",
       );
     }
 
     vehicle.status = VehicleStatus.INACTIVE;
     await this.vehiclesRepo.save(vehicle);
-    this.logger.log(`deleteVehicle (soft): ${id} → INACTIVE`);
+    this.logger.log(`deleteVehicle (soft): ${id} -> INACTIVE`);
   }
 
-  /** Hard delete — removes DB row. Blocked if ANY reservation history exists. */
   async hardDeleteVehicle(id: string): Promise<void> {
     const vehicle = await this.vehiclesRepo.findOne({ where: { id } });
-    if (!vehicle) throw new NotFoundException(`Vehículo ${id} no encontrado.`);
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle ${id} not found.`);
+    }
 
     const anyReservation = await this.reservationsRepo.count({
       where: { vehicleId: id },
@@ -116,7 +150,7 @@ export class AdminVehiclesService {
 
     if (anyReservation > 0) {
       throw new BadRequestException(
-        "No se puede eliminar permanentemente un vehículo con historial de reservas.",
+        "Cannot permanently delete a vehicle with reservation history.",
       );
     }
 

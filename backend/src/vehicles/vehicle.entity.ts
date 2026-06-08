@@ -37,6 +37,10 @@ export class Vehicle {
   @Column({ length: 120 })
   model: string;
 
+  @Index({ unique: true })
+  @Column({ name: 'license_plate', length: 20 })
+  licensePlate: string;
+
   @Index()
   @Column({ type: 'enum', enum: VehicleCategory })
   category: VehicleCategory;
