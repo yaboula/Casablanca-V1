@@ -32,6 +32,9 @@ export default function RootLayout({
             <Link className="text-sm font-black uppercase tracking-[0.16em]" href="/">
               Casablanca V1
             </Link>
+            <Link className="text-sm font-bold text-neutral-700" href="/catalog">
+              Catalog
+            </Link>
             <SessionNav />
           </nav>
         </header>
