@@ -58,7 +58,7 @@ function getStatusConfig(status: ReservationViewModel["status"]): StatusConfig {
         iconClass: "text-blue-500",
         heading: "Payment is being processed",
         description:
-          "Stripe deposit authorized. The backend is registering your payment status.",
+          "Stripe deposit authorized. We are updating your payment status.",
         badgeClass: "border-blue-200 bg-blue-50/50 text-blue-800",
         badgeText: "Processing",
       };

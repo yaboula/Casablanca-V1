@@ -53,7 +53,7 @@ export function PublicHome({
       {/* 1. HERO SECTION */}
       <section id="top" className="relative w-full bg-white overflow-hidden border-b border-neutral-100">
         <div className="nx-container pt-20 md:pt-24 pb-12 md:pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-12 lg:gap-14 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.0fr_1.1fr] gap-12 lg:gap-14 items-center">
             {/* Hero Left Content */}
             <div className="relative space-y-8">
               <motion.div
@@ -175,7 +175,7 @@ export function PublicHome({
                       alt="Premium electric vehicle available at Casablanca Mohammed V Airport"
                       width={1155}
                       height={481}
-                      className="block w-full h-auto max-w-[clamp(360px,46vw,780px)] mx-auto lg:mr-[-4%] lg:ml-auto select-none"
+                      className="block w-full h-auto max-w-[clamp(440px,58vw,960px)] mx-auto lg:mr-[-10%] lg:ml-auto select-none"
                       draggable={false}
                     />
                   </picture>
@@ -249,7 +249,7 @@ export function PublicHome({
                   <span className="italic text-neutral-400">Never a placeholder.</span>
                 </h2>
                 <p className="nx-lead mt-4 text-neutral-600 font-light">
-                  Casablanca-V1 guarantees you collect the exact make, model, and trim that you book. Browse the preview fleet fetched directly from the backend.
+                  Casablanca-V1 guarantees you collect the exact make, model, and trim that you book. Browse the preview fleet fetched directly from our catalog.
                 </p>
               </Reveal>
             </div>
@@ -380,7 +380,7 @@ export function PublicHome({
             <Car className="w-8 h-8 mx-auto text-neutral-400 stroke-1" />
             <h3 className="mt-3 text-lg font-semibold text-neutral-900">Fleet preview offline</h3>
             <p className="mt-2 text-xs text-neutral-500 leading-relaxed">
-              We couldn&apos;t connect to the backend fleet API. Open the catalog route to query the database.
+              We couldn&apos;t connect to the fleet service. Please check the catalog to see all available vehicles.
             </p>
             <Link
               href="/catalog"

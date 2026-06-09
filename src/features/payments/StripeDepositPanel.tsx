@@ -178,7 +178,7 @@ function PaymentForm({
           </h3>
         </div>
         <p className="text-sm leading-6 text-green-800">
-          Your deposit has been authorized. The backend is processing your
+          Your deposit has been authorized. We are processing your
           reservation — this typically takes a few seconds. Refresh this page
           to see the updated status.
         </p>
