@@ -10,7 +10,7 @@
  * Architecture:
  * - Initial data is server-fetched in page.tsx (no loading spinner on first paint)
  * - Client re-fetches documents only after uploads (not on mount)
- * - No polling — backend push/SSE is Commit K
+ * - No polling — backend push/SSE is handled by the waiting room (/waiting)
  *
  * Eligibility:
  * - Upload is allowed when reservation.status === PENDING_DEPOSIT or CONFIRMED
@@ -229,22 +229,15 @@ export function DocumentCheckInView({
           </Link>
         </div>
 
-        {/* CTA to waiting room — placeholder for Commit K */}
+        {/* CTA to waiting room — now that /waiting exists */}
         {isAllSubmitted && (
-          <div className="flex items-center gap-3">
-            <div>
-              <p className="text-xs font-bold text-neutral-950">
-                Documents submitted
-              </p>
-              <p className="text-xs text-neutral-500">
-                Operator review will be notified automatically.
-              </p>
-            </div>
-            <ArrowRight
-              aria-hidden="true"
-              className="h-4 w-4 text-neutral-400"
-            />
-          </div>
+          <Link
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-neutral-950 px-5 text-sm font-bold text-white transition hover:bg-neutral-800"
+            href={`/reservations/${reservation.id}/waiting`}
+          >
+            Track review status
+            <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </Link>
         )}
       </div>
 
