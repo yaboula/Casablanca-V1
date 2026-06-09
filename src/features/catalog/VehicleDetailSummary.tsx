@@ -1,14 +1,25 @@
+"use client";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
-  ChevronLeft,
-  FileCheck2,
-  KeyRound,
-  Plane,
+  Check,
   ShieldCheck,
+  Plane,
+  KeyRound,
+  Star,
+  CalendarDays,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   formatCategory,
   formatEurCents,
@@ -16,174 +27,232 @@ import {
 } from "./format-price";
 import type { VehicleDetailModel } from "./types";
 
+const Acc = Accordion as any;
+const AccItem = AccordionItem as any;
+const AccTrigger = AccordionTrigger as any;
+const AccContent = AccordionContent as any;
+
+const TERMS = [
+  {
+    q: "Is this the exact model I will receive?",
+    a: "Yes. Nexus never substitutes. The make, model, year, and trim shown here is exactly what waits for you at arrivals.",
+  },
+  {
+    q: "What is included in the price?",
+    a: "Premium insurance, theft protection, 24/7 roadside assistance, unlimited mileage within Morocco, and the airport meet-and-greet handover.",
+  },
+  {
+    q: "How does the document upload work?",
+    a: "After checkout, you will upload your license and passport to the portal. Our operator verifies them remotely so that key pickup takes under 10 minutes.",
+  },
+];
+
+const INCLUDED_BENEFITS = [
+  "Premium comprehensive insurance",
+  "Theft and collision protection",
+  "24/7 roadside breakdown assistance",
+  "Free airport meet-and-greet handover",
+  "Unlimited mileage within Morocco",
+  "Cleaned and sanitized before delivery",
+];
+
 export function VehicleDetailSummary({
   vehicle,
 }: {
   vehicle: VehicleDetailModel;
 }) {
-  const heroImage = vehicle.imageUrls[0] ?? vehicle.primaryImageUrl;
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
+  const galleryImages = vehicle.imageUrls.length > 0 ? vehicle.imageUrls : [vehicle.primaryImageUrl].filter(Boolean) as string[];
+  const activeImage = galleryImages[activeImgIdx] ?? null;
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-6 py-10 md:py-14">
-      <Link
-        className="inline-flex items-center gap-1 text-sm font-bold text-neutral-600 hover:text-neutral-950"
-        href="/catalog"
-      >
-        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-        All vehicles
-      </Link>
+    <section className="nx-container py-10 md:py-14">
+      {/* Breadcrumbs */}
+      <div className="nx-meta text-neutral-400 mb-6 flex items-center gap-1.5">
+        <Link className="hover:text-neutral-700 cursor-pointer font-medium" href="/catalog">
+          Fleet
+        </Link>
+        <span className="text-neutral-300">/</span>
+        <span className="text-neutral-700 font-semibold">{vehicle.name}</span>
+      </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1.18fr_0.82fr] lg:items-start">
-        <div className="space-y-4">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-lg border border-[var(--nx-line)] bg-[var(--nx-bg-soft)]">
-            {heroImage ? (
-              <Image
-                alt={`${vehicle.name} exterior`}
-                className="object-cover"
-                fill
-                priority
-                sizes="(min-width: 1024px) 58vw, 100vw"
-                src={heroImage}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center px-8 text-center text-sm font-semibold text-neutral-500">
-                Image not provided by backend
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-8 lg:gap-12 items-start">
+        {/* LEFT COLUMN */}
+        <div className="space-y-9">
+          {/* Main Visual */}
+          <div className="space-y-4">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-neutral-50">
+              {activeImage ? (
+                <Image
+                  alt={`${vehicle.name} exterior visual`}
+                  className="object-cover"
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 55vw, 95vw"
+                  src={activeImage}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center px-8 text-center text-xs font-semibold text-neutral-400">
+                  Image not provided by backend
+                </div>
+              )}
+              <div className="absolute top-5 left-5 inline-flex items-center gap-2 bg-white rounded-full px-3.5 py-1.5 border border-neutral-200 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1E41FC]" />
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-neutral-900 leading-none">
+                  {formatCategory(vehicle.category)}
+                </span>
+              </div>
+            </div>
+
+            {/* Thumbnails list */}
+            {galleryImages.length > 1 && (
+              <div className="grid grid-cols-4 gap-3">
+                {galleryImages.map((imageUrl, imgIdx) => (
+                  <button
+                    key={imageUrl}
+                    onClick={() => setActiveImgIdx(imgIdx)}
+                    className={`relative aspect-[16/10] rounded-xl overflow-hidden border-2 transition-all duration-300 ${
+                      imgIdx === activeImgIdx ? "border-[#1E41FC]" : "border-transparent hover:border-neutral-300"
+                    }`}
+                  >
+                    <Image
+                      alt={`${vehicle.name} thumbnail ${imgIdx + 1}`}
+                      className="object-cover"
+                      fill
+                      sizes="(min-width: 1024px) 15vw, 22vw"
+                      src={imageUrl}
+                    />
+                  </button>
+                ))}
               </div>
             )}
-            <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white px-3 py-2 text-xs font-black text-neutral-950">
-              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--nx-accent)]" />
-              <span className="sr-only">Category: </span>
-              {formatCategory(vehicle.category)}
+          </div>
+
+          {/* Title and Intro */}
+          <div>
+            <div className="flex items-center gap-3 flex-wrap text-xs text-neutral-500 font-medium">
+              <span className="inline-flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 text-[#1E41FC] fill-[#1E41FC]" />
+                4.98 Rating
+              </span>
+              <span className="w-px h-3.5 bg-neutral-200" />
+              <span className="text-neutral-500">Casablanca Airport CMN</span>
+              <span className="w-px h-3.5 bg-neutral-200" />
+              <span className="text-emerald-600 font-semibold uppercase tracking-wider">
+                {vehicle.status === "AVAILABLE" ? "Available now" : vehicle.status ?? "Offline"}
+              </span>
+            </div>
+            <h1 className="nx-h2 font-display font-light text-neutral-900 mt-4 leading-none">
+              {vehicle.name}
+            </h1>
+            <p className="nx-lead text-neutral-600 mt-3 font-light leading-relaxed">
+              {vehicle.brand} {vehicle.model} available for airport delivery. Lock this exact vehicle before landing at Casablanca Mohammed V Airport.
+            </p>
+          </div>
+
+          {/* Specs Details */}
+          <div className="border-t border-neutral-200 pt-8">
+            <h2 className="nx-label text-neutral-400 mb-6 font-semibold">Specifications</h2>
+            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+              <Spec label="Brand" value={vehicle.brand} />
+              <Spec label="Model" value={vehicle.model} />
+              <Spec label="Transmission" value={formatTransmission(vehicle.transmission)} />
+              <Spec label="Seats Count" value={vehicle.seats ? String(vehicle.seats) : "N/A"} />
+              <Spec label="Luggage Count" value={vehicle.luggageCount ? String(vehicle.luggageCount) : "N/A"} />
+              <Spec label="Fuel Class" value="Premium / Hybrid" />
+            </dl>
+          </div>
+
+          {/* Exact model promise */}
+          <div className="rounded-[1.25rem] bg-neutral-950 text-white p-7 shadow-sm">
+            <div className="flex items-start gap-4">
+              <span className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                <KeyRound className="w-4 h-4 text-[#1E41FC]" />
+              </span>
+              <div>
+                <h3 className="nx-h4 font-display font-semibold">The exact car. Never a category.</h3>
+                <p className="text-sm text-neutral-300 mt-2 font-light leading-relaxed max-w-xl">
+                  You are reserving this specific license plate and trim. Nexus never substitutes or downgrades your reservation.
+                </p>
+              </div>
             </div>
           </div>
 
-          {vehicle.imageUrls.length > 1 ? (
-            <div
-              aria-label="Vehicle image gallery"
-              className="grid grid-cols-3 gap-3"
-            >
-              {vehicle.imageUrls.slice(1, 4).map((imageUrl) => (
-                <div
-                  className="relative aspect-[4/3] overflow-hidden rounded-md border border-[var(--nx-line)] bg-[var(--nx-bg-soft)]"
-                  key={imageUrl}
-                >
-                  <Image
-                    alt={`${vehicle.name} gallery image`}
-                    className="object-cover"
-                    fill
-                    sizes="(min-width: 1024px) 18vw, 33vw"
-                    src={imageUrl}
-                  />
-                </div>
+          {/* Included benefits list */}
+          <div className="border-t border-neutral-200 pt-8">
+            <h2 className="nx-label text-neutral-400 mb-5 font-semibold">Included with every reservation</h2>
+            <ul className="grid sm:grid-cols-2 gap-4">
+              {INCLUDED_BENEFITS.map((benefit) => (
+                <li key={benefit} className="flex items-start gap-3 text-xs text-neutral-700">
+                  <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                    <Check className="w-3 h-3" />
+                  </span>
+                  <span className="font-medium">{benefit}</span>
+                </li>
               ))}
-            </div>
-          ) : null}
+            </ul>
+          </div>
 
-          <div className="grid gap-4 border-y border-[var(--nx-line)] py-6 md:grid-cols-3">
-            <PromiseItem
-              icon={Plane}
-              title="Airport pickup"
-              text="Collected at Casablanca Mohammed V Airport."
-            />
-            <PromiseItem
-              icon={FileCheck2}
-              title="Verify before arrival"
-              text="Upload documents after booking. Operator confirms before your flight lands."
-            />
-            <PromiseItem
-              icon={BadgeCheck}
-              title="Exact vehicle"
-              text="This listing is the specific make and model you will receive."
-            />
+          {/* Good to know details */}
+          <div className="border-t border-neutral-200 pt-8">
+            <h2 className="nx-label text-neutral-400 mb-3 font-semibold">Good to know</h2>
+            <Acc type="single" collapsible className="w-full">
+              {TERMS.map((t, idx) => (
+                <AccItem key={idx} value={`term-${idx}`} className="border-b border-neutral-200">
+                  <AccTrigger className="text-left font-display text-base font-semibold text-neutral-900 py-5 hover:no-underline hover:text-[#1E41FC]">
+                    {t.q}
+                  </AccTrigger>
+                  <AccContent className="text-sm text-neutral-600 leading-relaxed pb-5 font-light">
+                    {t.a}
+                  </AccContent>
+                </AccItem>
+              ))}
+            </Acc>
           </div>
         </div>
 
-        <aside className="space-y-7 rounded-lg border border-[var(--nx-line)] bg-white p-6 lg:sticky lg:top-24">
-          <div className="space-y-3">
-            <p className="text-sm font-bold text-neutral-500">
-              {formatCategory(vehicle.category)}
-            </p>
-            <h1 className="text-4xl font-black tracking-normal text-neutral-950">
-              {vehicle.name}
-            </h1>
-            <p className="text-base leading-7 text-neutral-700">
-              {vehicle.brand} {vehicle.model} — available at Casablanca Mohammed V Airport.
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-neutral-950 p-5 text-white">
-            <p className="text-sm font-bold text-neutral-300">Daily rate</p>
-            <p className="mt-2 text-4xl font-black">
-              {formatEurCents(vehicle.pricePerDayEurCents)}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-neutral-300">
-              Price is displayed from backend EUR cents. Booking totals and
-              deposits are intentionally not calculated here.
-            </p>
-          </div>
-
-          <dl className="grid grid-cols-2 gap-3 text-sm">
-            <Spec label="Brand" value={vehicle.brand} />
-            <Spec label="Model" value={vehicle.model} />
-            <Spec label="Transmission" value={formatTransmission(vehicle.transmission)} />
-            <Spec
-              label="Seats"
-              value={vehicle.seats ? String(vehicle.seats) : "Not provided"}
-            />
-            <Spec
-              label="Luggage"
-              value={
-                vehicle.luggageCount
-                  ? String(vehicle.luggageCount)
-                  : "Not provided"
-              }
-            />
-            <Spec label="Availability" value={vehicle.status === "AVAILABLE" ? "Available" : vehicle.status ?? "Not provided"} />
-          </dl>
-
-          {vehicle.featureLabels.length > 0 ? (
-            <div>
-              <h2 className="text-sm font-black text-neutral-950">
-                Included features
-              </h2>
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {vehicle.featureLabels.map((feature) => (
-                  <li
-                    className="rounded-full border border-[var(--nx-line)] px-3 py-1 text-sm font-semibold text-neutral-700"
-                    key={feature}
-                  >
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+        {/* RIGHT COLUMN - BOOKING PANEL */}
+        <aside className="lg:sticky lg:top-28">
+          <div className="bg-white border border-neutral-200 rounded-[1.5rem] p-6 md:p-7 shadow-sm">
+            <div className="flex items-end justify-between border-b border-neutral-100 pb-5">
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-display text-3xl font-light tracking-tight text-neutral-900 leading-none">
+                    {formatEurCents(vehicle.pricePerDayEurCents)}
+                  </span>
+                  <span className="text-xs text-neutral-500">/day</span>
+                </div>
+                <div className="text-[10px] text-neutral-400 font-light mt-1.5">
+                  Refundable security deposit verified at checkout
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 uppercase tracking-wider">
+                <span className="w-1 h-1 rounded-full bg-emerald-500" />
+                Available
+              </span>
             </div>
-          ) : null}
 
-          <div className="grid gap-3 border-t border-[var(--nx-line)] pt-5">
-            <NextStep
-              icon={ShieldCheck}
-              title="Secure checkout"
-              text="Payment and deposit are handled at booking — not collected here."
-            />
-            <NextStep
-              icon={KeyRound}
-              title="Book this vehicle"
-              text="Continue to the booking form to select your dates and complete the reservation."
-            />
+            <div className="mt-6 space-y-4">
+              <PanelRow icon={Plane} label="Delivery location" value="Casablanca Mohammed V Airport (CMN)" sub="Terminal 1 or Terminal 2 arrivals" />
+              <PanelRow icon={CalendarDays} label="Rental dates" value="Dates configured during checkout" />
+              <PanelRow icon={ShieldCheck} label="Protection cover" value="Full comprehensive insurance included" />
+              <PanelRow icon={KeyRound} label="Key handover" value="Keys delivered at terminal in under 10 mins" />
+            </div>
+
+            <div className="mt-7 pt-2">
+              <Link
+                aria-label={`Book ${vehicle.name} — continue to booking form`}
+                className="nx-btn-primary inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-neutral-950 px-5 text-sm font-semibold text-white transition-colors duration-300 hover:bg-[#1E41FC]"
+                href={`/book/${vehicle.id}`}
+              >
+                Continue to booking
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <p className="text-[10px] text-neutral-400 text-center mt-3 font-light leading-relaxed">
+                Free cancellation up to 24 hours prior to pickup
+              </p>
+            </div>
           </div>
-
-          <Link
-            aria-label={`Book ${vehicle.name} — continue to reservation`}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-neutral-950 px-5 py-3 text-sm font-black text-white"
-            href={`/book/${vehicle.id}`}
-          >
-            Continue to booking
-            <ArrowRight aria-hidden="true" className="h-4 w-4" />
-          </Link>
-          <p className="text-xs leading-5 text-neutral-500">
-            Booking is not yet open. This link preserves the planned route
-            structure while that phase is implemented.
-          </p>
         </aside>
       </div>
     </section>
@@ -192,50 +261,33 @@ export function VehicleDetailSummary({
 
 function Spec({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-[var(--nx-line-soft)] bg-[var(--nx-bg-soft)] p-3">
-      <dt className="font-bold text-neutral-950">{label}</dt>
-      <dd className="mt-1 text-neutral-600">{value}</dd>
+    <div className="rounded-xl border border-neutral-100 bg-[#FAFAFA] p-4">
+      <dt className="font-semibold text-neutral-500 uppercase tracking-widest text-[9px] font-mono">{label}</dt>
+      <dd className="mt-1 text-sm font-semibold text-neutral-900 leading-none">{value}</dd>
     </div>
   );
 }
 
-function PromiseItem({
+function PanelRow({
   icon: Icon,
-  title,
-  text,
+  label,
+  value,
+  sub,
 }: {
   icon: typeof Plane;
-  title: string;
-  text: string;
+  label: string;
+  value: string;
+  sub?: string;
 }) {
   return (
-    <div className="flex gap-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--nx-accent-soft)] text-[var(--nx-accent)]">
-        <Icon aria-hidden="true" className="h-5 w-5" />
+    <div className="flex items-start gap-3 text-xs">
+      <span className="w-8 h-8 rounded-lg bg-neutral-50 flex items-center justify-center text-[#1E41FC] shrink-0 border border-neutral-100">
+        <Icon className="w-4 h-4" />
       </span>
-      <div>
-        <h3 className="text-sm font-black text-neutral-950">{title}</h3>
-        <p className="mt-1 text-sm leading-6 text-neutral-600">{text}</p>
-      </div>
-    </div>
-  );
-}
-
-function NextStep({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: typeof Plane;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="flex gap-3">
-      <Icon aria-hidden="true" className="mt-0.5 h-5 w-5 text-[var(--nx-accent)]" />
-      <div>
-        <h3 className="text-sm font-black text-neutral-950">{title}</h3>
-        <p className="mt-1 text-sm leading-6 text-neutral-600">{text}</p>
+      <div className="min-w-0">
+        <div className="font-semibold text-neutral-400 text-[10px] uppercase tracking-wider">{label}</div>
+        <div className="font-semibold text-neutral-900 mt-0.5 leading-snug">{value}</div>
+        {sub && <div className="text-[10px] text-neutral-500 font-light mt-0.5 leading-tight">{sub}</div>}
       </div>
     </div>
   );

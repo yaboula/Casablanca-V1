@@ -38,9 +38,9 @@ export function VehicleCategoryFilter({
 
 function filterClassName(isActive: boolean): string {
   return [
-    "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-bold transition-colors",
+    "inline-flex h-10 items-center justify-center rounded-full border px-5 text-xs font-semibold uppercase tracking-wider transition-all duration-300",
     isActive
-      ? "border-neutral-950 bg-neutral-950 text-white"
-      : "border-[var(--nx-line)] bg-white text-neutral-700 hover:border-neutral-400 hover:text-neutral-950",
+      ? "border-neutral-950 bg-neutral-950 text-white shadow-sm"
+      : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400 hover:text-neutral-900",
   ].join(" ");
 }

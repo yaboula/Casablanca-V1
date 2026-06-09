@@ -4,7 +4,6 @@ import {
   CatalogEmptyState,
   CatalogErrorState,
 } from "@/features/catalog/CatalogStates";
-import { formatCategory } from "@/features/catalog/format-price";
 import { VehicleCategoryFilter } from "@/features/catalog/VehicleCategoryFilter";
 import { getVehicleCatalog } from "@/features/catalog/vehicle-service";
 import { VehicleGrid } from "@/features/catalog/VehicleGrid";
@@ -41,7 +40,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         : "The backend catalog could not be reached.";
 
     return (
-      <section className="mx-auto w-full max-w-7xl px-6 py-12 md:py-16">
+      <section className="nx-container py-10 md:py-14">
         <CatalogHeader activeCategory={activeCategory} vehicleCount={0} />
         <CatalogErrorState message={message} />
       </section>
@@ -49,7 +48,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-6 py-12 md:py-16">
+    <section className="nx-container py-10 md:py-14">
       <CatalogHeader
         activeCategory={activeCategory}
         vehicleCount={vehicles.length}
@@ -71,31 +70,24 @@ function CatalogHeader({
   vehicleCount: number;
 }) {
   return (
-    <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-      <div className="max-w-3xl space-y-5">
-        <p className="text-sm font-bold text-neutral-500">
-          Casablanca Mohammed V Airport fleet
-        </p>
-        <h1 className="text-balance text-4xl font-black tracking-normal text-neutral-950 md:text-6xl">
-          Choose the exact vehicle.
+    <div className="space-y-8 mb-8">
+      <div className="flex flex-col gap-2">
+        <span className="nx-eyebrow text-neutral-500 font-medium">
+          Casablanca Mohammed V · the fleet
+        </span>
+        <h1 className="nx-h2 font-display font-light text-neutral-900 leading-none">
+          Choose your vehicle
         </h1>
-        <p className="max-w-2xl text-base leading-7 text-neutral-700 md:text-lg">
-          Browse the full fleet available at the airport. Daily rates are shown
-          in euros. Select a vehicle to see full specs and continue to booking.
+        <p className="nx-lead text-neutral-600 max-w-2xl mt-1 font-light leading-relaxed">
+          Every car is locked to its exact make, model and trim — never a category, never a substitute. Choose from our backend fleet below.
         </p>
       </div>
-      <div className="rounded-lg border border-[var(--nx-line)] bg-[var(--nx-bg-soft)] p-5">
-        <p className="text-sm font-black text-neutral-950">
-          {vehicleCount} {vehicleCount === 1 ? "vehicle" : "vehicles"}
-        </p>
-        <p className="mt-1 text-sm text-neutral-600">
-          {activeCategory
-            ? `${formatCategory(activeCategory)} filter`
-            : "All backend categories"}
-        </p>
-      </div>
-      <div className="lg:col-span-2">
+
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 border-b border-neutral-100 pb-6">
         <VehicleCategoryFilter activeCategory={activeCategory} />
+        <span className="text-xs text-neutral-500 font-semibold shrink-0 bg-neutral-50 border border-neutral-200/50 rounded-full px-4 py-1.5 shadow-sm">
+          {vehicleCount} {vehicleCount === 1 ? "vehicle" : "vehicles"} available
+        </span>
       </div>
     </div>
   );
