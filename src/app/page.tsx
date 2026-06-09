@@ -22,7 +22,10 @@ export default function HomePage() {
             Mock business state quarantined
           </span>
           <span className="rounded-full border border-[var(--nx-line)] px-4 py-2 text-sm font-semibold">
-            API/session pending Commit B
+            API/session shell mounted
+          </span>
+          <span className="rounded-full border border-[var(--nx-line)] px-4 py-2 text-sm font-semibold">
+            Auth UI shells mounted
           </span>
         </div>
       </div>
@@ -44,8 +47,8 @@ export default function HomePage() {
           <div>
             <dt className="text-sm font-bold text-neutral-950">Not included</dt>
             <dd className="mt-1 text-sm leading-6 text-neutral-600">
-              Auth/session proxy, booking, documents, waiting room, smart ticket,
-              operator, and admin flows.
+              Booking, documents, waiting room, smart ticket, operator business
+              data, and admin business data.
             </dd>
           </div>
           <div>

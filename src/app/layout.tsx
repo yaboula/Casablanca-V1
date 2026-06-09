@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SessionNav } from "@/features/auth/SessionNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,9 +32,7 @@ export default function RootLayout({
             <Link className="text-sm font-black uppercase tracking-[0.16em]" href="/">
               Casablanca V1
             </Link>
-            <span className="text-sm font-medium text-neutral-600">
-              Next App Router foundation
-            </span>
+            <SessionNav />
           </nav>
         </header>
         <main id="main-content" className="min-h-[calc(100vh-8rem)]">
