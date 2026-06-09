@@ -1,19 +1,17 @@
+"use client";
+
 /**
  * OperatorDashboardView — operator delivery dashboard.
  *
- * Server Component — receives pre-fetched deliveries and stats.
- * No client state, no polling (SSE for deliveries deferred to Commit M).
+ * Client Component — receives pre-fetched deliveries and stats from server,
+ * then subscribes to SSE updates to trigger automatic refetches.
  *
  * Layout:
  * 1. Stats cards (total, confirmed, in-progress, completed)
  * 2. Delivery queue for today
  * 3. Empty state / error state
- *
- * Note: SSE for operator deliveries (/api/v1/sse/operator/deliveries) is
- * defined in backend. A live-refresh client wrapper will be added in Commit M
- * when the delivery handoff scan flow is implemented. For now, operators
- * can use the manual refresh to reload page data.
  */
+
 
 import Link from "next/link";
 import {
@@ -27,6 +25,7 @@ import {
   User,
   ArrowRight,
 } from "lucide-react";
+import { useOperatorDeliveriesSse } from "@/hooks/useOperatorDeliveriesSse";
 import type { DeliveryViewModel, DeliveryStats } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -226,6 +225,9 @@ export function OperatorDashboardView({
   deliveries,
   stats,
 }: OperatorDashboardViewProps) {
+  // Subscribe to live delivery updates. Calls router.refresh() automatically.
+  useOperatorDeliveriesSse();
+
   return (
     <section className="mx-auto w-full max-w-6xl px-6 py-10 md:py-14">
       {/* Header */}
@@ -325,9 +327,12 @@ export function OperatorDashboardView({
       </div>
 
       {/* SSE note */}
-      <p className="mt-6 text-xs text-neutral-400">
-        Live delivery updates (SSE) will be available in the next operator
-        release. Reload the page to refresh delivery status.
+      <p className="mt-6 flex items-center gap-2 text-xs font-bold text-green-700 bg-green-50 px-4 py-2 rounded-md border border-green-200 w-fit">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+        </span>
+        Live delivery updates active
       </p>
     </section>
   );

@@ -45,6 +45,20 @@ export async function getDeliveries(
   return adaptDeliveries(response);
 }
 
+export async function getDeliveryDetail(
+  reservationId: string,
+): Promise<DeliveryViewModel | null> {
+  // Since there's no single detail endpoint for operator deliveries, we fetch
+  // today's deliveries and find the match. If it's for a different date, the
+  // operator can't scan it yet anyway per business rules (deliveries are daily).
+  // We can pass a wide date range if needed, but the current backend
+  // GET /operator/deliveries endpoint returns today by default.
+  // We'll fetch today's list since handoffs happen on the pickup date.
+  const deliveries = await getDeliveries();
+  const match = deliveries.find((d) => d.id === reservationId);
+  return match ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Delivery stats
 // ---------------------------------------------------------------------------

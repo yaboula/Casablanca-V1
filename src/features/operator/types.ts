@@ -115,9 +115,22 @@ export type RejectDocumentApiResponse = {
   data?: unknown;
 };
 
+export type DeliveryActionApiResponse = {
+  data?: unknown;
+  message?: string;
+};
+
 // ---------------------------------------------------------------------------
-// Action state — for approve/reject UI locking
+// Action state — for UI locking
 // ---------------------------------------------------------------------------
+
+export type DeliveryActionState =
+  | "idle"
+  | "scanning"
+  | "checking_in"
+  | "completing"
+  | "success"
+  | "error";
 
 export type DocumentActionState =
   | "idle"
