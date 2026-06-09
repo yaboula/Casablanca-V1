@@ -148,43 +148,38 @@ export function PublicHome({
             </div>
 
             {/* Hero Right Visual */}
-            <div className="relative flex justify-center lg:justify-end">
+            <div className="relative flex justify-center lg:justify-end w-full">
               <div
                 aria-hidden
-                className="pointer-events-none absolute bottom-[8%] left-1/2 -translate-x-1/2 w-[70%] h-8 rounded-[50%] bg-black/10 blur-2xl"
+                className="pointer-events-none absolute bottom-[8%] left-1/2 -translate-x-1/2 w-[62%] h-7 rounded-[50%] bg-black/10 blur-2xl"
               />
               <motion.div
-                initial={{ opacity: 0, x: 100, scale: 1.02 }}
+                initial={{ opacity: 0, x: 150, scale: 1.04 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
-                transition={{ duration: 1.2, ease: EASE }}
-                className="relative w-full max-w-[580px] aspect-[4/3] rounded-3xl border border-neutral-200 overflow-hidden bg-neutral-50"
+                transition={{ duration: 1.35, ease: EASE }}
+                className="relative w-full"
               >
-                {activeCar?.primaryImageUrl ? (
-                  <Image
-                    alt="Premium rental fleet preview"
-                    className="object-cover"
-                    fill
-                    priority
-                    sizes="(min-width: 1024px) 40vw, 90vw"
-                    src={activeCar.primaryImageUrl}
-                  />
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center p-8 text-center text-neutral-400 gap-3">
-                    <Car className="w-10 h-10 stroke-1" />
-                    <span className="text-sm font-medium">Premium fleet ready for pickup</span>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-                {activeCar && (
-                  <div className="absolute bottom-5 left-5 text-white">
-                    <span className="text-[10px] uppercase tracking-widest bg-white/20 backdrop-blur-md rounded-full px-3 py-1 font-semibold">
-                      {formatCategory(activeCar.category)}
-                    </span>
-                    <h3 className="text-lg font-display font-medium mt-2 leading-none">
-                      {activeCar.name}
-                    </h3>
-                  </div>
-                )}
+                <motion.div
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{
+                    duration: 6,
+                    ease: "easeInOut",
+                    repeat: Infinity,
+                    delay: 1.4,
+                  }}
+                >
+                  <picture>
+                    <source srcSet="/hero-car.webp" type="image/webp" />
+                    <img
+                      src="/hero-car.png"
+                      alt="Premium electric vehicle available at Casablanca Mohammed V Airport"
+                      width={1155}
+                      height={481}
+                      className="block w-full h-auto max-w-[clamp(360px,46vw,780px)] mx-auto lg:mr-[-4%] lg:ml-auto select-none"
+                      draggable={false}
+                    />
+                  </picture>
+                </motion.div>
               </motion.div>
             </div>
           </div>
