@@ -218,12 +218,11 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
           Upload your passport and driving licence so the operator can
           verify your documents before pickup at CMN.
         </p>
-        {/* Check-in route is Commit J */}
         <Link
           className="mt-4 inline-flex min-h-11 items-center rounded-md bg-neutral-950 px-5 text-sm font-bold text-white transition hover:bg-neutral-800"
-          href="/dashboard"
+          href={`/reservations/${reservation.id}/check-in`}
         >
-          Go to dashboard
+          Upload documents
         </Link>
       </div>
     );
