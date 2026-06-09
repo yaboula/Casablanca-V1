@@ -14,9 +14,9 @@ import { VEHICLE_CATEGORIES } from "@/features/catalog/types";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Catalogue",
+  title: "Fleet",
   description:
-    "Catalogue public de vehicules connecte au backend Casablanca V1.",
+    "Browse vehicles available at Casablanca Mohammed V Airport. Daily rates in euros. Reserve the exact make and model.",
 };
 
 type CatalogPageProps = {
@@ -80,9 +80,8 @@ function CatalogHeader({
           Choose the exact vehicle.
         </h1>
         <p className="max-w-2xl text-base leading-7 text-neutral-700 md:text-lg">
-          Public catalog data comes from `GET /api/v1/vehicles`. Prices are
-          displayed from backend EUR cents, and public cards do not expose
-          admin-only fields.
+          Browse the full fleet available at the airport. Daily rates are shown
+          in euros. Select a vehicle to see full specs and continue to booking.
         </p>
       </div>
       <div className="rounded-lg border border-[var(--nx-line)] bg-[var(--nx-bg-soft)] p-5">

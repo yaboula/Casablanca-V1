@@ -33,9 +33,9 @@ export function PublicHome({
               Reserve before you land. Pick up in minutes.
             </h1>
             <p className="max-w-2xl text-pretty text-lg leading-8 text-neutral-700 md:text-xl">
-              Casablanca-V1 is built around one airport workflow: choose the
-              exact vehicle, verify documents before arrival, and collect it at
-              airport pickup when the backend confirms your reservation.
+              Choose the exact vehicle, upload documents before arrival, and
+              collect your keys at Casablanca Mohammed V Airport — the moment
+              your reservation is confirmed.
             </p>
           </div>
 
@@ -57,8 +57,8 @@ export function PublicHome({
 
           <dl className="grid gap-3 border-y border-[var(--nx-line)] py-5 sm:grid-cols-3">
             <TrustMetric label="Journey" value="Reserve, verify, pickup" />
-            <TrustMetric label="Pricing truth" value="EUR cents from API" />
-            <TrustMetric label="Identity" value="Backend UUIDs only" />
+            <TrustMetric label="Pricing" value="Transparent daily rates" />
+            <TrustMetric label="Identity" value="Confirmed reservation only" />
           </dl>
         </div>
 
@@ -102,10 +102,10 @@ export function PublicHome({
 
       <section className="border-y border-[var(--nx-line)] bg-[var(--nx-bg-soft)]">
         <div className="mx-auto grid w-full max-w-7xl gap-4 px-6 py-6 md:grid-cols-4">
-          <TrustItem icon={BadgeCheck} text="Exact make and model from backend data" />
-          <TrustItem icon={FileCheck2} text="Document verification comes before pickup" />
-          <TrustItem icon={ShieldCheck} text="Payment and deposit handled in the booking phase" />
-          <TrustItem icon={Clock} text="Designed for airport arrival timing" />
+          <TrustItem icon={BadgeCheck} text="Exact make and model confirmed at booking" />
+          <TrustItem icon={FileCheck2} text="Document check happens before you arrive" />
+          <TrustItem icon={ShieldCheck} text="Deposit and payment handled securely at checkout" />
+          <TrustItem icon={Clock} text="Designed around airport arrival timing" />
         </div>
       </section>
 
@@ -115,28 +115,28 @@ export function PublicHome({
       >
         <div className="max-w-xl">
           <h2 className="text-3xl font-black tracking-normal text-neutral-950 md:text-5xl">
-            A rental journey in three visible steps.
+            A rental journey in three clear steps.
           </h2>
           <p className="mt-5 text-base leading-7 text-neutral-700">
-            The backend has more states because airport operations need them.
-            The customer experience stays readable: reserve, verify, pickup.
+            The full workflow is straightforward: reserve the vehicle, verify
+            your documents remotely, then pick up at the airport.
           </p>
         </div>
         <ol className="grid gap-4">
           <ProcessStep
             icon={CarFront}
             title="Reserve"
-            text="Choose a real backend vehicle and continue to the future booking route."
+            text="Choose the exact vehicle from the live fleet and complete your booking."
           />
           <ProcessStep
             icon={FileCheck2}
             title="Verify"
-            text="Upload required documents after reservation creation, with backend review."
+            text="Upload your driving licence and required documents before your arrival date."
           />
           <ProcessStep
             icon={KeyRound}
             title="Pickup"
-            text="Use the confirmed reservation state and operator handoff at the airport."
+            text="Arrive at Casablanca Mohammed V Airport and collect your keys — confirmed and ready."
           />
         </ol>
       </section>
@@ -145,11 +145,11 @@ export function PublicHome({
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-6 py-16 md:py-20 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
           <div>
             <h2 className="text-3xl font-black tracking-normal md:text-5xl">
-              Fleet browsing uses backend truth.
+              Every listing is a real vehicle.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-neutral-300">
-              No mock vehicles, fake availability labels, synthetic ratings, or
-              frontend-owned prices are rendered in the production public path.
+              No stand-in images, estimated prices, or placeholder models.
+              What you see in the catalog is what you reserve.
             </p>
           </div>
           {featuredVehicles.length > 0 ? (
@@ -172,16 +172,16 @@ export function PublicHome({
 
       <section className="mx-auto grid w-full max-w-7xl gap-5 px-6 py-16 md:grid-cols-3 md:py-24">
         <Reassurance
-          title="Airport pickup clarity"
-          text="The interface keeps the pickup location concrete: Casablanca Mohammed V Airport."
+          title="Pickup at the airport"
+          text="The pickup location is always Casablanca Mohammed V Airport. No ambiguous addresses, no third-party transfers."
         />
         <Reassurance
-          title="Documents before arrival"
-          text="The future check-in flow will use backend document presign and confirmation endpoints."
+          title="Documents handled before you land"
+          text="Upload your driving licence and ID remotely. The operator reviews and approves before your arrival."
         />
         <Reassurance
-          title="Payment comes later"
-          text="This public phase explains the deposit path without loading Stripe or simulating payment."
+          title="No surprise costs"
+          text="Rates are quoted per day in euros. The total and deposit are confirmed at checkout — not at pickup."
         />
       </section>
 
@@ -189,10 +189,10 @@ export function PublicHome({
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-14 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-3xl font-black text-neutral-950">
-              Start with the real fleet.
+              Find your vehicle for the journey.
             </h2>
             <p className="mt-2 text-base text-neutral-700">
-              Booking, documents, and smart ticket stay for their own phases.
+              Browse the live fleet, check specs and daily rates, then continue to booking.
             </p>
           </div>
           <Link
@@ -257,7 +257,7 @@ function ProcessStep({
 function Reassurance({ title, text }: { title: string; text: string }) {
   return (
     <article className="rounded-lg border border-[var(--nx-line)] bg-white p-6">
-      <h2 className="text-xl font-black text-neutral-950">{title}</h2>
+      <h3 className="text-xl font-black text-neutral-950">{title}</h3>
       <p className="mt-3 text-sm leading-6 text-neutral-600">{text}</p>
     </article>
   );

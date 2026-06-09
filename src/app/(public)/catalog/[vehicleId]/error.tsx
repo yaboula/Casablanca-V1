@@ -15,10 +15,10 @@ export default function VehicleDetailRouteError({
         Vehicle detail error
       </p>
       <h1 className="mt-4 text-3xl font-black text-neutral-950">
-        Impossible de charger ce vehicule.
+        This vehicle could not be loaded.
       </h1>
       <p className="mt-4 text-base leading-7 text-neutral-700">
-        {error.message || "La route de detail a recu une erreur inattendue."}
+        {error.message || "An unexpected error occurred while loading this vehicle."}
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
         <button
@@ -26,13 +26,13 @@ export default function VehicleDetailRouteError({
           onClick={reset}
           type="button"
         >
-          Reessayer
+          Try again
         </button>
         <Link
           className="inline-flex min-h-11 items-center rounded-md border border-[var(--nx-line)] px-5 py-3 text-sm font-bold text-neutral-950"
           href="/catalog"
         >
-          Retour au catalogue
+          Back to fleet
         </Link>
       </div>
     </section>

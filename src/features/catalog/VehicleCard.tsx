@@ -35,7 +35,7 @@ export function VehicleCard({ vehicle }: { vehicle: VehicleCardModel }) {
               {vehicle.name}
             </h2>
             <p className="text-sm leading-6 text-neutral-600">
-              Backend-backed vehicle profile for airport pickup.
+              {formatCategory(vehicle.category)} · available at Casablanca Mohammed V Airport
             </p>
           </div>
 

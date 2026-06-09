@@ -10,7 +10,8 @@ export default function NotFound() {
         Page not found.
       </h1>
       <p className="mt-4 text-base leading-7 text-neutral-700">
-        This route is not part of the Commit A runtime foundation.
+        The page you are looking for does not exist. Browse the fleet or return
+        to the home page.
       </p>
       <Link
         className="mt-8 inline-flex min-h-11 w-fit items-center rounded-md bg-neutral-950 px-5 py-3 text-sm font-bold text-white"

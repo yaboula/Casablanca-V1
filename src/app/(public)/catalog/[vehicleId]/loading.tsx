@@ -2,8 +2,8 @@ export default function VehicleDetailLoading() {
   return (
     <section
       aria-busy="true"
-      aria-label="Chargement du vehicule"
-      className="mx-auto w-full max-w-6xl px-6 py-10 md:py-14"
+      aria-label="Loading vehicle details"
+      className="mx-auto w-full max-w-7xl px-6 py-10 md:py-14"
     >
       <div className="h-5 w-40 animate-pulse rounded bg-neutral-200" />
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">

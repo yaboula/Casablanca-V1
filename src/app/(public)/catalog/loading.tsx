@@ -2,8 +2,8 @@ export default function CatalogLoading() {
   return (
     <section
       aria-busy="true"
-      aria-label="Chargement du catalogue"
-      className="mx-auto w-full max-w-6xl px-6 py-12 md:py-16"
+      aria-label="Loading vehicle catalog"
+      className="mx-auto w-full max-w-7xl px-6 py-12 md:py-16"
     >
       <div className="mb-8 max-w-3xl space-y-4">
         <div className="h-4 w-48 animate-pulse rounded bg-neutral-200" />

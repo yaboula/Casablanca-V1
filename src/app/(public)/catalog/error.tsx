@@ -13,17 +13,17 @@ export default function CatalogRouteError({
         Catalogue error
       </p>
       <h1 className="mt-4 text-3xl font-black text-neutral-950">
-        Le catalogue ne peut pas etre rendu.
+        The fleet catalog could not be displayed.
       </h1>
       <p className="mt-4 text-base leading-7 text-neutral-700">
-        {error.message || "Une erreur inattendue a interrompu cette route."}
+        {error.message || "An unexpected error interrupted this page."}
       </p>
       <button
         className="mt-8 min-h-11 w-fit rounded-md bg-neutral-950 px-5 py-3 text-sm font-bold text-white"
         onClick={reset}
         type="button"
       >
-        Reessayer
+        Try again
       </button>
     </section>
   );

@@ -5,12 +5,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Casablanca V1",
-    template: "%s | Casablanca V1",
+    default: "Nexus Mobility — Airport Car Rental",
+    template: "%s | Nexus Mobility",
   },
   description:
-    "Production frontend foundation for the Casablanca airport car rental platform.",
-  metadataBase: new URL("https://casablanca-v1.local"),
+    "Reserve the exact vehicle before you land. Premium airport car rental at Casablanca Mohammed V Airport.",
+  metadataBase: new URL("https://nexusmobility.ma"),
 };
 
 export default function RootLayout({
@@ -19,21 +19,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="en">
       <body>
         <a className="skip-link" href="#main-content">
-          Saltar al contenido principal
+          Skip to main content
         </a>
         <header className="border-b border-[var(--nx-line)] bg-white">
           <nav
-            aria-label="Navegacion principal"
+            aria-label="Main navigation"
             className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between px-6"
           >
-            <Link className="text-sm font-black uppercase tracking-[0.16em]" href="/">
-              Casablanca V1
+            <Link
+              aria-label="Nexus Mobility — home"
+              className="text-sm font-black uppercase tracking-[0.16em]"
+              href="/"
+            >
+              Nexus Mobility
             </Link>
-            <Link className="text-sm font-bold text-neutral-700" href="/catalog">
-              Catalog
+            <Link
+              aria-label="Browse the vehicle catalog"
+              className="text-sm font-bold text-neutral-700 hover:text-neutral-950"
+              href="/catalog"
+            >
+              Fleet
             </Link>
             <SessionNav />
           </nav>
@@ -42,8 +50,11 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="border-t border-[var(--nx-line)] bg-white">
-          <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center px-6 text-sm text-neutral-600">
-            Backend-connected flows are intentionally not mounted in Commit A.
+          <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-6 px-6 text-sm text-neutral-600">
+            <span>© {new Date().getFullYear()} Nexus Mobility. Casablanca Mohammed V Airport.</span>
+            <Link className="hover:text-neutral-950" href="/catalog">
+              Browse fleet
+            </Link>
           </div>
         </footer>
       </body>

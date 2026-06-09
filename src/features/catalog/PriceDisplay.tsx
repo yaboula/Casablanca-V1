@@ -6,7 +6,7 @@ export function PriceDisplay({ cents }: { cents: number }) {
       <span className="text-2xl font-black text-neutral-950">
         {formatEurCents(cents)}
       </span>
-      <span className="text-sm font-semibold text-neutral-500">/ jour</span>
+      <span className="text-sm font-semibold text-neutral-500">/ day</span>
     </span>
   );
 }

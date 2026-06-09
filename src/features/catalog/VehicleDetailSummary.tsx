@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
+  ChevronLeft,
   FileCheck2,
   KeyRound,
   Plane,
@@ -24,8 +25,12 @@ export function VehicleDetailSummary({
 
   return (
     <section className="mx-auto w-full max-w-7xl px-6 py-10 md:py-14">
-      <Link className="text-sm font-bold text-neutral-600" href="/catalog">
-        Return to catalog
+      <Link
+        className="inline-flex items-center gap-1 text-sm font-bold text-neutral-600 hover:text-neutral-950"
+        href="/catalog"
+      >
+        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+        All vehicles
       </Link>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.18fr_0.82fr] lg:items-start">
@@ -46,7 +51,8 @@ export function VehicleDetailSummary({
               </div>
             )}
             <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white px-3 py-2 text-xs font-black text-neutral-950">
-              <span className="h-2 w-2 rounded-full bg-[var(--nx-accent)]" />
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--nx-accent)]" />
+              <span className="sr-only">Category: </span>
               {formatCategory(vehicle.category)}
             </div>
           </div>
@@ -77,17 +83,17 @@ export function VehicleDetailSummary({
             <PromiseItem
               icon={Plane}
               title="Airport pickup"
-              text="Designed around Casablanca Mohammed V Airport."
+              text="Collected at Casablanca Mohammed V Airport."
             />
             <PromiseItem
               icon={FileCheck2}
-              title="Verify first"
-              text="Documents are handled after reservation creation."
+              title="Verify before arrival"
+              text="Upload documents after booking. Operator confirms before your flight lands."
             />
             <PromiseItem
               icon={BadgeCheck}
-              title="Backend identity"
-              text="This vehicle uses the backend UUID as truth."
+              title="Exact vehicle"
+              text="This listing is the specific make and model you will receive."
             />
           </div>
         </div>
@@ -95,13 +101,13 @@ export function VehicleDetailSummary({
         <aside className="space-y-7 rounded-lg border border-[var(--nx-line)] bg-white p-6 lg:sticky lg:top-24">
           <div className="space-y-3">
             <p className="text-sm font-bold text-neutral-500">
-              Backend vehicle detail
+              {formatCategory(vehicle.category)}
             </p>
             <h1 className="text-4xl font-black tracking-normal text-neutral-950">
               {vehicle.name}
             </h1>
             <p className="text-base leading-7 text-neutral-700">
-              Exact public vehicle profile from `GET /api/v1/vehicles/:id`.
+              {vehicle.brand} {vehicle.model} — available at Casablanca Mohammed V Airport.
             </p>
           </div>
 
@@ -132,13 +138,13 @@ export function VehicleDetailSummary({
                   : "Not provided"
               }
             />
-            <Spec label="Backend status" value={vehicle.status ?? "Not provided"} />
+            <Spec label="Availability" value={vehicle.status === "AVAILABLE" ? "Available" : vehicle.status ?? "Not provided"} />
           </dl>
 
           {vehicle.featureLabels.length > 0 ? (
             <div>
               <h2 className="text-sm font-black text-neutral-950">
-                Backend-provided features
+                Included features
               </h2>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {vehicle.featureLabels.map((feature) => (
@@ -156,27 +162,27 @@ export function VehicleDetailSummary({
           <div className="grid gap-3 border-t border-[var(--nx-line)] pt-5">
             <NextStep
               icon={ShieldCheck}
-              title="Payment is not active here"
-              text="Stripe remains out of the public browsing bundle."
+              title="Secure checkout"
+              text="Payment and deposit are handled at booking — not collected here."
             />
             <NextStep
               icon={KeyRound}
-              title="Next route is planned"
-              text="Booking will be implemented later at the vehicle UUID route."
+              title="Book this vehicle"
+              text="Continue to the booking form to select your dates and complete the reservation."
             />
           </div>
 
           <Link
-            aria-label={`Preparer une future reservation pour ${vehicle.name}`}
+            aria-label={`Book ${vehicle.name} — continue to reservation`}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-neutral-950 px-5 py-3 text-sm font-black text-white"
             href={`/book/${vehicle.id}`}
           >
-            Continue to reservation
+            Continue to booking
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </Link>
           <p className="text-xs leading-5 text-neutral-500">
-            The reservation route remains outside this commit. This link keeps
-            the planned architecture visible without simulating booking.
+            Booking is not yet open. This link preserves the planned route
+            structure while that phase is implemented.
           </p>
         </aside>
       </div>
@@ -208,7 +214,7 @@ function PromiseItem({
         <Icon aria-hidden="true" className="h-5 w-5" />
       </span>
       <div>
-        <h2 className="text-sm font-black text-neutral-950">{title}</h2>
+        <h3 className="text-sm font-black text-neutral-950">{title}</h3>
         <p className="mt-1 text-sm leading-6 text-neutral-600">{text}</p>
       </div>
     </div>
@@ -228,7 +234,7 @@ function NextStep({
     <div className="flex gap-3">
       <Icon aria-hidden="true" className="mt-0.5 h-5 w-5 text-[var(--nx-accent)]" />
       <div>
-        <h2 className="text-sm font-black text-neutral-950">{title}</h2>
+        <h3 className="text-sm font-black text-neutral-950">{title}</h3>
         <p className="mt-1 text-sm leading-6 text-neutral-600">{text}</p>
       </div>
     </div>
