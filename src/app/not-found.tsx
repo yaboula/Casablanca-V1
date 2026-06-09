@@ -1,35 +1,23 @@
-"use client";
-
 import Link from "next/link";
-import { MapPin } from "lucide-react";
-import { useTranslations } from "@/lib/i18n";
 
 export default function NotFound() {
-  const t = useTranslations("notFound");
-  const tCommon = useTranslations("common");
-
   return (
-    <div className="min-h-[70vh] flex items-center justify-center p-6">
-      <div className="text-center max-w-sm">
-        <div className="w-16 h-16 mx-auto bg-brand-primary/10 rounded-2xl flex items-center justify-center mb-6">
-          <MapPin className="w-8 h-8 text-brand-primary" />
-        </div>
-
-        <h1 className="text-6xl font-black text-brand-dark mb-2">404</h1>
-        <h2 className="text-xl font-bold text-brand-dark mb-3">{t.title}</h2>
-        <p className="text-sm text-brand-muted mb-8">
-          {t.description}
-        </p>
-
-        <Link
-          href="/"
-          className="inline-flex items-center justify-center min-h-[50px] px-8 bg-brand-primary text-white
-                     font-bold text-sm rounded-full hover:bg-brand-primary-hover
-                     shadow-[0_4px_20px_rgba(37,99,235,0.28)] active:scale-[0.98] transition-all"
-        >
-          {tCommon.backHome}
-        </Link>
-      </div>
-    </div>
+    <section className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col justify-center px-6 py-16">
+      <p className="text-sm font-bold uppercase tracking-[0.16em] text-neutral-500">
+        404
+      </p>
+      <h1 className="mt-4 text-3xl font-black text-neutral-950">
+        Page not found.
+      </h1>
+      <p className="mt-4 text-base leading-7 text-neutral-700">
+        This route is not part of the Commit A runtime foundation.
+      </p>
+      <Link
+        className="mt-8 inline-flex min-h-11 w-fit items-center rounded-md bg-neutral-950 px-5 py-3 text-sm font-bold text-white"
+        href="/"
+      >
+        Return home
+      </Link>
+    </section>
   );
 }

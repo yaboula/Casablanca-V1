@@ -1,202 +1,102 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  /* ── Brand Design System — Tech-Trust-Friendly ─────────────── */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 4%;
+  --primary: 0 0% 4%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 32%;
+  --accent: 230 98% 55%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 230 98% 55%;
+  --radius: 0.5rem;
 
-  /* Colors */
-  --color-brand-bg:             #F8FAFC;
-  --color-brand-primary:        #2563EB;
-  --color-brand-primary-hover:  #1D4ED8;
-  --color-brand-success:        #10B981;
-  --color-brand-dark:           #0F172A;
-  --color-brand-muted:          #64748B;
-  --color-brand-surface:        #FFFFFF;
-
-  /* Border radius */
-  --radius-brand-card:          1rem;
-  --radius-brand-container:     1.5rem;
-  --radius-brand-pill:          9999px;
-
-  /* Nexus tokens (Emergent) */
-  --color-nx-ink: #0a0a0a;
-  --color-nx-ink-soft: #525252;
-  --color-nx-line: #e5e5e5;
-  --color-nx-line-soft: #f0f0f0;
-  --color-nx-bg: #ffffff;
-  --color-nx-bg-soft: #fafafa;
-  --color-nx-accent: #1e41fc;
-  --color-nx-accent-hover: #0d2de0;
-  --color-nx-accent-soft: rgba(30, 65, 252, 0.08);
-
-  /* Shadows */
-  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-
-  /* ── Shadcn UI required tokens ───────────────────────── */
-  --color-background:           #F8FAFC;
-  --color-foreground:           #0F172A;
-  --color-card:                 #FFFFFF;
-  --color-card-foreground:      #0F172A;
-  --color-popover:              #FFFFFF;
-  --color-popover-foreground:   #0F172A;
-  --color-primary:              #2563EB;
-  --color-primary-foreground:   #FFFFFF;
-  --color-secondary:            #F1F5F9;
-  --color-secondary-foreground: #0F172A;
-  --color-muted:                #F1F5F9;
-  --color-muted-foreground:     #64748B;
-  --color-accent:               #EFF6FF;
-  --color-accent-foreground:    #1D4ED8;
-  --color-destructive:          oklch(0.577 0.245 27.325);
-  --color-border:               #E2E8F0;
-  --color-input:                #E2E8F0;
-  --color-ring:                 #2563EB;
-  --radius-sm:                  0.25rem;
-  --radius-md:                  0.375rem;
-  --radius-lg:                  0.625rem;
-  --radius-xl:                  1rem;
-  --radius-2xl:                 1.5rem;
+  --nx-ink: #0a0a0a;
+  --nx-ink-soft: #525252;
+  --nx-line: #e5e5e5;
+  --nx-line-soft: #f0f0f0;
+  --nx-bg: #ffffff;
+  --nx-bg-soft: #fafafa;
+  --nx-accent: #1e41fc;
+  --nx-accent-hover: #0d2de0;
+  --nx-accent-soft: rgba(30, 65, 252, 0.08);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  html,
-  body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--color-brand-bg);
-    color: var(--color-brand-dark);
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-
-  /* ── Dark mode overrides ─────────────────────────────────── */
-  html.dark {
-    color-scheme: dark;
-
-    /* Brand tokens */
-    --color-brand-bg:             #0F172A;
-    --color-brand-surface:        #1E293B;
-    --color-brand-dark:           #F1F5F9;
-    --color-brand-muted:          #94A3B8;
-    --color-brand-primary:        #3B82F6;
-    --color-brand-primary-hover:  #2563EB;
-
-    /* Shadcn tokens */
-    --color-background:           #0F172A;
-    --color-foreground:           #F1F5F9;
-    --color-card:                 #1E293B;
-    --color-card-foreground:      #F1F5F9;
-    --color-popover:              #1E293B;
-    --color-popover-foreground:   #F1F5F9;
-    --color-primary:              #3B82F6;
-    --color-primary-foreground:   #FFFFFF;
-    --color-secondary:            #1E293B;
-    --color-secondary-foreground: #F1F5F9;
-    --color-muted:                #1E293B;
-    --color-muted-foreground:     #94A3B8;
-    --color-accent:               #1E3A5F;
-    --color-accent-foreground:    #93C5FD;
-    --color-border:               #334155;
-    --color-input:                #334155;
-    --color-ring:                 #3B82F6;
-    --shadow-card:                0 4px 20px -2px rgba(0, 0, 0, 0.4);
-  }
-}
-
-/* ── Emergent Utilities & Animations ───────────────────────────────── */
-@layer utilities {
-  .font-display {
-    font-family: "Outfit", "Satoshi", sans-serif;
-    letter-spacing: -0.03em;
-  }
-  .font-body {
-    font-family: "Satoshi", "Outfit", sans-serif;
-  }
-
-  /* Fluid typography */
-  .nx-display {
-    font-size: clamp(3.25rem, 4.2vw + 1.4rem, 7rem);
-    line-height: 1.02;
-    letter-spacing: -0.04em;
-  }
-  .nx-h2 {
-    font-size: clamp(2.5rem, 3.2vw + 1rem, 4.75rem);
-    line-height: 1.02;
-    letter-spacing: -0.035em;
-  }
-  .nx-h3 {
-    font-size: clamp(1.6rem, 1.4vw + 1rem, 2.75rem);
-    line-height: 1.08;
-    letter-spacing: -0.025em;
-  }
-  .nx-meta {
-    font-size: clamp(0.8125rem, 0.2vw + 0.75rem, 0.9375rem);
-  }
-  .nx-eyebrow {
-    font-size: clamp(0.75rem, 0.2vw + 0.7rem, 0.8125rem);
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-  }
-
-  /* Structural */
-  .nx-container {
-    width: 100%;
-    max-width: 1500px;
-    margin-inline: auto;
-    padding-inline: clamp(1.5rem, 4.5vw, 5rem);
-  }
-  .nx-section {
-    padding-block: clamp(4.5rem, 8vh + 1.5rem, 9rem);
-  }
-  
-  /* Animations */
-  .nx-rise {
-    animation: nx-rise 1s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  .nx-fade {
-    animation: nx-fade 1.2s ease-out both;
-  }
-  .nx-lift {
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
-  }
-  .nx-lift:hover {
-    transform: translateY(-4px);
-  }
-  
-  .nx-no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .nx-no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .nx-marquee {
-    animation: nx-marquee 40s linear infinite;
-  }
-}
-
-@keyframes nx-rise {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes nx-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes nx-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+* {
+  box-sizing: border-box;
 }
 
 html {
+  min-height: 100%;
   scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--nx-bg);
+  color: var(--nx-ink);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 3px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--nx-accent);
+  color: #ffffff;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  transform: translateY(-150%);
+  border-radius: 999px;
+  background: var(--nx-ink);
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

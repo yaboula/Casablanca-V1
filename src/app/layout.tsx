@@ -1,28 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
-import LayoutShell from "@/components/layout/LayoutShell";
-import HtmlDirSync from "@/components/layout/HtmlDirSync";
 
 export const metadata: Metadata = {
-  title: "NEXUS. — Alquiler de Coches Aeropuerto Casablanca CMN",
+  title: {
+    default: "Casablanca V1",
+    template: "%s | Casablanca V1",
+  },
   description:
-    "Reserva tu coche al llegar al Aeropuerto Mohammed V. Rápido, seguro y sin sorpresas. Recogida en 30 segundos.",
-  metadataBase: new URL("https://nexus-cmn.vercel.app"),
-  openGraph: {
-    title: "NEXUS. — Alquiler de Coches en CMN",
-    description:
-      "Reserva tu coche al llegar al Aeropuerto Mohammed V. Rápido, seguro, sin sorpresas.",
-    url: "https://nexus-cmn.vercel.app",
-    siteName: "NEXUS.",
-    locale: "es_ES",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "NEXUS. — Alquiler de Coches Aeropuerto Casablanca",
-    description: "Reserva tu coche al llegar al Aeropuerto Mohammed V.",
-  },
-  manifest: "/manifest.json",
+    "Production frontend foundation for the Casablanca airport car rental platform.",
+  metadataBase: new URL("https://casablanca-v1.local"),
 };
 
 export default function RootLayout({
@@ -32,12 +19,31 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <head>
-        <meta name="theme-color" content="#2563EB" />
-      </head>
-      <body className="min-h-screen bg-brand-bg text-brand-dark antialiased flex flex-col">
-        <HtmlDirSync />
-        <LayoutShell>{children}</LayoutShell>
+      <body>
+        <a className="skip-link" href="#main-content">
+          Saltar al contenido principal
+        </a>
+        <header className="border-b border-[var(--nx-line)] bg-white">
+          <nav
+            aria-label="Navegacion principal"
+            className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between px-6"
+          >
+            <Link className="text-sm font-black uppercase tracking-[0.16em]" href="/">
+              Casablanca V1
+            </Link>
+            <span className="text-sm font-medium text-neutral-600">
+              Next App Router foundation
+            </span>
+          </nav>
+        </header>
+        <main id="main-content" className="min-h-[calc(100vh-8rem)]">
+          {children}
+        </main>
+        <footer className="border-t border-[var(--nx-line)] bg-white">
+          <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center px-6 text-sm text-neutral-600">
+            Backend-connected flows are intentionally not mounted in Commit A.
+          </div>
+        </footer>
       </body>
     </html>
   );

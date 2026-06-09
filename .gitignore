@@ -3,48 +3,28 @@
 # dependencies
 /node_modules
 /.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+.pnp.js
 
 # testing
 /coverage
-/playwright-report/
-
-# next.js
-/.next/
-/out/
 
 # production
 /build
+/.next
+/.vercel
+
+# test artifacts
+/playwright-report
+/playwright-output
+/test-results
 
 # misc
 .DS_Store
-*.pem
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
-.nexus-front.log
-.nexus-front.log.err
-.nexus-front.pid
-/backend/testsprite_tests/
-
-# env files
-.env*
-!.env.example
-
-# Tokens y secretos locales
-planificacion/TOKENPENPOT.txt
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
