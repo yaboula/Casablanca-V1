@@ -5,25 +5,43 @@
  * No hardcoded reservation refs. No fake QR or smart ticket.
  *
  * Payment state is derived from backend status:
- * - PENDING_DEPOSIT: show "payment required" next action
+ * - PENDING_DEPOSIT + stripeClientSecret present: render StripeDepositPanel
+ * - PENDING_DEPOSIT + stripeClientSecret missing: show config/backend error
  * - AWAITING_CAPTURE: show "payment processing" state
- * - CONFIRMED+: show confirmed state
+ * - CONFIRMED+: show confirmed state, next step toward check-in
  * - CANCELLED: show cancellation state
  *
- * stripeClientSecret is present in the view model but NOT rendered here.
- * It is the extension point for Commit I (Stripe Elements payment step).
+ * Stripe loads only when the StripeDepositPanel renders (status=PENDING_DEPOSIT).
+ * StripeDepositPanel is a dynamic import ("use client") that never affects
+ * server-side rendering of other reservation states.
  */
 
 import Link from "next/link";
-import { CheckCircle2, Clock, AlertTriangle, CalendarDays, MapPin, Car, CreditCard } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  CalendarDays,
+  MapPin,
+  Car,
+  CreditCard,
+} from "lucide-react";
 import type { ReservationViewModel } from "./types";
+import { PaymentPanelLoader } from "@/features/payments/PaymentPanelLoader";
+
+// No ssr:false dynamic import here — ConfirmationView is a Server Component.
+// The payment panel dynamic import lives in PaymentPanelLoader (a client component).
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
 
 type ConfirmationViewProps = {
   reservation: ReservationViewModel;
 };
 
 // ---------------------------------------------------------------------------
-// Status display
+// Status display config
 // ---------------------------------------------------------------------------
 
 type StatusConfig = {
@@ -41,11 +59,11 @@ function getStatusConfig(status: ReservationViewModel["status"]): StatusConfig {
       return {
         icon: CreditCard,
         iconClass: "text-amber-600",
-        heading: "Reservation created — payment required.",
+        heading: "Reservation created — deposit required.",
         description:
-          "Your reservation is confirmed in the system. Complete payment to secure your vehicle.",
+          "Your booking is held in the system. Authorize the refundable security deposit to confirm your vehicle.",
         badgeClass: "border-amber-200 bg-amber-50 text-amber-800",
-        badgeText: "Awaiting payment",
+        badgeText: "Awaiting deposit",
       };
     case "AWAITING_CAPTURE":
       return {
@@ -53,9 +71,9 @@ function getStatusConfig(status: ReservationViewModel["status"]): StatusConfig {
         iconClass: "text-blue-600",
         heading: "Payment is being processed.",
         description:
-          "Your documents have been approved. Payment capture is in progress — this may take a moment.",
+          "Your documents have been approved. The deposit capture is in progress — this may take a moment.",
         badgeClass: "border-blue-200 bg-blue-50 text-blue-800",
-        badgeText: "Processing",
+        badgeText: "Processing payment",
       };
     case "CONFIRMED":
       return {
@@ -63,7 +81,7 @@ function getStatusConfig(status: ReservationViewModel["status"]): StatusConfig {
         iconClass: "text-green-600",
         heading: "Reservation confirmed.",
         description:
-          "Payment captured and reservation confirmed. Your smart ticket will be ready at pickup.",
+          "Deposit captured and reservation confirmed. Upload your documents to complete the check-in process.",
         badgeClass: "border-green-200 bg-green-50 text-green-800",
         badgeText: "Confirmed",
       };
@@ -134,81 +152,48 @@ function formatEurCents(cents: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Next action section
+// Next action section — right-hand panel
 // ---------------------------------------------------------------------------
 
-function NextAction({
-  reservation,
-}: {
-  reservation: ReservationViewModel;
-}) {
+function NextAction({ reservation }: { reservation: ReservationViewModel }) {
   const { status, stripeClientSecret } = reservation;
 
-  if (status === "CANCELLED") {
-    return (
-      <div className="rounded-lg border border-[var(--nx-line)] bg-[var(--nx-bg-soft)] p-5">
-        <h2 className="text-sm font-black text-neutral-950">Next steps</h2>
-        <p className="mt-2 text-sm text-neutral-600">
-          Your reservation has been cancelled. If you believe this is an error,
-          contact support.
-        </p>
-        <Link
-          className="mt-4 inline-flex min-h-11 items-center rounded-md bg-neutral-950 px-5 text-sm font-bold text-white"
-          href="/catalog"
-        >
-          Browse the fleet
-        </Link>
-      </div>
-    );
-  }
-
+  // ------------------------------------------------------------------
+  // PENDING_DEPOSIT — the primary payment state
+  // ------------------------------------------------------------------
   if (status === "PENDING_DEPOSIT") {
-    // stripeClientSecret is present — Commit I will mount Stripe Elements here.
-    // For now, show an honest "payment step is next" message.
-    const hasSecret = Boolean(stripeClientSecret);
-
+    // Delegate to PaymentPanelLoader — a client component that owns the
+    // ssr:false dynamic import for StripeDepositPanel.
+    // It handles both the present-secret and missing-secret cases.
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
-        <h2 className="text-sm font-black text-amber-950">
-          Complete your payment
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-amber-800">
-          {hasSecret
-            ? "Your payment details are ready. The payment step will be available here shortly."
-            : "Payment is required to confirm this reservation. Return to this page to complete payment."}
-        </p>
-        <p className="mt-2 text-xs text-amber-700">
-          No charge has been made yet. Payment is required to confirm vehicle
-          availability and generate your confirmation.
-        </p>
-        {/* 
-          TODO (Commit I): Replace this section with Stripe Elements.
-          stripeClientSecret is available in reservation.stripeClientSecret.
-          Do NOT store it in localStorage. Pass directly to loadStripe().
-          Load @stripe/stripe-js lazily here only, not globally.
-        */}
-        <Link
-          className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--nx-line)] bg-white px-5 text-sm font-bold text-neutral-950"
-          href="/dashboard"
-        >
-          Return to dashboard
-        </Link>
-      </div>
+      <PaymentPanelLoader
+        clientSecret={stripeClientSecret}
+        depositEurCents={reservation.depositEurCents}
+        reservationId={reservation.id}
+        totalPriceEurCents={reservation.totalPriceEurCents}
+      />
     );
   }
 
+  // ------------------------------------------------------------------
+  // AWAITING_CAPTURE — deposit authorized, backend webhook processing
+  // ------------------------------------------------------------------
   if (status === "AWAITING_CAPTURE") {
     return (
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-5">
-        <h2 className="text-sm font-black text-blue-950">
-          Payment is processing
-        </h2>
+        <div className="flex items-center gap-2">
+          <Clock aria-hidden="true" className="h-4 w-4 text-blue-600" />
+          <h2 className="text-sm font-black text-blue-950">
+            Payment processing
+          </h2>
+        </div>
         <p className="mt-2 text-sm leading-6 text-blue-800">
-          Your documents have been approved. Payment capture is being processed
-          automatically. This page will update when confirmed.
+          Your documents have been approved and the deposit capture is
+          being processed. This is automatic and typically takes a few
+          seconds to a few minutes.
         </p>
         <Link
-          className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--nx-line)] bg-white px-5 text-sm font-bold"
+          className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--nx-line)] bg-white px-5 text-sm font-bold text-neutral-950 transition hover:bg-neutral-50"
           href="/dashboard"
         >
           Return to dashboard
@@ -217,17 +202,25 @@ function NextAction({
     );
   }
 
+  // ------------------------------------------------------------------
+  // CONFIRMED — ready for document upload / check-in
+  // ------------------------------------------------------------------
   if (status === "CONFIRMED") {
     return (
-      <div className="rounded-lg border border-[var(--nx-line)] bg-[var(--nx-bg-soft)] p-5">
-        <h2 className="text-sm font-black text-neutral-950">Next step</h2>
-        <p className="mt-2 text-sm leading-6 text-neutral-700">
-          Upload your passport and driving licence so the operator can verify
-          your documents before pickup.
+      <div className="rounded-lg border border-green-200 bg-green-50 p-5">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-green-600" />
+          <h2 className="text-sm font-black text-green-950">
+            Reservation confirmed
+          </h2>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-green-800">
+          Upload your passport and driving licence so the operator can
+          verify your documents before pickup at CMN.
         </p>
         {/* Check-in route is Commit J */}
         <Link
-          className="mt-4 inline-flex min-h-11 items-center rounded-md bg-neutral-950 px-5 text-sm font-bold text-white"
+          className="mt-4 inline-flex min-h-11 items-center rounded-md bg-neutral-950 px-5 text-sm font-bold text-white transition hover:bg-neutral-800"
           href="/dashboard"
         >
           Go to dashboard
@@ -236,6 +229,30 @@ function NextAction({
     );
   }
 
+  // ------------------------------------------------------------------
+  // CANCELLED
+  // ------------------------------------------------------------------
+  if (status === "CANCELLED") {
+    return (
+      <div className="rounded-lg border border-[var(--nx-line)] bg-[var(--nx-bg-soft)] p-5">
+        <h2 className="text-sm font-black text-neutral-950">Next steps</h2>
+        <p className="mt-2 text-sm text-neutral-600">
+          Your reservation has been cancelled. If you believe this is an
+          error, contact support.
+        </p>
+        <Link
+          className="mt-4 inline-flex min-h-11 items-center rounded-md bg-neutral-950 px-5 text-sm font-bold text-white transition hover:bg-neutral-800"
+          href="/catalog"
+        >
+          Browse the fleet
+        </Link>
+      </div>
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Default (IN_PROGRESS, COMPLETED, unknown)
+  // ------------------------------------------------------------------
   return (
     <div className="rounded-lg border border-[var(--nx-line)] p-5">
       <h2 className="text-sm font-black text-neutral-950">Dashboard</h2>
@@ -243,7 +260,7 @@ function NextAction({
         View your reservations and track status from your dashboard.
       </p>
       <Link
-        className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--nx-line)] px-5 text-sm font-bold"
+        className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--nx-line)] px-5 text-sm font-bold transition hover:bg-neutral-50"
         href="/dashboard"
       >
         Go to dashboard
@@ -285,7 +302,7 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
           {config.description}
         </p>
 
-        {/* Reservation reference — backend UUID only */}
+        {/* Reservation reference — backend UUID only, never faked */}
         <p className="mt-4 text-sm text-neutral-500">
           Reservation reference:{" "}
           <span className="font-mono text-sm text-neutral-950">
@@ -297,7 +314,7 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
       {/* ------------------------------------------------------------------ */}
       {/* Two-column layout: details + next action                            */}
       {/* ------------------------------------------------------------------ */}
-      <div className="grid gap-8 lg:grid-cols-[1fr_340px] lg:items-start">
+      <div className="grid gap-8 lg:grid-cols-[1fr_380px] lg:items-start">
         {/* ---------------------------------------------------------------- */}
         {/* Reservation details card                                          */}
         {/* ---------------------------------------------------------------- */}
@@ -396,16 +413,14 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-600">
-                      Security deposit
-                    </span>
+                    <span className="text-neutral-600">Security deposit</span>
                     <span className="font-bold text-neutral-950">
                       {formatEurCents(reservation.depositEurCents)}
                     </span>
                   </div>
                   <div className="mt-2 flex justify-between border-t border-[var(--nx-line)] pt-2 text-sm">
                     <span className="font-black text-neutral-950">
-                      Total due today
+                      Total authorized today
                     </span>
                     <span className="font-black text-neutral-950">
                       {formatEurCents(
@@ -417,7 +432,8 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
                 </dd>
                 <dd className="mt-2 text-xs text-neutral-400">
                   All amounts calculated by the backend. Deposit is
-                  refundable upon vehicle return in good condition.
+                  authorized (not charged) and refundable on vehicle
+                  return in good condition.
                 </dd>
               </div>
             </div>
@@ -425,7 +441,7 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
         </div>
 
         {/* ---------------------------------------------------------------- */}
-        {/* Next action panel                                                  */}
+        {/* Next action panel + journey sidebar                               */}
         {/* ---------------------------------------------------------------- */}
         <div className="space-y-4">
           <NextAction reservation={reservation} />
@@ -445,25 +461,24 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
                 },
                 {
                   n: 2,
-                  label: "Pay & verify documents",
+                  label: "Pay deposit & verify documents",
                   done: ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(
                     reservation.status,
                   ),
-                  current: reservation.status === "PENDING_DEPOSIT" ||
+                  current:
+                    reservation.status === "PENDING_DEPOSIT" ||
                     reservation.status === "AWAITING_CAPTURE",
                 },
                 {
                   n: 3,
                   label: "Pick up at CMN",
-                  done: reservation.status === "IN_PROGRESS" ||
+                  done:
+                    reservation.status === "IN_PROGRESS" ||
                     reservation.status === "COMPLETED",
                   current: reservation.status === "CONFIRMED",
                 },
               ].map((step) => (
-                <li
-                  key={step.n}
-                  className="flex items-center gap-3 text-sm"
-                >
+                <li key={step.n} className="flex items-center gap-3 text-sm">
                   <span
                     className={[
                       "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black",
@@ -475,7 +490,10 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
                     ].join(" ")}
                   >
                     {step.done ? (
-                      <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+                      <CheckCircle2
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5"
+                      />
                     ) : (
                       step.n
                     )}
