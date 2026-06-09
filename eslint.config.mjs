@@ -17,8 +17,7 @@ const eslintConfig = defineConfig([
     "src/components/site/**",
     "src/components/app/**",
     "src/components/ui/**",
-    "src/hooks/**",
-    "src/lib/**"
+    "src/hooks/**"
   ]),
 ]);
 
