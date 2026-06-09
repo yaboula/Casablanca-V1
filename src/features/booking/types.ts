@@ -1,16 +1,26 @@
 /**
  * Booking feature types.
  *
- * Separation of concerns:
- * - BookingDraft: user-entered, frontend-owned temporary state only.
- * - ReservationCreateDto: the exact shape sent to POST /api/v1/reservations.
- * - ReservationStatus: backend-owned status machine values, read-only in UI.
+ * Sources of truth:
+ * - backend/src/reservations/dto/create-reservation.dto.ts — DTO shape
+ * - backend/src/reservations/reservation.entity.ts — response entity
  *
  * The following are NEVER stored in the draft or faked in the UI:
  * - Reservation UUID
- * - Payment state
- * - Backend-computed total
+ * - Payment state / stripeClientSecret
+ * - Backend-computed price totals (totalPriceEurCents, depositEurCents)
  */
+
+// ---------------------------------------------------------------------------
+// Pickup location — mirrors backend PickupLocation enum
+// ---------------------------------------------------------------------------
+
+export type PickupLocation = "CMN_T1" | "CMN_T2";
+
+export const PICKUP_LOCATIONS: { value: PickupLocation; label: string }[] = [
+  { value: "CMN_T1", label: "Terminal 1 (CMN T1)" },
+  { value: "CMN_T2", label: "Terminal 2 (CMN T2)" },
+];
 
 // ---------------------------------------------------------------------------
 // Draft model — frontend-owned temporary state
@@ -27,46 +37,57 @@ export type BookingDraft = {
   pickupDate: string;
   /** ISO 8601 date string for return (YYYY-MM-DD) */
   returnDate: string;
-  /** Full name of the driver/primary contact */
+  /** Airport terminal — maps to PickupLocation enum */
+  pickupLocation: PickupLocation;
+  /** Full name of the driver/primary contact — maps to customerName */
   driverName: string;
-  /** Contact email — used by backend to send confirmation */
-  driverEmail: string;
-  /** Contact phone — E.164 recommended; backend validates */
+  /** Contact phone — maps to customerPhone */
   driverPhone: string;
-  /** Optional free-text notes if backend DTO supports it */
-  notes: string;
 };
 
 // ---------------------------------------------------------------------------
-// Backend DTO — what gets sent to POST /api/v1/reservations
+// Backend DTO — exact shape sent to POST /api/v1/reservations
 // ---------------------------------------------------------------------------
 
 /**
- * Exact DTO shape expected by POST /api/v1/reservations.
- * Backend owns totals, reservation UUID, and payment intent creation.
- * Do not add computed fields here; backend derives them from vehicle + dates.
+ * Exact DTO fields expected by POST /api/v1/reservations.
+ *
+ * Source: backend/src/reservations/dto/create-reservation.dto.ts
+ *
+ * IMPORTANT: Backend intentionally does NOT accept totalPriceEurCents.
+ * Price is recalculated server-side (security: prevent price tampering).
+ * Do not add any pricing fields here.
  */
 export type ReservationCreateDto = {
   vehicleId: string;
-  startDate: string; // ISO date YYYY-MM-DD
-  endDate: string; // ISO date YYYY-MM-DD
-  driverName: string;
-  driverEmail: string;
-  driverPhone: string;
-  notes?: string;
+  /** ISO 8601 date string, e.g. "2026-07-15" */
+  pickupDate: string;
+  /** ISO 8601 date string, e.g. "2026-07-20" */
+  returnDate: string;
+  /** Airport pickup terminal */
+  pickupLocation: PickupLocation;
+  /** Optional — driver/customer full name */
+  customerName?: string;
+  /** Optional — phone number, backend validates format */
+  customerPhone?: string;
 };
 
 // ---------------------------------------------------------------------------
 // Backend reservation status machine — read-only in UI
 // ---------------------------------------------------------------------------
 
+/**
+ * Source: backend/src/reservations/reservation.entity.ts — ReservationStatus enum
+ * These values are returned by GET /api/v1/reservations/:id and must not be
+ * faked, invented, or transitioned by the frontend.
+ */
 export type ReservationStatus =
-  | "PENDING_PAYMENT"
-  | "PENDING_DOCUMENTS"
-  | "UNDER_REVIEW"
+  | "PENDING_DEPOSIT"
+  | "AWAITING_CAPTURE"
   | "CONFIRMED"
-  | "CANCELLED"
-  | "COMPLETED";
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
 
 // ---------------------------------------------------------------------------
 // Idempotency key storage record
@@ -86,8 +107,7 @@ export type IdempotencyRecord = {
 export type BookingFormValues = {
   pickupDate: string;
   returnDate: string;
+  pickupLocation: PickupLocation;
   driverName: string;
-  driverEmail: string;
   driverPhone: string;
-  notes: string;
 };

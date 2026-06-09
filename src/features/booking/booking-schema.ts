@@ -1,10 +1,21 @@
 /**
  * Zod validation schema for the booking form.
  *
- * Validates user-entered fields only. Backend-owned fields (totals, reservation
- * UUID, payment state) are never part of this schema.
+ * Fields validated here map exactly to what the backend DTO accepts:
+ * - vehicleId (handled by route, not form)
+ * - pickupDate (ISO date string)
+ * - returnDate (ISO date string)
+ * - pickupLocation (CMN_T1 | CMN_T2)
+ * - customerName (optional driver name, max 120)
+ * - customerPhone (optional, phone format)
+ *
+ * Fields NOT in the backend DTO and therefore NOT in this schema:
+ * - email (backend auth user owns this)
+ * - notes (not accepted by backend DTO)
+ * - totalPrice, deposit (server-computed, never trusted from client)
  */
 import { z } from "zod";
+import { PICKUP_LOCATIONS } from "./types";
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -40,33 +51,32 @@ const returnDateSchema = z
   .min(1, "Return date is required.")
   .refine(isValidDate, "Return date must be a valid date.");
 
+const pickupLocationSchema = z.enum(
+  PICKUP_LOCATIONS.map((l) => l.value) as [string, ...string[]],
+  { errorMap: () => ({ message: "Please select an airport terminal." }) },
+);
+
+/**
+ * Driver name — maps to customerName in backend DTO (optional).
+ * Required in UI for operational clarity even though backend marks it optional.
+ */
 const driverNameSchema = z
   .string()
   .min(2, "Full name must be at least 2 characters.")
   .max(120, "Full name must be 120 characters or fewer.");
 
-const driverEmailSchema = z
-  .string()
-  .min(1, "Email address is required.")
-  .email("Please enter a valid email address.");
-
 /**
- * Phone: allow common international formats.
- * Backend performs definitive validation; this is UX-level only.
+ * Phone: backend validates with /^\+?[0-9\s\-().]{7,30}$/.
+ * Required in UI even though backend marks it optional.
  */
 const driverPhoneSchema = z
   .string()
   .min(6, "Phone number is required and must be at least 6 characters.")
   .max(30, "Phone number must be 30 characters or fewer.")
   .regex(
-    /^\+?[\d\s\-().]{6,30}$/,
+    /^\+?[0-9\s\-().]{6,30}$/,
     "Please enter a valid phone number (digits, spaces, +, -, parentheses).",
   );
-
-const notesSchema = z
-  .string()
-  .max(500, "Notes must be 500 characters or fewer.")
-  .default("");
 
 // ---------------------------------------------------------------------------
 // Composite booking form schema
@@ -76,10 +86,9 @@ export const bookingFormSchema = z
   .object({
     pickupDate: pickupDateSchema,
     returnDate: returnDateSchema,
+    pickupLocation: pickupLocationSchema,
     driverName: driverNameSchema,
-    driverEmail: driverEmailSchema,
     driverPhone: driverPhoneSchema,
-    notes: notesSchema,
   })
   .refine(
     (data) => {
@@ -98,7 +107,7 @@ export type BookingFormSchema = z.infer<typeof bookingFormSchema>;
 
 /**
  * Input type (what react-hook-form uses internally).
- * notes is optional at input because the schema has a .default("").
+ * pickupLocation is optional at input because enum resolution may differ.
  */
 export type BookingFormInput = z.input<typeof bookingFormSchema>;
 

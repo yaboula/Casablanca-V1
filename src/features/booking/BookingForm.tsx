@@ -3,24 +3,30 @@
 /**
  * BookingForm — trip details and driver contact form.
  *
- * Uses react-hook-form + zod for client-side validation.
- * Follows the same accessible form pattern as LoginForm/RegisterForm.
+ * Fields map to the real backend CreateReservationDto:
+ *   vehicleId (from route) → passed via onSubmitReady
+ *   pickupDate → required ISO date
+ *   returnDate → required ISO date, must be after pickup
+ *   pickupLocation → required enum (CMN_T1 | CMN_T2)
+ *   customerName → maps to driverName (required in UI, optional in DTO)
+ *   customerPhone → maps to driverPhone (required in UI, optional in DTO)
  *
- * What this form does NOT do:
- * - Does not call POST /api/v1/reservations (that is Commit H).
- * - Does not store or display fake reservation data.
- * - Does not generate or display fake payment state.
- * - Does not hold backend-owned totals as truth.
- *
- * The onSubmitReady callback receives validated BookingFormValues and is
- * the extension point for Commit H (reservation creation).
+ * NOT included (backend does not accept):
+ *   email — backend uses authenticated user's email
+ *   notes — not in backend DTO
+ *   totalPrice — server-computed, never trusted from client
  */
 
 import { useId } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarDays, User } from "lucide-react";
-import { bookingFormSchema, type BookingFormSchema, type BookingFormInput } from "./booking-schema";
+import { CalendarDays, MapPin, User } from "lucide-react";
+import {
+  bookingFormSchema,
+  type BookingFormSchema,
+  type BookingFormInput,
+} from "./booking-schema";
+import { PICKUP_LOCATIONS } from "./types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,22 +51,20 @@ type FieldProps = {
   id: string;
   errorId?: string;
   error?: string;
+  hint?: string;
   children: React.ReactNode;
 };
 
-function Field({ label, id, errorId, error, children }: FieldProps) {
+function Field({ label, id, errorId, error, hint, children }: FieldProps) {
   return (
     <div className="grid gap-2">
       <label className="text-sm font-bold text-neutral-950" htmlFor={id}>
         {label}
       </label>
+      {hint && <p className="text-xs text-neutral-500">{hint}</p>}
       {children}
       {error && (
-        <p
-          className="text-sm text-red-700"
-          id={errorId}
-          role="alert"
-        >
+        <p className="text-sm text-red-700" id={errorId} role="alert">
           {error}
         </p>
       )}
@@ -125,10 +129,9 @@ export function BookingForm({
     defaultValues: {
       pickupDate: "",
       returnDate: "",
+      pickupLocation: undefined,
       driverName: "",
-      driverEmail: "",
       driverPhone: "",
-      notes: "",
     },
   });
 
@@ -139,15 +142,14 @@ export function BookingForm({
   // ---------------------------------------------------------------------------
   const pickupDateId = useId();
   const returnDateId = useId();
+  const pickupLocationId = useId();
   const driverNameId = useId();
-  const driverEmailId = useId();
   const driverPhoneId = useId();
-  const notesId = useId();
 
   const pickupDateErrorId = useId();
   const returnDateErrorId = useId();
+  const pickupLocationErrorId = useId();
   const driverNameErrorId = useId();
-  const driverEmailErrorId = useId();
   const driverPhoneErrorId = useId();
 
   // ---------------------------------------------------------------------------
@@ -218,6 +220,37 @@ export function BookingForm({
       </section>
 
       {/* ------------------------------------------------------------------ */}
+      {/* Pickup location section                                              */}
+      {/* ------------------------------------------------------------------ */}
+      <section aria-labelledby="pickup-location-heading" className="grid gap-5">
+        <SectionHeading icon={MapPin} title="Pickup terminal" />
+        <Field
+          error={errors.pickupLocation?.message}
+          errorId={pickupLocationErrorId}
+          hint="All vehicles are delivered at Casablanca Mohammed V Airport (CMN). Select your arrival terminal."
+          id={pickupLocationId}
+          label="Airport terminal"
+        >
+          <select
+            {...register("pickupLocation")}
+            aria-describedby={
+              errors.pickupLocation ? pickupLocationErrorId : undefined
+            }
+            aria-invalid={!!errors.pickupLocation}
+            className="min-h-12 w-full rounded-md border border-[var(--nx-line)] bg-white px-4 text-base outline-none transition focus:border-neutral-950 aria-invalid:border-red-500"
+            id={pickupLocationId}
+          >
+            <option value="">Select terminal…</option>
+            {PICKUP_LOCATIONS.map((loc) => (
+              <option key={loc.value} value={loc.value}>
+                {loc.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
       {/* Driver / contact section                                             */}
       {/* ------------------------------------------------------------------ */}
       <section aria-labelledby="driver-info-heading" className="grid gap-5">
@@ -226,6 +259,7 @@ export function BookingForm({
         <Field
           error={errors.driverName?.message}
           errorId={driverNameErrorId}
+          hint="As it appears on your driving licence."
           id={driverNameId}
           label="Full name"
         >
@@ -238,63 +272,28 @@ export function BookingForm({
             autoComplete="name"
             className={inputBase}
             id={driverNameId}
-            placeholder="As it appears on your driving licence"
             type="text"
           />
         </Field>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field
-            error={errors.driverEmail?.message}
-            errorId={driverEmailErrorId}
-            id={driverEmailId}
-            label="Email address"
-          >
-            <input
-              {...register("driverEmail")}
-              aria-describedby={
-                errors.driverEmail ? driverEmailErrorId : undefined
-              }
-              aria-invalid={!!errors.driverEmail}
-              autoComplete="email"
-              className={inputBase}
-              id={driverEmailId}
-              inputMode="email"
-              placeholder="Confirmation will be sent here"
-              type="email"
-            />
-          </Field>
-
-          <Field
-            error={errors.driverPhone?.message}
-            errorId={driverPhoneErrorId}
+        <Field
+          error={errors.driverPhone?.message}
+          errorId={driverPhoneErrorId}
+          id={driverPhoneId}
+          label="Phone number"
+        >
+          <input
+            {...register("driverPhone")}
+            aria-describedby={
+              errors.driverPhone ? driverPhoneErrorId : undefined
+            }
+            aria-invalid={!!errors.driverPhone}
+            autoComplete="tel"
+            className={inputBase}
             id={driverPhoneId}
-            label="Phone number"
-          >
-            <input
-              {...register("driverPhone")}
-              aria-describedby={
-                errors.driverPhone ? driverPhoneErrorId : undefined
-              }
-              aria-invalid={!!errors.driverPhone}
-              autoComplete="tel"
-              className={inputBase}
-              id={driverPhoneId}
-              inputMode="tel"
-              placeholder="+212 6XX XXX XXX"
-              type="tel"
-            />
-          </Field>
-        </div>
-
-        <Field id={notesId} label="Notes (optional)">
-          <textarea
-            {...register("notes")}
-            className="min-h-24 w-full resize-y rounded-md border border-[var(--nx-line)] bg-white px-4 py-3 text-base outline-none transition focus:border-neutral-950"
-            id={notesId}
-            maxLength={500}
-            placeholder="Any specific requirements or questions for the operator."
-            rows={3}
+            inputMode="tel"
+            placeholder="+212 6XX XXX XXX"
+            type="tel"
           />
         </Field>
       </section>
@@ -325,9 +324,9 @@ export function BookingForm({
           {isSubmitting ? "Creating reservation…" : "Review and create reservation"}
         </button>
         <p className="mt-3 text-xs leading-5 text-neutral-500">
-          Submitting this form sends your trip details to the backend to create a
-          reservation and payment intent. No charge is made until you confirm
-          payment on the next step.
+          Submitting sends your trip details to the backend. A Stripe PaymentIntent
+          is created immediately. No charge is made until you confirm payment on
+          the next screen.
         </p>
       </div>
     </form>

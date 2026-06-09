@@ -16,12 +16,20 @@ type BookingSummaryProps = {
   vehicle: VehicleDetailModel;
   pickupDate: string;
   returnDate: string;
+  /** Pickup terminal, e.g. "CMN_T1" or "CMN_T2" — empty string before selection */
+  pickupLocation?: string;
+};
+
+const TERMINAL_LABELS: Record<string, string> = {
+  CMN_T1: "Terminal 1 (CMN T1)",
+  CMN_T2: "Terminal 2 (CMN T2)",
 };
 
 export function BookingSummary({
   vehicle,
   pickupDate,
   returnDate,
+  pickupLocation,
 }: BookingSummaryProps) {
   const displayDays = computeDisplayDays(pickupDate, returnDate);
   const priceEur = vehicle.pricePerDayEurCents / 100;
@@ -58,7 +66,7 @@ export function BookingSummary({
           </p>
         </div>
 
-        {/* Pickup location — always GMMN */}
+        {/* Pickup location */}
         <div className="flex items-start gap-2 border-t border-[var(--nx-line)] pt-4">
           <MapPin
             aria-hidden="true"
@@ -69,6 +77,11 @@ export function BookingSummary({
             <p className="mt-0.5 text-sm text-neutral-600">
               Casablanca Mohammed V Airport (CMN)
             </p>
+            {pickupLocation && TERMINAL_LABELS[pickupLocation] && (
+              <p className="mt-0.5 text-sm font-bold text-neutral-950">
+                {TERMINAL_LABELS[pickupLocation]}
+              </p>
+            )}
           </div>
         </div>
 
