@@ -34,17 +34,17 @@ export function SessionNav() {
   }, []);
 
   if (!hasLoaded) {
-    return <span className="text-sm text-neutral-500">Session</span>;
+    return <span className="text-xs font-medium text-neutral-400">Session</span>;
   }
 
   if (!user) {
     return (
-      <div className="flex items-center gap-3">
-        <Link className="text-sm font-bold text-neutral-700" href="/login">
+      <div className="flex items-center gap-4">
+        <Link className="text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition-colors" href="/login">
           Login
         </Link>
         <Link
-          className="rounded-md bg-neutral-950 px-4 py-2 text-sm font-bold text-white"
+          className="inline-flex h-9 items-center justify-center rounded-full bg-[#0a0a0a] px-5 py-2 text-xs font-semibold text-white transition-colors duration-300 hover:bg-[#1e41fc]"
           href="/register"
         >
           Register
@@ -54,20 +54,20 @@ export function SessionNav() {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-3">
-      <span className="text-sm font-semibold text-neutral-700">
+    <div className="flex flex-wrap items-center justify-end gap-4">
+      <span className="text-xs font-medium text-neutral-400">
         {user.fullName || user.email}
       </span>
-      <Link className="text-sm font-bold text-neutral-700" href="/dashboard">
+      <Link className="text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition-colors" href="/dashboard">
         Dashboard
       </Link>
       {user.role === "OPERATOR" || user.role === "ADMIN" ? (
-        <Link className="text-sm font-bold text-neutral-700" href="/operator/dashboard">
+        <Link className="text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition-colors" href="/operator/dashboard">
           Operator
         </Link>
       ) : null}
       {user.role === "ADMIN" ? (
-        <Link className="text-sm font-bold text-neutral-700" href="/admin">
+        <Link className="text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition-colors" href="/admin">
           Admin
         </Link>
       ) : null}
@@ -75,3 +75,4 @@ export function SessionNav() {
     </div>
   );
 }
+

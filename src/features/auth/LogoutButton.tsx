@@ -16,12 +16,13 @@ export function LogoutButton() {
 
   return (
     <button
-      className="min-h-11 rounded-md border border-[var(--nx-line)] px-4 text-sm font-bold text-neutral-950 disabled:cursor-not-allowed disabled:opacity-60"
+      className="nx-btn-primary inline-flex h-9 items-center justify-center rounded-full border border-neutral-200 bg-white px-4 text-xs font-semibold text-neutral-900 transition-colors duration-300 hover:border-neutral-900 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
       disabled={isPending}
       onClick={logout}
       type="button"
     >
-      {isPending ? "Saliendo..." : "Cerrar sesion"}
+      {isPending ? "Signing out..." : "Sign out"}
     </button>
   );
 }
+
