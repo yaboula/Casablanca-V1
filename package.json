@@ -6,7 +6,7 @@
     "dev": "next dev -H 0.0.0.0 -p 3600",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src/app src/features/auth src/features/catalog src/lib/api src/lib/auth next.config.ts",
+    "lint": "eslint src/app src/features/auth src/features/catalog src/features/public src/lib/api src/lib/auth next.config.ts",
     "docker:dev": "npm --prefix backend run docker:dev",
     "db:test:setup": "npm --prefix backend run db:test:setup",
     "db:e2e:prepare": "npm --prefix backend run db:e2e:prepare",

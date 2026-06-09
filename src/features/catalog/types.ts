@@ -1,5 +1,12 @@
 export type VehicleCategory = "SEDAN" | "SUV" | "LUXURY" | "COMPACT";
 
+export const VEHICLE_CATEGORIES: VehicleCategory[] = [
+  "SEDAN",
+  "SUV",
+  "LUXURY",
+  "COMPACT",
+];
+
 export type VehicleStatus =
   | "AVAILABLE"
   | "RENTED"

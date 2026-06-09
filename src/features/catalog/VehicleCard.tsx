@@ -22,37 +22,40 @@ export function VehicleCard({ vehicle }: { vehicle: VehicleCardModel }) {
             />
           ) : (
             <div className="flex h-full items-center justify-center px-6 text-center text-sm font-semibold text-neutral-500">
-              Image non fournie par le backend
+              Image not provided by backend
             </div>
           )}
+          <div className="absolute left-4 top-4 rounded-full border border-white/70 bg-white px-3 py-1 text-xs font-black text-neutral-950">
+            {formatCategory(vehicle.category)}
+          </div>
         </div>
-        <div className="space-y-5 p-5">
+        <div className="space-y-6 p-5">
           <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-neutral-500">
-              {formatCategory(vehicle.category)}
-            </p>
             <h2 className="text-xl font-black text-neutral-950">
               {vehicle.name}
             </h2>
+            <p className="text-sm leading-6 text-neutral-600">
+              Backend-backed vehicle profile for airport pickup.
+            </p>
           </div>
 
           <dl className="grid grid-cols-2 gap-3 text-sm text-neutral-600">
-            <div>
+            <div className="rounded-md bg-[var(--nx-bg-soft)] p-3">
               <dt className="font-bold text-neutral-950">Transmission</dt>
               <dd className="mt-1">{formatTransmission(vehicle.transmission)}</dd>
             </div>
-            <div>
-              <dt className="font-bold text-neutral-950">Places</dt>
+            <div className="rounded-md bg-[var(--nx-bg-soft)] p-3">
+              <dt className="font-bold text-neutral-950">Seats</dt>
               <dd className="mt-1">
-                {vehicle.seats ? `${vehicle.seats}` : "Non indique"}
+                {vehicle.seats ? `${vehicle.seats}` : "Not provided"}
               </dd>
             </div>
-            <div>
-              <dt className="font-bold text-neutral-950">Bagages</dt>
+            <div className="rounded-md bg-[var(--nx-bg-soft)] p-3">
+              <dt className="font-bold text-neutral-950">Luggage</dt>
               <dd className="mt-1">
                 {vehicle.luggageCount
                   ? `${vehicle.luggageCount}`
-                  : "Non indique"}
+                  : "Not provided"}
               </dd>
             </div>
           </dl>
