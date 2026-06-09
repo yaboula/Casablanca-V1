@@ -10,11 +10,6 @@
  *   pickupLocation → required enum (CMN_T1 | CMN_T2)
  *   customerName → maps to driverName (required in UI, optional in DTO)
  *   customerPhone → maps to driverPhone (required in UI, optional in DTO)
- *
- * NOT included (backend does not accept):
- *   email — backend uses authenticated user's email
- *   notes — not in backend DTO
- *   totalPrice — server-computed, never trusted from client
  */
 
 import { useId } from "react";
@@ -28,10 +23,6 @@ import {
 } from "./booking-schema";
 import { PICKUP_LOCATIONS } from "./types";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export type BookingFormProps = {
   vehicleId: string;
   /** Called with validated form values when the user submits. */
@@ -41,10 +32,6 @@ export type BookingFormProps = {
   /** Backend-returned error after attempted reservation creation */
   submitError?: string | null;
 };
-
-// ---------------------------------------------------------------------------
-// Accessible field component
-// ---------------------------------------------------------------------------
 
 type FieldProps = {
   label: string;
@@ -58,23 +45,19 @@ type FieldProps = {
 function Field({ label, id, errorId, error, hint, children }: FieldProps) {
   return (
     <div className="grid gap-2">
-      <label className="text-sm font-bold text-neutral-950" htmlFor={id}>
+      <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500" htmlFor={id}>
         {label}
       </label>
-      {hint && <p className="text-xs text-neutral-500">{hint}</p>}
+      {hint && <p className="text-xs text-neutral-400 font-light">{hint}</p>}
       {children}
       {error && (
-        <p className="text-sm text-red-700" id={errorId} role="alert">
+        <p className="text-xs text-red-600 font-medium" id={errorId} role="alert">
           {error}
         </p>
       )}
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Section heading
-// ---------------------------------------------------------------------------
 
 function SectionHeading({
   icon: Icon,
@@ -84,33 +67,23 @@ function SectionHeading({
   title: string;
 }) {
   return (
-    <div className="flex items-center gap-2 border-b border-[var(--nx-line)] pb-3">
-      <Icon aria-hidden="true" className="h-4 w-4 text-[var(--nx-accent)]" />
-      <h2 className="text-sm font-black uppercase tracking-[0.14em] text-neutral-950">
+    <div className="flex items-center gap-2.5 border-b border-neutral-100 pb-3">
+      <span className="w-8 h-8 rounded-lg bg-neutral-50 border border-neutral-200/60 flex items-center justify-center text-[#1E41FC] shadow-sm">
+        <Icon aria-hidden="true" className="h-4 w-4" />
+      </span>
+      <h2 className="text-[10px] font-semibold uppercase tracking-widest text-neutral-800">
         {title}
       </h2>
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Shared input className
-// ---------------------------------------------------------------------------
-
 const inputBase =
-  "min-h-12 w-full rounded-md border border-[var(--nx-line)] bg-white px-4 text-base outline-none transition focus:border-neutral-950 aria-invalid:border-red-500";
-
-// ---------------------------------------------------------------------------
-// Today's date for min attribute
-// ---------------------------------------------------------------------------
+  "w-full bg-white border border-neutral-200 rounded-xl px-4 py-3 text-sm text-neutral-900 outline-none transition-all duration-300 focus:border-[#1E41FC] focus:ring-2 focus:ring-[#1E41FC]/10 aria-invalid:border-red-500";
 
 function todayIso(): string {
   return new Date().toISOString().split("T")[0];
 }
-
-// ---------------------------------------------------------------------------
-// BookingForm
-// ---------------------------------------------------------------------------
 
 export function BookingForm({
   onSubmitReady,
@@ -137,9 +110,6 @@ export function BookingForm({
 
   const pickupDate = watch("pickupDate");
 
-  // ---------------------------------------------------------------------------
-  // Field IDs
-  // ---------------------------------------------------------------------------
   const pickupDateId = useId();
   const returnDateId = useId();
   const pickupLocationId = useId();
@@ -152,29 +122,19 @@ export function BookingForm({
   const driverNameErrorId = useId();
   const driverPhoneErrorId = useId();
 
-  // ---------------------------------------------------------------------------
-  // Submit
-  // ---------------------------------------------------------------------------
-
   async function onSubmit(values: BookingFormSchema) {
     await onSubmitReady(values);
   }
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
   return (
     <form
       aria-describedby={submitError ? formErrorId : undefined}
-      className="grid gap-8"
+      className="grid gap-7"
       noValidate
       onSubmit={handleSubmit(onSubmit)}
     >
-      {/* ------------------------------------------------------------------ */}
-      {/* Trip dates section                                                   */}
-      {/* ------------------------------------------------------------------ */}
-      <section aria-labelledby="trip-dates-heading" className="grid gap-5">
+      {/* Trip Dates */}
+      <section aria-labelledby="trip-dates-heading" className="grid gap-4 bg-white border border-neutral-200 p-5 rounded-2xl shadow-sm">
         <SectionHeading icon={CalendarDays} title="Trip dates" />
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
@@ -219,15 +179,13 @@ export function BookingForm({
         </div>
       </section>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Pickup location section                                              */}
-      {/* ------------------------------------------------------------------ */}
-      <section aria-labelledby="pickup-location-heading" className="grid gap-5">
+      {/* Pickup Location */}
+      <section aria-labelledby="pickup-location-heading" className="grid gap-4 bg-white border border-neutral-200 p-5 rounded-2xl shadow-sm">
         <SectionHeading icon={MapPin} title="Pickup terminal" />
         <Field
           error={errors.pickupLocation?.message}
           errorId={pickupLocationErrorId}
-          hint="All vehicles are delivered at Casablanca Mohammed V Airport (CMN). Select your arrival terminal."
+          hint="Vehicles are delivered at Casablanca Mohammed V Airport (CMN)."
           id={pickupLocationId}
           label="Airport terminal"
         >
@@ -237,7 +195,7 @@ export function BookingForm({
               errors.pickupLocation ? pickupLocationErrorId : undefined
             }
             aria-invalid={!!errors.pickupLocation}
-            className="min-h-12 w-full rounded-md border border-[var(--nx-line)] bg-white px-4 text-base outline-none transition focus:border-neutral-950 aria-invalid:border-red-500"
+            className="w-full bg-white border border-neutral-200 rounded-xl px-4 py-3 text-sm text-neutral-900 outline-none transition-all duration-300 focus:border-[#1E41FC] focus:ring-2 focus:ring-[#1E41FC]/10 aria-invalid:border-red-500 cursor-pointer"
             id={pickupLocationId}
           >
             <option value="">Select terminal…</option>
@@ -250,16 +208,14 @@ export function BookingForm({
         </Field>
       </section>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Driver / contact section                                             */}
-      {/* ------------------------------------------------------------------ */}
-      <section aria-labelledby="driver-info-heading" className="grid gap-5">
+      {/* Driver Information */}
+      <section aria-labelledby="driver-info-heading" className="grid gap-4 bg-white border border-neutral-200 p-5 rounded-2xl shadow-sm">
         <SectionHeading icon={User} title="Driver information" />
 
         <Field
           error={errors.driverName?.message}
           errorId={driverNameErrorId}
-          hint="As it appears on your driving licence."
+          hint="Name matching your driving license exactly."
           id={driverNameId}
           label="Full name"
         >
@@ -298,35 +254,29 @@ export function BookingForm({
         </Field>
       </section>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Backend submission error                                             */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Submit Error */}
       {submitError && (
         <div
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-900"
           id={formErrorId}
           role="alert"
         >
           <p className="font-bold">Reservation could not be created.</p>
-          <p className="mt-1">{submitError}</p>
+          <p className="mt-1 font-light">{submitError}</p>
         </div>
       )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Submit CTA                                                           */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="border-t border-[var(--nx-line)] pt-6">
+      {/* Submit CTA */}
+      <div className="border-t border-neutral-100 pt-6 space-y-3">
         <button
-          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-neutral-950 px-5 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+          className="nx-btn-primary inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-neutral-950 px-5 text-sm font-semibold text-white transition-colors duration-300 hover:bg-[#1E41FC] disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
           disabled={isSubmitting}
           type="submit"
         >
           {isSubmitting ? "Creating reservation…" : "Review and create reservation"}
         </button>
-        <p className="mt-3 text-xs leading-5 text-neutral-500">
-          Submitting sends your trip details to the backend. A Stripe PaymentIntent
-          is created immediately. No charge is made until you confirm payment on
-          the next screen.
+        <p className="text-[10px] leading-relaxed text-neutral-400 font-light">
+          Submitting your details creates a pending reservation in our system and prepares your Stripe Checkout link. No charges are applied until you authorize the security deposit on the next page.
         </p>
       </div>
     </form>

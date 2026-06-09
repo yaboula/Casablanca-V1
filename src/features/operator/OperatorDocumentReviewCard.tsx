@@ -128,59 +128,93 @@ export function OperatorDocumentReviewCard({
 
   return (
     <article
-      className="overflow-hidden rounded-lg border border-[var(--nx-line)] bg-white"
+      className="overflow-hidden rounded-[1.25rem] border border-neutral-200 bg-white shadow-sm hover:border-neutral-300 transition-colors duration-300"
       aria-label={`${docTypeLabel} document for ${doc.customerName}`}
     >
       {/* Card header */}
-      <div className="flex items-start justify-between gap-4 border-b border-[var(--nx-line)] px-5 py-4">
+      <div className="flex items-start justify-between gap-4 border-b border-neutral-105 px-6 py-4 bg-neutral-50/50">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-neutral-100">
-            <FileText aria-hidden="true" className="h-4 w-4 text-neutral-600" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 border border-neutral-200/50">
+            <FileText aria-hidden="true" className="h-5 w-5 text-neutral-600" />
           </div>
           <div>
-            <p className="text-sm font-black text-neutral-950">{docTypeLabel}</p>
-            <p className="text-xs text-neutral-500">
-              <span className="inline-flex items-center gap-1">
-                <User aria-hidden="true" className="h-3 w-3" />
-                {doc.customerName}
+            <p className="text-[1.05rem] font-display font-semibold text-neutral-900">{docTypeLabel}</p>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              <span className="inline-flex items-center gap-1.5">
+                <User aria-hidden="true" className="h-3.5 w-3.5 text-neutral-400" />
+                <span className="font-medium">{doc.customerName}</span>
               </span>
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-800">
             <Clock aria-hidden="true" className="h-3 w-3" />
             Pending review
           </span>
-          <span className="text-xs text-neutral-400">{doc.uploadedAgo} ago</span>
+          <span className="text-[10px] text-neutral-450 font-light">{doc.uploadedAgo} ago</span>
         </div>
       </div>
 
       {/* Document preview + info */}
-      <div className="px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-neutral-500">Reservation</p>
-            <p className="font-mono text-xs text-neutral-950">
-              {doc.reservationId.toUpperCase().slice(0, 8)}
-            </p>
+      <div className="px-6 py-5">
+        <div className="flex flex-col md:flex-row gap-5">
+          {/* Left: Inline Preview with onError fallback */}
+          <div className="relative aspect-[16/10] md:aspect-[4/3] w-full md:w-60 shrink-0 rounded-xl overflow-hidden border border-neutral-200 bg-neutral-50 flex items-center justify-center group/preview">
+            {doc.fileUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={doc.fileUrl}
+                alt={`${docTypeLabel} preview`}
+                className="object-contain w-full h-full p-2 transition-transform duration-500 group-hover/preview:scale-[1.03]"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = "none";
+                  const fallback = e.currentTarget.nextElementSibling;
+                  if (fallback) (fallback as HTMLElement).classList.remove("hidden");
+                }}
+              />
+            ) : null}
+            <div className="hidden absolute inset-0 flex flex-col items-center justify-center text-neutral-400 text-[10px] font-semibold uppercase tracking-wider p-4">
+              <FileText className="w-8 h-8 text-neutral-300 mb-2 stroke-1" />
+              <span>PDF / Document</span>
+            </div>
           </div>
-          {/* Open document — uses transient fileUrl, never stored */}
-          <a
-            href={doc.fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--nx-line)] bg-neutral-50 px-4 text-xs font-bold text-neutral-950 transition hover:bg-neutral-100"
-            aria-label={`Open ${docTypeLabel} document (link expires after use)`}
-          >
-            <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
-            Open document
-          </a>
+
+          {/* Right: Info details */}
+          <div className="flex-1 flex flex-col justify-between">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-neutral-450 font-semibold font-mono">Reservation</p>
+                <p className="font-mono text-sm font-semibold text-neutral-950 mt-1">
+                  {doc.reservationId.toUpperCase().slice(0, 8)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-neutral-450 font-semibold font-mono">Document type</p>
+                <p className="text-sm font-semibold text-neutral-950 mt-1">
+                  {docTypeLabel}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[11px] text-neutral-450 italic">
+                Presigned review link is private &amp; time-limited.
+              </p>
+              <a
+                href={doc.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-4 text-xs font-bold text-neutral-900 transition hover:bg-neutral-50 hover:border-neutral-300 shadow-sm"
+                aria-label={`Open ${docTypeLabel} document (link expires after use)`}
+              >
+                <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                Open full screen
+              </a>
+            </div>
+          </div>
         </div>
-        <p className="mt-2 text-[11px] text-neutral-400 italic">
-          Document links expire and are generated for review. Do not share.
-        </p>
       </div>
 
       {/* Feedback banner */}
@@ -189,7 +223,7 @@ export function OperatorDocumentReviewCard({
           id={feedbackId}
           role={feedbackKind === "error" ? "alert" : "status"}
           aria-live={feedbackKind === "error" ? "assertive" : "polite"}
-          className={`mx-5 mb-3 flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-bold ${
+          className={`mx-6 mb-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-xs font-semibold ${
             feedbackKind === "success"
               ? "border-green-200 bg-green-50 text-green-800"
               : "border-red-200 bg-red-50 text-red-800"
@@ -206,17 +240,19 @@ export function OperatorDocumentReviewCard({
 
       {/* Reject reason form */}
       {showRejectForm && (
-        <div className="border-t border-[var(--nx-line)] bg-neutral-50 px-5 py-4">
-          <label
-            htmlFor={reasonId}
-            className="block text-sm font-black text-neutral-950"
-          >
-            Rejection reason{" "}
-            <span className="text-red-600" aria-hidden="true">*</span>
-          </label>
-          <p className="mt-0.5 text-xs text-neutral-500">
-            Required. Minimum 5 characters. This will be shown to the customer.
-          </p>
+        <div className="border-t border-neutral-100 bg-neutral-50 px-6 py-5 space-y-3">
+          <div>
+            <label
+              htmlFor={reasonId}
+              className="block text-xs font-bold uppercase tracking-wider text-neutral-800"
+            >
+              Rejection reason{" "}
+              <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <p className="mt-1 text-[11px] text-neutral-500 font-light">
+              Required. Describe clearly what needs to be fixed. The customer sees this instantly.
+            </p>
+          </div>
           <textarea
             id={reasonId}
             value={rejectionReason}
@@ -224,8 +260,8 @@ export function OperatorDocumentReviewCard({
             disabled={isBusy}
             maxLength={500}
             rows={3}
-            className="mt-2 w-full resize-none rounded-md border border-[var(--nx-line)] bg-white px-3 py-2 text-sm text-neutral-950 placeholder-neutral-400 focus:border-neutral-400 focus:outline-none disabled:opacity-50"
-            placeholder="e.g. Document is blurred or cut off — please re-upload."
+            className="w-full resize-none rounded-xl border border-neutral-200 bg-white px-4 py-3 text-xs text-neutral-900 placeholder-neutral-400 focus:border-neutral-400 focus:outline-none disabled:opacity-50 shadow-inner"
+            placeholder="e.g. Document is blurred or cut off — please re-upload a clear image of the entire page."
             aria-required="true"
             aria-describedby={
               reasonTooShort && rejectionReason.length > 0
@@ -236,18 +272,18 @@ export function OperatorDocumentReviewCard({
           {reasonTooShort && rejectionReason.length > 0 && (
             <p
               id={`${reasonId}-error`}
-              className="mt-1 text-xs text-red-600"
+              className="text-[11px] text-red-655 font-medium"
               role="alert"
             >
               Reason must be at least 5 characters.
             </p>
           )}
-          <div className="mt-3 flex items-center gap-2">
+          <div className="flex items-center gap-2.5 pt-1">
             <button
               type="button"
               onClick={handleReject}
               disabled={isBusy || reasonTooShort}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-red-700 px-4 text-sm font-bold text-white transition hover:bg-red-800 disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-red-600 hover:bg-red-750 px-5 text-xs font-bold uppercase tracking-wider text-white transition-colors duration-300 disabled:opacity-50 shadow-sm"
               aria-label={`Confirm rejection of ${docTypeLabel} for ${doc.customerName}`}
             >
               {actionState === "rejecting" ? (
@@ -264,7 +300,7 @@ export function OperatorDocumentReviewCard({
                 setRejectionReason("");
               }}
               disabled={isBusy}
-              className="inline-flex min-h-9 items-center rounded-md border border-[var(--nx-line)] bg-white px-4 text-sm font-bold text-neutral-950 transition hover:bg-neutral-50 disabled:opacity-50"
+              className="inline-flex h-9 items-center rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 px-5 text-xs font-bold uppercase tracking-wider text-neutral-800 transition-colors duration-300 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -274,12 +310,12 @@ export function OperatorDocumentReviewCard({
 
       {/* Action buttons */}
       {actionState !== "success" && (
-        <div className="flex items-center gap-2 border-t border-[var(--nx-line)] px-5 py-4">
+        <div className="flex items-center gap-3 border-t border-neutral-100 px-6 py-4 bg-neutral-50/20">
           <button
             type="button"
             onClick={handleApprove}
             disabled={isBusy || showRejectForm}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-green-700 px-5 text-sm font-bold text-white transition hover:bg-green-800 disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 px-6 text-xs font-bold uppercase tracking-wider text-white transition-colors duration-300 disabled:opacity-50 shadow-sm"
             aria-label={`Approve ${docTypeLabel} for ${doc.customerName}`}
           >
             {actionState === "approving" ? (
@@ -296,7 +332,11 @@ export function OperatorDocumentReviewCard({
               setFeedbackMessage(null);
             }}
             disabled={isBusy}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-red-300 bg-white px-5 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+            className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-6 text-xs font-bold uppercase tracking-wider transition-colors duration-300 disabled:opacity-50 shadow-sm ${
+              showRejectForm
+                ? "bg-neutral-900 border-neutral-900 text-white"
+                : "border-red-200 bg-white hover:bg-red-50 text-red-650 hover:text-red-750"
+            }`}
             aria-label={`Reject ${docTypeLabel} for ${doc.customerName} — will prompt for reason`}
             aria-expanded={showRejectForm}
           >

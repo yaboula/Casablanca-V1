@@ -13,17 +13,18 @@
  */
 
 
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Car,
   CheckCircle2,
   Clock,
   AlertTriangle,
-  CalendarDays,
-  MapPin,
   FileText,
-  User,
   ArrowRight,
+  Search,
+  CalendarClock,
+  ClipboardCheck,
 } from "lucide-react";
 import { useOperatorDeliveriesSse } from "@/hooks/useOperatorDeliveriesSse";
 import type { DeliveryViewModel, DeliveryStats } from "./types";
@@ -74,30 +75,30 @@ function DocReadinessBadge({ documents }: { documents: DeliveryViewModel["docume
 
   if (hasRejected) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
         <AlertTriangle aria-hidden="true" className="h-3 w-3" />
-        Doc rejected
+        Fix docs
       </span>
     );
   }
   if (approved >= totalDocs) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-bold text-green-700">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-[10px] font-bold text-green-700 uppercase tracking-wider">
         <CheckCircle2 aria-hidden="true" className="h-3 w-3" />
-        Docs ready
+        Ready
       </span>
     );
   }
   if (pending > 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 uppercase tracking-wider">
         <Clock aria-hidden="true" className="h-3 w-3" />
-        {pending} pending
+        To review
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] font-bold text-neutral-500">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
       <FileText aria-hidden="true" className="h-3 w-3" />
       No docs
     </span>
@@ -108,31 +109,31 @@ function DocReadinessBadge({ documents }: { documents: DeliveryViewModel["docume
 // Stats card
 // ---------------------------------------------------------------------------
 
-function StatCard({
+const TONES = {
+  amber: "bg-amber-50 text-amber-600 border-amber-100",
+  red: "bg-red-50 text-red-500 border-red-100",
+  emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+  neutral: "bg-neutral-50 text-neutral-500 border-neutral-100",
+};
+
+function Metric({
+  icon: Icon,
+  tone,
   label,
   value,
-  description,
-  accent,
 }: {
+  icon: typeof Car;
+  tone: keyof typeof TONES;
   label: string;
   value: number;
-  description?: string;
-  accent?: string;
 }) {
   return (
-    <div className="rounded-lg border border-[var(--nx-line)] bg-white p-5">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-neutral-500">
-        {label}
-      </p>
-      <p
-        className={`mt-2 text-3xl font-black ${accent ?? "text-neutral-950"}`}
-        aria-label={`${label}: ${value}`}
-      >
-        {value}
-      </p>
-      {description && (
-        <p className="mt-0.5 text-xs text-neutral-400">{description}</p>
-      )}
+    <div className="bg-white border border-neutral-200 rounded-[1.25rem] p-5 shadow-sm">
+      <div className={`w-10 h-10 rounded-lg border flex items-center justify-center ${TONES[tone]}`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="font-display text-[2rem] font-light text-neutral-900 mt-4 leading-none">{value}</div>
+      <div className="nx-meta text-neutral-500 mt-1.5 font-light">{label}</div>
     </div>
   );
 }
@@ -142,67 +143,57 @@ function StatCard({
 // ---------------------------------------------------------------------------
 
 function DeliveryRow({ delivery }: { delivery: DeliveryViewModel }) {
+  const status = delivery.status;
+  const approved = delivery.documents.filter((d) => d.status === "APPROVED").length >= 2;
+  const toHandoff = status === "CONFIRMED" && approved;
+
   return (
-    <li className="flex flex-col gap-3 py-5 sm:flex-row sm:items-start sm:justify-between">
-      {/* Left: customer + vehicle */}
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-neutral-100">
-          <Car aria-hidden="true" className="h-5 w-5 text-neutral-500" />
+    <div
+      className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.4fr_1fr_0.9fr_auto] gap-3 lg:gap-4 lg:items-center bg-white border border-neutral-200 rounded-[1.1rem] px-5 py-4 hover:border-neutral-300 transition-colors shadow-sm"
+      data-testid={`op-row-${delivery.id}`}
+    >
+      <div>
+        <div className="text-[0.95rem] font-semibold text-neutral-900">
+          {delivery.customerName}
         </div>
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-black text-neutral-950">
-              {delivery.vehicle
-                ? `${delivery.vehicle.brand} ${delivery.vehicle.model}`
-                : "Vehicle"}
-            </p>
-            {delivery.vehicle?.licensePlate && (
-              <span className="rounded border border-[var(--nx-line)] bg-neutral-50 px-1.5 py-0.5 font-mono text-[11px] text-neutral-600">
-                {delivery.vehicle.licensePlate}
-              </span>
-            )}
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-            <span className="flex items-center gap-1">
-              <User aria-hidden="true" className="h-3 w-3" />
-              {delivery.customerName}
-            </span>
-            {delivery.customerPhone && (
-              <span>{delivery.customerPhone}</span>
-            )}
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
-            <span className="flex items-center gap-1">
-              <CalendarDays aria-hidden="true" className="h-3 w-3" />
-              {formatDate(delivery.pickupDate)} at {formatTime(delivery.pickupDate)}
-            </span>
-            <span className="flex items-center gap-1">
-              <MapPin aria-hidden="true" className="h-3 w-3" />
-              CMN — {formatPickupLocation(delivery.pickupLocation)}
-            </span>
-          </div>
+        <div className="nx-meta text-neutral-500 font-mono text-xs mt-0.5">
+          {delivery.id.toUpperCase().slice(0, 8)}
         </div>
       </div>
-
-      {/* Right: badges + balance + CTA */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-end">
-        <DocReadinessBadge documents={delivery.documents} />
-        <div className="text-right">
-          <p className="text-xs text-neutral-400">Balance due</p>
-          <p className="text-sm font-black text-neutral-950">
-            €{delivery.balanceDueEUR.toFixed(2)}
-          </p>
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-9 rounded-md overflow-hidden bg-neutral-100 shrink-0 hidden sm:flex items-center justify-center border border-neutral-200/50">
+          {delivery.vehicle?.licensePlate ? (
+            <span className="font-mono text-[9px] font-bold text-neutral-700 bg-white border border-neutral-200 px-1 py-0.5 rounded shadow-sm">
+              {delivery.vehicle.licensePlate}
+            </span>
+          ) : (
+            <Car className="w-4 h-4 text-neutral-400" />
+          )}
         </div>
-        {/* Link to future delivery detail route (Commit M) */}
+        <div className="text-[0.92rem] text-neutral-800 font-medium">
+          {delivery.vehicle ? `${delivery.vehicle.brand} ${delivery.vehicle.model}` : "Vehicle Info"}
+        </div>
+      </div>
+      <div>
+        <div className="text-[0.92rem] text-neutral-800">
+          {formatDate(delivery.pickupDate)} &middot; {formatTime(delivery.pickupDate)}
+        </div>
+        <div className="nx-meta text-neutral-500 text-xs mt-0.5">
+          CMN &middot; {formatPickupLocation(delivery.pickupLocation)}
+        </div>
+      </div>
+      <div>
+        <DocReadinessBadge documents={delivery.documents} />
+      </div>
+      <div className="lg:text-right pt-2 lg:pt-0">
         <Link
           href={`/operator/delivery/${delivery.id}`}
-          className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[var(--nx-line)] bg-white px-3 text-xs font-bold text-neutral-950 transition hover:bg-neutral-50"
-          aria-label={`View delivery details for ${delivery.customerName}`}
+          className="inline-flex items-center gap-1.5 text-[0.9rem] font-semibold text-neutral-900 hover:text-[#1E41FC] transition-colors"
         >
-          Details <ArrowRight aria-hidden="true" className="h-3 w-3" />
+          {toHandoff ? "Handoff" : "Manage"} <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
-    </li>
+    </div>
   );
 }
 
@@ -228,25 +219,66 @@ export function OperatorDashboardView({
   // Subscribe to live delivery updates. Calls router.refresh() automatically.
   useOperatorDeliveriesSse();
 
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+
+  const metrics = useMemo(() => {
+    const total = deliveries.length;
+    const review = deliveries.filter((d) => d.documents.some((doc) => doc.status === "PENDING_REVIEW")).length;
+    const action = deliveries.filter((d) => d.documents.some((doc) => doc.status === "REJECTED")).length;
+    const readyCount = deliveries.filter((d) => d.status === "CONFIRMED" && d.documents.filter((doc) => doc.status === "APPROVED").length >= 2).length;
+
+    return { total, review, action, readyCount };
+  }, [deliveries]);
+
+  const filteredDeliveries = useMemo(() => {
+    return deliveries.filter((d) => {
+      // 1. Filter by tabs
+      const hasRejected = d.documents.some((doc) => doc.status === "REJECTED");
+      const pending = d.documents.some((doc) => doc.status === "PENDING_REVIEW");
+      const approvedCount = d.documents.filter((doc) => doc.status === "APPROVED").length;
+      const docsReady = approvedCount >= 2;
+
+      if (filter === "under_review" && !pending) return false;
+      if (filter === "action_required" && !hasRejected) return false;
+      if (filter === "approved" && (!docsReady || d.status !== "CONFIRMED")) return false;
+      if (filter === "completed" && d.status !== "COMPLETED") return false;
+
+      // 2. Filter by search input query
+      if (!query.trim()) return true;
+      const q = query.toLowerCase();
+      const nameMatch = d.customerName.toLowerCase().includes(q);
+      const refMatch = d.id.toLowerCase().includes(q);
+      const vehicleMatch = d.vehicle ? `${d.vehicle.brand} ${d.vehicle.model}`.toLowerCase().includes(q) : false;
+      return nameMatch || refMatch || vehicleMatch;
+    });
+  }, [deliveries, filter, query]);
+
+  const FILTERS = [
+    { id: "all", label: "All" },
+    { id: "under_review", label: "To review" },
+    { id: "action_required", label: "Action required" },
+    { id: "approved", label: "Ready" },
+    { id: "completed", label: "Completed" },
+  ];
+
   return (
-    <section className="mx-auto w-full max-w-6xl px-6 py-10 md:py-14">
+    <section className="nx-container py-10 md:py-14 space-y-8 max-w-[1100px]">
       {/* Header */}
-      <header className="mb-10 flex flex-wrap items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-neutral-500">
-            Operator console
-          </p>
-          <h1 className="mt-2 text-4xl font-black text-neutral-950">
-            Delivery dashboard
+          <span className="nx-eyebrow text-neutral-500 font-medium">Operations console</span>
+          <h1 className="nx-h2 font-display font-light text-neutral-900 mt-2">
+            Pickup &amp; verification console
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400 font-light">
             {operatorName && `Signed in as ${operatorName} · `}
-            {stats.date}
+            Today: {stats.date}
           </p>
         </div>
         <Link
           href="/operator/documents"
-          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-5 text-sm font-bold text-amber-900 transition hover:bg-amber-100"
+          className="nx-btn-primary inline-flex h-11 items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-6 text-xs font-bold uppercase tracking-wider text-amber-900 transition hover:bg-amber-100 shadow-sm"
         >
           <FileText aria-hidden="true" className="h-4 w-4" />
           Document review queue
@@ -254,86 +286,90 @@ export function OperatorDashboardView({
         </Link>
       </header>
 
-      {/* Stats cards */}
+      {/* Metrics Grid */}
       <div
-        className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-4"
-        aria-label="Today's delivery statistics"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        aria-label="Today's reservation statistics"
       >
-        <StatCard
-          label="Total today"
-          value={stats.total}
-          description="Confirmed + in progress + completed"
-        />
-        <StatCard
-          label="Confirmed"
-          value={stats.confirmed}
-          description="Awaiting handoff"
-          accent="text-blue-700"
-        />
-        <StatCard
-          label="In progress"
-          value={stats.inProgress}
-          description="Vehicle handed over"
-          accent="text-green-700"
-        />
-        <StatCard
-          label="Completed"
-          value={stats.completed}
-          description="Vehicle returned"
-          accent="text-neutral-500"
-        />
+        <Metric icon={ClipboardCheck} tone="amber" label="Awaiting review" value={metrics.review} />
+        <Metric icon={AlertTriangle} tone="red" label="Action required" value={metrics.action} />
+        <Metric icon={CalendarClock} tone="emerald" label="Ready for pickup" value={metrics.readyCount} />
+        <Metric icon={Car} tone="neutral" label="Total reservations" value={metrics.total} />
       </div>
 
-      {/* Delivery queue */}
-      <div className="rounded-lg border border-[var(--nx-line)] bg-white">
-        <div className="flex items-center justify-between gap-4 border-b border-[var(--nx-line)] px-6 py-4">
-          <h2 className="text-sm font-black text-neutral-950">
-            Today&apos;s delivery queue
-          </h2>
-          {deliveries.length > 0 && (
-            <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-black text-blue-800">
-              {deliveries.length}
-            </span>
-          )}
+      {/* Toolbar: Filters and Search */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-t border-neutral-100 pt-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition-all ${
+                filter === f.id
+                  ? "bg-neutral-900 text-white border-neutral-900"
+                  : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-450 hover:text-neutral-900"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative w-full lg:w-72">
+          <Search className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search ref, customer, vehicle..."
+            className="nx-input pl-10 text-xs py-2.5 rounded-full"
+          />
+        </div>
+      </div>
+
+      {/* List Container */}
+      <div className="space-y-4">
+        {/* Table headers (Desktop) */}
+        <div className="hidden lg:grid grid-cols-[1.1fr_1.4fr_1fr_0.9fr_auto] gap-4 px-5 pb-1 nx-label text-neutral-400">
+          <span>Customer</span>
+          <span>Vehicle</span>
+          <span>Pickup</span>
+          <span>Status</span>
+          <span className="text-right">Action</span>
         </div>
 
         {/* Empty state */}
-        {deliveries.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
+        {filteredDeliveries.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-neutral-200 bg-white py-16 text-center shadow-sm">
             <CheckCircle2
               aria-hidden="true"
-              className="h-10 w-10 text-neutral-300"
+              className="h-10 w-10 text-neutral-300 stroke-1"
             />
-            <p className="mt-4 text-sm font-black text-neutral-950">
-              No deliveries today
+            <p className="mt-4 text-sm font-semibold text-neutral-900">
+              No reservations match
             </p>
-            <p className="mt-1 text-xs text-neutral-500">
-              No confirmed reservations with today&apos;s pickup date.
+            <p className="mt-1 text-xs text-neutral-400 font-light">
+              Adjust your filters or search query to see reservations.
             </p>
           </div>
         )}
 
-        {/* Delivery rows */}
-        {deliveries.length > 0 && (
-          <ul
-            className="divide-y divide-[var(--nx-line)] px-6"
-            aria-label="Delivery queue"
-          >
-            {deliveries.map((delivery) => (
+        {/* List items */}
+        {filteredDeliveries.length > 0 && (
+          <div className="space-y-3">
+            {filteredDeliveries.map((delivery) => (
               <DeliveryRow key={delivery.id} delivery={delivery} />
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
-      {/* SSE note */}
-      <p className="mt-6 flex items-center gap-2 text-xs font-bold text-green-700 bg-green-50 px-4 py-2 rounded-md border border-green-200 w-fit">
+      {/* Connection Indicator Footer */}
+      <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50/50 px-4 py-2.5 rounded-full border border-green-200 w-fit">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
         </span>
         Live delivery updates active
-      </p>
+      </div>
     </section>
   );
 }

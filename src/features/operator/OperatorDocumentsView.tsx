@@ -88,19 +88,19 @@ export function OperatorDocumentsView({
     new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <section>
+    <section className="space-y-6">
       {/* Toolbar */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-100 pb-5">
+        <div className="flex items-center gap-2.5">
           <ClipboardCheck
             aria-hidden="true"
-            className="h-5 w-5 text-[var(--nx-accent)]"
+            className="h-5 w-5 text-neutral-700"
           />
-          <h2 className="text-lg font-black text-neutral-950">
+          <h2 className="text-base font-bold uppercase tracking-wider text-neutral-905">
             Pending review queue
           </h2>
           {documents.length > 0 && (
-            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-black text-amber-800">
+            <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-850">
               {documents.length}
             </span>
           )}
@@ -108,7 +108,7 @@ export function OperatorDocumentsView({
 
         <div className="flex items-center gap-3">
           {lastRefreshedAt && (
-            <span className="text-xs text-neutral-400">
+            <span className="text-xs text-neutral-400 font-light">
               Updated {formatTime(lastRefreshedAt)}
             </span>
           )}
@@ -116,7 +116,7 @@ export function OperatorDocumentsView({
             type="button"
             onClick={refetchQueue}
             disabled={isRefreshing}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-[var(--nx-line)] bg-white px-3 text-xs font-bold text-neutral-950 transition hover:bg-neutral-50 disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-4 text-xs font-bold uppercase tracking-wider text-neutral-900 transition hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-50 shadow-sm"
             aria-label="Refresh pending document queue"
           >
             <RefreshCw
@@ -132,7 +132,7 @@ export function OperatorDocumentsView({
       {refreshError && (
         <div
           role="alert"
-          className="mb-6 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800"
+          className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-800"
         >
           <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
           {refreshError}
@@ -141,15 +141,15 @@ export function OperatorDocumentsView({
 
       {/* Empty state */}
       {documents.length === 0 && !isRefreshing && (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-[var(--nx-line)] bg-white py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-[1.25rem] border border-neutral-200 bg-white py-16 text-center shadow-sm">
           <ClipboardCheck
             aria-hidden="true"
-            className="h-10 w-10 text-neutral-300"
+            className="h-12 w-12 text-neutral-300 stroke-1"
           />
-          <p className="mt-4 text-sm font-black text-neutral-950">
+          <p className="mt-4 text-sm font-semibold text-neutral-900">
             No pending documents
           </p>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-450 font-light">
             All submitted documents have been reviewed.
           </p>
         </div>
@@ -158,7 +158,7 @@ export function OperatorDocumentsView({
       {/* Document cards */}
       {documents.length > 0 && (
         <div
-          className="space-y-4"
+          className="space-y-5"
           aria-label={`${documents.length} document${documents.length !== 1 ? "s" : ""} awaiting review`}
           aria-live="polite"
           aria-atomic="false"
