@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Nexus Mobility — Airport Car Rental",
+    default: "Nexus Mobility - Airport Car Rental",
     template: "%s | Nexus Mobility",
   },
   description:
@@ -57,30 +57,64 @@ export default function RootLayout({
         <main id="main-content" className="flex-grow">
           {children}
         </main>
-        <footer className="border-t border-neutral-200 bg-white mt-auto">
-          <div className="nx-container py-10 md:py-12 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-center gap-2.5">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#1E41FC]" />
-              <span className="font-display text-lg font-medium tracking-tight">
-                Nexus<span className="text-neutral-400">/Mobility</span>
-              </span>
-              <span className="ml-3 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[#1E41FC] bg-[#1E41FC]/8 border border-[#1E41FC]/20 rounded-full px-2.5 py-1">
-                Demo concept
-              </span>
+        <footer className="mt-auto border-t border-neutral-200 bg-white">
+          <div className="nx-container py-10 md:py-12">
+            <div className="flex flex-col gap-6 border-b border-neutral-100 pb-6 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#1E41FC]" />
+                  <span className="font-display text-lg font-medium tracking-tight">
+                    Nexus<span className="text-neutral-400">/Mobility</span>
+                  </span>
+                </div>
+                <p className="max-w-md text-[0.9rem] text-neutral-500">
+                  Premium airport-first rentals at Casablanca Mohammed V Airport,
+                  with exact vehicle selection, document verification, and a calmer pickup flow.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 text-[0.85rem] text-neutral-500 md:items-end">
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  <Link className="hover:text-neutral-900 transition-colors" href="/catalog">
+                    Vehicles
+                  </Link>
+                  <Link className="hover:text-neutral-900 transition-colors" href="/dashboard">
+                    My trips
+                  </Link>
+                  <Link className="hover:text-neutral-900 transition-colors" href="/support">
+                    Support
+                  </Link>
+                </div>
+                <Link
+                  className="text-[0.8rem] font-medium text-neutral-400 transition-colors hover:text-neutral-700"
+                  href="/operator/dashboard"
+                >
+                  Staff access
+                </Link>
+              </div>
             </div>
-            <div className="flex items-center gap-6 text-[0.85rem] text-neutral-500">
-              <Link className="hover:text-neutral-900 transition-colors" href="/catalog">
-                Vehicles
-              </Link>
-              <Link className="hover:text-neutral-900 transition-colors" href="/dashboard">
-                My trips
-              </Link>
-              <Link className="hover:text-neutral-900 transition-colors" href="/operator/dashboard">
-                Operator console
-              </Link>
-            </div>
-            <div className="text-[0.85rem] text-neutral-400 font-medium">
-              © {new Date().getFullYear()} Nexus Mobility. Casablanca Mohammed V Airport.
+
+            <div className="flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-[0.82rem] text-neutral-500">
+                <Link className="hover:text-neutral-900 transition-colors" href="/privacy">
+                  Privacy
+                </Link>
+                <Link className="hover:text-neutral-900 transition-colors" href="/terms">
+                  Terms
+                </Link>
+                <Link className="hover:text-neutral-900 transition-colors" href="/cookies">
+                  Cookie policy
+                </Link>
+                <Link className="hover:text-neutral-900 transition-colors" href="/cancellation-policy">
+                  Cancellation policy
+                </Link>
+                <Link className="hover:text-neutral-900 transition-colors" href="/support">
+                  Contact
+                </Link>
+              </div>
+              <div className="text-[0.85rem] font-medium text-neutral-400">
+                (c) {new Date().getFullYear()} Nexus Mobility. Casablanca Mohammed V Airport.
+              </div>
             </div>
           </div>
         </footer>
@@ -88,4 +122,3 @@ export default function RootLayout({
     </html>
   );
 }
-

@@ -137,6 +137,14 @@ a {
     transform: translateX(-50%);
   }
 }
+@keyframes nx-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
 
 .nx-rise {
   animation: nx-rise 1s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -146,6 +154,9 @@ a {
 }
 .nx-marquee {
   animation: nx-marquee 40s linear infinite;
+}
+.nx-float {
+  animation: nx-float 6s ease-in-out infinite;
 }
 
 /* Grain overlay (subtle) */
