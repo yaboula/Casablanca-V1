@@ -1,151 +1,264 @@
 /**
- * Seed: Inserts the 6 production vehicles matching the frontend mock data.
+ * Seed: inserts or updates the public CMN fleet used by catalog and homepage.
  * Run via: npm run seed:vehicles
  *
- * Safe to run multiple times — uses ON CONFLICT DO NOTHING.
+ * Image strategy:
+ * - Uses deterministic absolute URLs derived from VEHICLE_ASSET_BASE_URL.
+ * - These are placeholders for owned/CDN assets until final uploads are ready.
+ * - Default base is intentionally a reserved .example domain to avoid pretending
+ *   generic stock imagery is the final exact-model source.
  */
-import 'dotenv/config';
-import { AppDataSource } from '../../config/data-source';
-import { Vehicle, VehicleCategory, VehicleStatus, Transmission } from '../../vehicles/vehicle.entity';
+import "dotenv/config";
+import { AppDataSource } from "../../config/data-source";
+import {
+  Transmission,
+  Vehicle,
+  VehicleCategory,
+  VehicleStatus,
+} from "../../vehicles/vehicle.entity";
 
-const VEHICLES: Partial<Vehicle>[] = [
+const ASSET_BASE_URL = (
+  process.env.VEHICLE_ASSET_BASE_URL ??
+  "https://assets.nexusmobility.example/fleet/cmn"
+).replace(/\/+$/, "");
+
+const COMPACT_FEATURES = [
+  "Air conditioning",
+  "Bluetooth",
+  "USB charging",
+  "Fuel efficient",
+  "Airport pickup",
+] as const;
+
+const SEDAN_FEATURES = [
+  "Air conditioning",
+  "Comfort seating",
+  "Large boot",
+  "Smooth highway ride",
+  "Airport pickup",
+] as const;
+
+const SUV_FEATURES = [
+  "Higher clearance",
+  "Family luggage space",
+  "Road-trip ready",
+  "Air conditioning",
+  "Airport pickup",
+] as const;
+
+const LUXURY_FEATURES = [
+  "Premium cabin",
+  "Automatic transmission",
+  "Executive comfort",
+  "Quiet ride",
+  "Airport pickup",
+] as const;
+
+type SeedVehicleInput = {
+  brand: string;
+  model: string;
+  licensePlate: string;
+  slug: string;
+  category: VehicleCategory;
+  pricePerDayEurCents: number;
+  transmission: Transmission;
+  seats: number;
+  luggageCount: number;
+  features: string[];
+};
+
+const FLEET: SeedVehicleInput[] = [
   {
-    brand: 'Audi',
-    model: 'A4',
-    licensePlate: '22145-A-1',
-    category: VehicleCategory.SEDAN,
-    pricePerDayEurCents: 16000, // 160 EUR
-    imageUrl: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800&q=80',
-    imageUrls: [
-      'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800&q=80',
-      'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=800&q=80',
-      'https://images.unsplash.com/photo-1549317661-bd32c8ce0729?w=800&q=80',
-    ],
-    transmission: Transmission.AUTOMATIC,
-    seats: 5,
-    luggageCount: 2,
-    features: ['SIM 5GB', 'Tag Jawaz', 'Seguro Todo Riesgo', 'Sin límite km'],
-    status: VehicleStatus.AVAILABLE,
-  },
-  {
-    brand: 'Mercedes',
-    model: 'Clase C',
-    licensePlate: '33112-B-7',
-    category: VehicleCategory.SEDAN,
-    pricePerDayEurCents: 19000,
-    imageUrl: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&q=80',
-    imageUrls: [
-      'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&q=80',
-      'https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=800&q=80',
-      'https://images.unsplash.com/photo-1555353540-64580b51c258?w=800&q=80',
-    ],
-    transmission: Transmission.AUTOMATIC,
-    seats: 5,
-    luggageCount: 2,
-    features: ['SIM 5GB', 'Tag Jawaz', 'Seguro Todo Riesgo', 'Sin límite km'],
-    status: VehicleStatus.AVAILABLE,
-  },
-  {
-    brand: 'Hyundai',
-    model: 'Tucson',
-    licensePlate: '44098-C-3',
-    category: VehicleCategory.SUV,
-    pricePerDayEurCents: 12000,
-    imageUrl: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800&q=80',
-    imageUrls: [
-      'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800&q=80',
-      'https://images.unsplash.com/photo-1570733577524-3a047079e80d?w=800&q=80',
-      'https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&q=80',
-    ],
-    transmission: Transmission.AUTOMATIC,
-    seats: 5,
-    luggageCount: 3,
-    features: ['SIM 5GB', 'Tag Jawaz', 'Seguro Todo Riesgo'],
-    status: VehicleStatus.AVAILABLE,
-  },
-  {
-    brand: 'BMW',
-    model: 'Serie 3',
-    licensePlate: '55877-D-9',
-    category: VehicleCategory.LUXURY,
-    pricePerDayEurCents: 22000,
-    imageUrl: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&q=80',
-    imageUrls: [
-      'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&q=80',
-      'https://images.unsplash.com/photo-1616455579100-2ceaa4088152?w=800&q=80',
-      'https://images.unsplash.com/photo-1523983388277-336a66bf9bcd?w=800&q=80',
-    ],
-    transmission: Transmission.AUTOMATIC,
-    seats: 5,
-    luggageCount: 2,
-    features: ['SIM 5GB', 'Tag Jawaz', 'Seguro Todo Riesgo', 'Sin límite km', 'GPS integrado'],
-    status: VehicleStatus.AVAILABLE,
-  },
-  {
-    brand: 'Renault',
-    model: 'Clio',
-    licensePlate: '11904-E-2',
+    brand: "Dacia",
+    model: "Sandero Stepway",
+    licensePlate: "CMN-NXM-001",
+    slug: "dacia-sandero-stepway",
     category: VehicleCategory.COMPACT,
-    pricePerDayEurCents: 6500,
-    imageUrl: 'https://images.unsplash.com/photo-1471444928139-48c5bf5173f8?w=800&q=80',
-    imageUrls: [
-      'https://images.unsplash.com/photo-1471444928139-48c5bf5173f8?w=800&q=80',
-      'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&q=80',
-      'https://images.unsplash.com/photo-1522932467653-e48f79727abf?w=800&q=80',
-    ],
+    pricePerDayEurCents: 2900,
     transmission: Transmission.MANUAL,
     seats: 5,
-    luggageCount: 1,
-    features: ['Tag Jawaz', 'Seguro Todo Riesgo'],
-    status: VehicleStatus.AVAILABLE,
+    luggageCount: 2,
+    features: [...COMPACT_FEATURES],
   },
   {
-    brand: 'Land Rover',
-    model: 'Range Rover Evoque',
-    licensePlate: '66721-F-5',
-    category: VehicleCategory.SUV,
-    pricePerDayEurCents: 28000,
-    imageUrl: 'https://images.unsplash.com/photo-1567343483408-c1e60e1f6af5?w=800&q=80',
-    imageUrls: [
-      'https://images.unsplash.com/photo-1567343483408-c1e60e1f6af5?w=800&q=80',
-      'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&q=80',
-      'https://images.unsplash.com/photo-1625231338715-12d23b1c6c59?w=800&q=80',
-    ],
+    brand: "Renault",
+    model: "Clio 5",
+    licensePlate: "CMN-NXM-002",
+    slug: "renault-clio-5",
+    category: VehicleCategory.COMPACT,
+    pricePerDayEurCents: 3500,
+    transmission: Transmission.MANUAL,
+    seats: 5,
+    luggageCount: 2,
+    features: [...COMPACT_FEATURES],
+  },
+  {
+    brand: "Fiat",
+    model: "500 Hybrid",
+    licensePlate: "CMN-NXM-003",
+    slug: "fiat-500-hybrid",
+    category: VehicleCategory.COMPACT,
+    pricePerDayEurCents: 3900,
+    transmission: Transmission.MANUAL,
+    seats: 4,
+    luggageCount: 1,
+    features: [...COMPACT_FEATURES],
+  },
+  {
+    brand: "Dacia",
+    model: "Logan",
+    licensePlate: "CMN-NXM-004",
+    slug: "dacia-logan",
+    category: VehicleCategory.SEDAN,
+    pricePerDayEurCents: 3400,
+    transmission: Transmission.MANUAL,
+    seats: 5,
+    luggageCount: 3,
+    features: [...SEDAN_FEATURES],
+  },
+  {
+    brand: "Hyundai",
+    model: "Accent",
+    licensePlate: "CMN-NXM-005",
+    slug: "hyundai-accent",
+    category: VehicleCategory.SEDAN,
+    pricePerDayEurCents: 4300,
     transmission: Transmission.AUTOMATIC,
     seats: 5,
     luggageCount: 3,
-    features: ['SIM 5GB', 'Tag Jawaz', 'Seguro Todo Riesgo', 'Sin límite km', 'GPS integrado'],
-    status: VehicleStatus.AVAILABLE,
+    features: [...SEDAN_FEATURES],
   },
-];
+  {
+    brand: "Toyota",
+    model: "Corolla",
+    licensePlate: "CMN-NXM-006",
+    slug: "toyota-corolla",
+    category: VehicleCategory.SEDAN,
+    pricePerDayEurCents: 5200,
+    transmission: Transmission.AUTOMATIC,
+    seats: 5,
+    luggageCount: 3,
+    features: [...SEDAN_FEATURES],
+  },
+  {
+    brand: "Dacia",
+    model: "Duster",
+    licensePlate: "CMN-NXM-007",
+    slug: "dacia-duster",
+    category: VehicleCategory.SUV,
+    pricePerDayEurCents: 4900,
+    transmission: Transmission.MANUAL,
+    seats: 5,
+    luggageCount: 4,
+    features: [...SUV_FEATURES],
+  },
+  {
+    brand: "Kia",
+    model: "Sportage",
+    licensePlate: "CMN-NXM-008",
+    slug: "kia-sportage",
+    category: VehicleCategory.SUV,
+    pricePerDayEurCents: 7200,
+    transmission: Transmission.AUTOMATIC,
+    seats: 5,
+    luggageCount: 4,
+    features: [...SUV_FEATURES],
+  },
+  {
+    brand: "Hyundai",
+    model: "Tucson",
+    licensePlate: "CMN-NXM-009",
+    slug: "hyundai-tucson",
+    category: VehicleCategory.SUV,
+    pricePerDayEurCents: 8200,
+    transmission: Transmission.AUTOMATIC,
+    seats: 5,
+    luggageCount: 4,
+    features: [...SUV_FEATURES],
+  },
+  {
+    brand: "BMW",
+    model: "X1",
+    licensePlate: "CMN-NXM-010",
+    slug: "bmw-x1",
+    category: VehicleCategory.LUXURY,
+    pricePerDayEurCents: 9500,
+    transmission: Transmission.AUTOMATIC,
+    seats: 5,
+    luggageCount: 3,
+    features: [...LUXURY_FEATURES],
+  },
+  {
+    brand: "Mercedes-Benz",
+    model: "C-Class",
+    licensePlate: "CMN-NXM-011",
+    slug: "mercedes-benz-c-class",
+    category: VehicleCategory.LUXURY,
+    pricePerDayEurCents: 12500,
+    transmission: Transmission.AUTOMATIC,
+    seats: 5,
+    luggageCount: 3,
+    features: [...LUXURY_FEATURES],
+  },
+  {
+    brand: "Range Rover",
+    model: "Evoque",
+    licensePlate: "CMN-NXM-012",
+    slug: "range-rover-evoque",
+    category: VehicleCategory.LUXURY,
+    pricePerDayEurCents: 15500,
+    transmission: Transmission.AUTOMATIC,
+    seats: 5,
+    luggageCount: 3,
+    features: [...LUXURY_FEATURES],
+  },
+] as const;
+
+function buildImageUrls(slug: string): string[] {
+  return [
+    `${ASSET_BASE_URL}/${slug}/01.webp`,
+    `${ASSET_BASE_URL}/${slug}/02.webp`,
+    `${ASSET_BASE_URL}/${slug}/03.webp`,
+  ];
+}
 
 async function seed() {
   await AppDataSource.initialize();
   const repo = AppDataSource.getRepository(Vehicle);
 
-  console.log('🌱 Seeding vehicles...');
+  const rows = FLEET.map((vehicle) => {
+    const imageUrls = buildImageUrls(vehicle.slug);
 
-  for (const data of VEHICLES) {
-    // Check by brand+model to avoid duplicates
-    const existing = await repo.findOne({
-      where: { brand: data.brand, model: data.model },
-    });
+    return {
+      brand: vehicle.brand,
+      model: vehicle.model,
+      licensePlate: vehicle.licensePlate,
+      category: vehicle.category,
+      pricePerDayEurCents: vehicle.pricePerDayEurCents,
+      imageUrl: imageUrls[0],
+      imageUrls,
+      transmission: vehicle.transmission,
+      seats: vehicle.seats,
+      luggageCount: vehicle.luggageCount,
+      features: vehicle.features,
+      status: VehicleStatus.AVAILABLE,
+    };
+  });
 
-    if (existing) {
-      console.log(`  ↩  ${data.brand} ${data.model} already exists — skipped.`);
-      continue;
-    }
+  console.log("Seeding realistic CMN fleet...");
+  console.log(`Asset base URL: ${ASSET_BASE_URL}`);
 
-    const vehicle = repo.create(data);
-    await repo.save(vehicle);
-    console.log(`  ✅ ${data.brand} ${data.model} inserted.`);
-  }
+  await repo.upsert(rows, ["licensePlate"]);
+
+  console.log(`Seeded ${rows.length} vehicles.`);
 
   await AppDataSource.destroy();
-  console.log('✅ Seed complete.');
 }
 
-seed().catch((err) => {
-  console.error('❌ Seed failed:', err);
+seed().catch(async (err) => {
+  console.error("Vehicle seed failed:", err);
+  if (AppDataSource.isInitialized) {
+    await AppDataSource.destroy();
+  }
   process.exit(1);
 });
