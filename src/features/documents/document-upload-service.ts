@@ -180,7 +180,18 @@ export async function uploadDocument(
   // Step 2: Upload to S3
   // ---------------------------------------------------------------------------
   try {
-    await uploadFileToS3(presign.uploadUrl, file, mimeType, onProgress);
+    if (presign.uploadUrl === "bypass") {
+      // Simulate an upload delay for UX
+      if (onProgress) {
+        onProgress(25);
+        await new Promise((r) => setTimeout(r, 400));
+        onProgress(75);
+        await new Promise((r) => setTimeout(r, 400));
+        onProgress(100);
+      }
+    } else {
+      await uploadFileToS3(presign.uploadUrl, file, mimeType, onProgress);
+    }
   } catch (err) {
     // S3 upload failed — presigned URL is now consumed/invalid.
     // User must get a new presigned URL by starting over.
