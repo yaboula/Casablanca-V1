@@ -24,7 +24,6 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User, UserRole } from '../users/user.entity';
 
 @Controller('reservations')
-@UseGuards(JwtAuthGuard)
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
@@ -34,6 +33,7 @@ export class ReservationsController {
    * Returns the reservation including stripeClientSecret for frontend payment confirmation.
    */
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() dto: CreateReservationDto,
@@ -66,6 +66,7 @@ export class ReservationsController {
    * OPERATOR/ADMIN see all reservations.
    */
   @Get('my')
+  @UseGuards(JwtAuthGuard)
   async findMy(
     @CurrentUser() user: User,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -81,6 +82,7 @@ export class ReservationsController {
    * OPERATOR/ADMIN can access any.
    */
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
@@ -95,6 +97,7 @@ export class ReservationsController {
    * OPERATOR/ADMIN can also cancel CONFIRMED reservations.
    */
   @Patch(':id/cancel')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,
@@ -110,7 +113,7 @@ export class ReservationsController {
    * OPERATOR and ADMIN only.
    */
   @Patch(':id/complete')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.OPERATOR, UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   async complete(@Param('id', ParseUUIDPipe) id: string) {
