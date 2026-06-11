@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type CalendarDayPrice = {
   date: string;
@@ -363,18 +370,18 @@ function TimeField({
       <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
         {label}
       </span>
-      <select
-        className="min-h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-900 outline-none transition-all focus:border-[#1E41FC] focus:ring-2 focus:ring-[#1E41FC]/10 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
-        disabled={disabled}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {TIME_OPTIONS.map((time) => (
-          <option key={time} value={time}>
-            {time}
-          </option>
-        ))}
-      </select>
+      <Select disabled={disabled} value={value} onValueChange={onChange}>
+        <SelectTrigger className="min-h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-900 outline-none transition-all focus:border-[#1E41FC] focus:ring-2 focus:ring-[#1E41FC]/10 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400">
+          <SelectValue placeholder="Select time" />
+        </SelectTrigger>
+        <SelectContent>
+          {TIME_OPTIONS.map((time) => (
+            <SelectItem key={time} value={time}>
+              {time}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </label>
   );
 }

@@ -17,7 +17,7 @@ export function useQuote(
   useEffect(() => {
     let active = true;
 
-    if (!pickup || !returnDate || !location) {
+    if (!pickup || !returnDate) {
       setTimeout(() => {
         if (!active) return;
         setQuote(null);
@@ -54,7 +54,7 @@ export function useQuote(
           vehicleId,
           pickupAt: pickup,
           returnAt: returnDate,
-          pickupLocation: location as PickupLocation,
+          pickupLocation: (location || "CMN_T1") as PickupLocation,
         },
         controller.signal
       )
