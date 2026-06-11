@@ -331,23 +331,37 @@ export function StripeDepositPanel({
     );
   }
 
-  // Bypass mode — honest demo state
+  // Bypass mode — honest demo state, customer-safe presentation
   const isBypass = process.env.NEXT_PUBLIC_BYPASS_PAYMENT === "true";
   if (isBypass) {
     return (
       <div
-        className="rounded-md border border-amber-200 bg-amber-50 px-4 py-4"
+        className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 space-y-4"
         role="status"
+        aria-label="Demo checkout active"
       >
-        <p className="text-sm font-bold text-amber-900">
-          Demo mode — payment bypassed
-        </p>
-        <p className="mt-1 text-sm text-amber-800">
-          <code className="font-mono text-xs">NEXT_PUBLIC_BYPASS_PAYMENT=true</code>{" "}
-          is active. Real Stripe payment is disabled. Set it to{" "}
-          <code className="font-mono text-xs">false</code> to enable real
-          payments.
-        </p>
+        <div className="flex items-start gap-3">
+          <AlertTriangle
+            aria-hidden="true"
+            className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+          />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-amber-950">
+              Demo checkout active
+            </p>
+            <p className="text-xs text-amber-800 font-light leading-relaxed">
+              Real Stripe payment is disabled in this environment. In production,
+              this panel shows the secure Stripe payment form.
+            </p>
+          </div>
+        </div>
+        <a
+          className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-neutral-950 px-5 text-xs font-semibold text-white transition hover:bg-neutral-800 shadow-sm"
+          href={`/reservations/${reservationId}/check-in`}
+        >
+          Continue to document check-in
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
       </div>
     );
   }
