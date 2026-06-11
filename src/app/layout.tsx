@@ -19,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="flex min-h-screen flex-col bg-white text-neutral-900">
+    <html lang="en" suppressHydrationWarning>
+      <body className="flex min-h-screen flex-col bg-white text-neutral-900" suppressHydrationWarning>
         <a className="skip-link" href="#main-content">
           Skip to main content
         </a>
