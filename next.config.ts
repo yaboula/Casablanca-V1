@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3600",
+      },
+      {
+        protocol: "https",
+        hostname: "nexusmobility.ma",
+      },
     ],
   },
   turbopack: {

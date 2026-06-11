@@ -4,22 +4,23 @@
  *
  * Image strategy:
  * - Uses deterministic absolute URLs derived from VEHICLE_ASSET_BASE_URL.
- * - These are placeholders for owned/CDN assets until final uploads are ready.
- * - Default base is intentionally a reserved .example domain to avoid pretending
- *   generic stock imagery is the final exact-model source.
+ * - The local default points to the app's public fleet assets.
+ * - Override VEHICLE_ASSET_BASE_URL in deployed environments to use the
+ *   production site or CDN origin serving the same folder structure.
  */
 import "dotenv/config";
 import { AppDataSource } from "../../config/data-source";
 import {
+  Vehicle as VehicleEntity,
   Transmission,
-  Vehicle,
   VehicleCategory,
   VehicleStatus,
 } from "../../vehicles/vehicle.entity";
+import { Reservation } from "../../reservations/reservation.entity";
 
 const ASSET_BASE_URL = (
   process.env.VEHICLE_ASSET_BASE_URL ??
-  "https://assets.nexusmobility.example/fleet/cmn"
+  "http://localhost:3600/fleet/cmn"
 ).replace(/\/+$/, "");
 
 const COMPACT_FEATURES = [
@@ -52,6 +53,15 @@ const LUXURY_FEATURES = [
   "Executive comfort",
   "Quiet ride",
   "Airport pickup",
+] as const;
+
+const LEGACY_SEED_LICENSE_PLATES = [
+  "22145-A-1",
+  "33112-B-7",
+  "44098-C-3",
+  "55877-D-9",
+  "11904-E-2",
+  "66721-F-5",
 ] as const;
 
 type SeedVehicleInput = {
@@ -145,7 +155,7 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...SEDAN_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp"],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Dacia",
@@ -224,7 +234,8 @@ function buildImageUrls(slug: string, imageFileNames?: string[]): string[] {
 
 async function seed() {
   await AppDataSource.initialize();
-  const repo = AppDataSource.getRepository(Vehicle);
+  const repo = AppDataSource.getRepository(VehicleEntity);
+  const reservationsRepo = AppDataSource.getRepository(Reservation);
 
   const rows = FLEET.map((vehicle) => {
     const imageUrls = buildImageUrls(vehicle.slug, vehicle.imageFileNames);
@@ -248,7 +259,46 @@ async function seed() {
   console.log("Seeding realistic CMN fleet...");
   console.log(`Asset base URL: ${ASSET_BASE_URL}`);
 
-  await repo.upsert(rows, ["licensePlate"]);
+  const legacyVehicles = await repo.find({
+    where: LEGACY_SEED_LICENSE_PLATES.map((licensePlate) => ({ licensePlate })),
+  });
+
+  for (const legacyVehicle of legacyVehicles) {
+    const reservationCount = await reservationsRepo.count({
+      where: { vehicleId: legacyVehicle.id },
+    });
+
+    if (reservationCount === 0) {
+      await repo.delete({ id: legacyVehicle.id });
+      console.log(`Removed legacy seed vehicle ${legacyVehicle.licensePlate}.`);
+      continue;
+    }
+
+    if (legacyVehicle.status !== VehicleStatus.INACTIVE) {
+      legacyVehicle.status = VehicleStatus.INACTIVE;
+      await repo.save(legacyVehicle);
+      console.log(
+        `Legacy vehicle ${legacyVehicle.licensePlate} retained due to reservations and marked INACTIVE.`,
+      );
+    }
+  }
+
+  for (const row of rows) {
+    const existing = await repo.findOne({
+      where: { licensePlate: row.licensePlate },
+    });
+
+    if (existing) {
+      Object.assign(existing, row);
+      await repo.save(existing);
+      console.log(`Updated ${row.licensePlate}.`);
+      continue;
+    }
+
+    const created = repo.create(row);
+    await repo.save(created);
+    console.log(`Inserted ${row.licensePlate}.`);
+  }
 
   console.log(`Seeded ${rows.length} vehicles.`);
 
