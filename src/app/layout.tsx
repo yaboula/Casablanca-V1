@@ -64,7 +64,7 @@ export default function RootLayout({
                 <div className="flex items-center gap-2.5">
                   <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#1E41FC]" />
                   <span className="font-display text-lg font-medium tracking-tight">
-                    Nexus<span className="text-neutral-400">/Mobility</span>
+                    Nexus <span className="text-neutral-400">Mobility</span>
                   </span>
                 </div>
                 <p className="max-w-md text-[0.9rem] text-neutral-500">
@@ -76,7 +76,7 @@ export default function RootLayout({
               <div className="flex flex-col gap-3 text-[0.85rem] text-neutral-500 md:items-end">
                 <div className="flex flex-wrap gap-x-5 gap-y-2">
                   <Link className="hover:text-neutral-900 transition-colors" href="/catalog">
-                    Vehicles
+                    Fleet
                   </Link>
                   <Link className="hover:text-neutral-900 transition-colors" href="/dashboard">
                     My trips
@@ -113,7 +113,7 @@ export default function RootLayout({
                 </Link>
               </div>
               <div className="text-[0.85rem] font-medium text-neutral-400">
-                (c) {new Date().getFullYear()} Nexus Mobility. Casablanca Mohammed V Airport.
+                © <span suppressHydrationWarning>{new Date().getFullYear()}</span> Nexus Mobility. Casablanca Mohammed V Airport.
               </div>
             </div>
           </div>

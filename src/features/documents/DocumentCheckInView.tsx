@@ -14,12 +14,12 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
-  ShieldCheck,
   FileText,
 } from "lucide-react";
 import { DocumentUploadCard } from "./DocumentUploadCard";
 import type { DocumentViewModel, DocumentType } from "./types";
 import type { ReservationViewModel } from "@/features/reservations/types";
+import { JourneyShell } from "@/features/reservations/JourneyShell";
 
 type DocumentCheckInViewProps = {
   reservation: ReservationViewModel;
@@ -74,30 +74,13 @@ export function DocumentCheckInView({
     documents.find((d) => d.type === type) ?? null;
 
   return (
-    <article className="nx-container py-10 md:py-14 space-y-8">
-      {/* Page header */}
-      <header className="space-y-4">
-        <div className="flex items-center gap-2.5">
-          <span className="w-8 h-8 rounded-lg bg-neutral-50 border border-neutral-200/60 flex items-center justify-center text-[#1E41FC] shadow-sm">
-            <ShieldCheck aria-hidden="true" className="h-4.5 w-4.5" />
-          </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
-            Document check-in
-          </span>
-        </div>
-        <h1 className="nx-h2 font-display font-light text-neutral-900 leading-none">
-          Upload your documents
-        </h1>
-        <p className="nx-lead text-neutral-600 font-light max-w-xl">
-          Upload your passport and driving licence for verification before pickup at Casablanca Mohammed V Airport (CMN).
-        </p>
-        <p className="text-xs text-neutral-400 font-medium">
-          Reservation reference:{" "}
-          <span className="font-mono text-xs text-neutral-900 bg-neutral-50 border border-neutral-200/60 rounded px-2 py-0.5">
-            {reservation.id}
-          </span>
-        </p>
-      </header>
+    <JourneyShell
+      currentStep="verify-docs"
+      reservationId={reservation.id}
+      heading="Upload your documents."
+      subtitle="Upload your passport and driving licence for verification before pickup at Casablanca Mohammed V Airport (CMN)."
+    >
+      <div className="space-y-8">
 
       {/* Upload not allowed banner */}
       {!uploadAllowed && (
@@ -223,6 +206,7 @@ export function DocumentCheckInView({
           </li>
         </ul>
       </aside>
-    </article>
+      </div>
+    </JourneyShell>
   );
 }

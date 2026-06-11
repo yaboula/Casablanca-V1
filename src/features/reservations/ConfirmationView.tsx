@@ -1,18 +1,15 @@
 /**
- * ConfirmationView — step 2 of the Reserve → Verify → Pickup journey.
+ * ConfirmationView — step 2 (Verify) of Reserve → Verify → Pickup.
  *
- * This is the entry point to Verify:
- *   1 Reserve ✅  2 Verify ⏳  3 Pickup 🔒
+ * Wrapped by JourneyShell which provides the shared header + navigable stepper.
+ * This component renders only the content section.
  *
- * Inside Verify:
- *   2A Payment authorization
- *   2B Document check-in
- *
- * Rules:
- * - No fake payment success.
- * - No hardcoded reservation refs.
- * - Demo bypass always honest.
- * - Booking reference shown short to the customer; full UUID secondary.
+ * Payment state rules:
+ * - PENDING_DEPOSIT + stripeClientSecret: show Stripe deposit panel
+ * - PENDING_DEPOSIT + no secret: show config error
+ * - AWAITING_CAPTURE: show processing state
+ * - CONFIRMED: show "upload documents" CTA
+ * - CANCELLED: show cancellation state
  */
 
 import Link from "next/link";
@@ -25,69 +22,22 @@ import {
   CreditCard,
   Check,
   ArrowRight,
-  Lock,
 } from "lucide-react";
 import type { ReservationViewModel } from "./types";
 import { PaymentPanelLoader } from "@/features/payments/PaymentPanelLoader";
+import { JourneyShell } from "./JourneyShell";
+import type { JourneyStepKey } from "./JourneyShell";
 
 type ConfirmationViewProps = {
   reservation: ReservationViewModel;
 };
 
-// ─── Journey progress ────────────────────────────────────────────────────────
-
-type JourneyStatus = "done" | "current" | "locked";
-
-type JourneyStep = {
-  n: number;
-  label: string;
-  status: JourneyStatus;
-  sublabel?: string;
-};
-
-function getJourneySteps(reservationStatus: ReservationViewModel["status"]): JourneyStep[] {
-  const verifyDone = ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(reservationStatus);
-  const verifyCurrent =
-    reservationStatus === "PENDING_DEPOSIT" || reservationStatus === "AWAITING_CAPTURE";
-  const pickupDone = reservationStatus === "IN_PROGRESS" || reservationStatus === "COMPLETED";
-  const pickupCurrent = reservationStatus === "CONFIRMED";
-
-  return [
-    {
-      n: 1,
-      label: "Reserve",
-      sublabel: "Reservation created",
-      status: "done",
-    },
-    {
-      n: 2,
-      label: "Verify",
-      sublabel: verifyDone
-        ? "Payment & documents verified"
-        : verifyCurrent
-          ? "Payment authorization · Document check-in"
-          : "Payment & documents",
-      status: verifyDone ? "done" : verifyCurrent ? "current" : "locked",
-    },
-    {
-      n: 3,
-      label: "Pickup",
-      sublabel: pickupDone
-        ? "Vehicle handed over"
-        : pickupCurrent
-          ? "Ready for pickup"
-          : "Unlocked after operator approval",
-      status: pickupDone ? "done" : pickupCurrent ? "current" : "locked",
-    },
-  ];
-}
-
-// ─── Status config (page-level framing) ─────────────────────────────────────
+// ─── Status → shell heading/subtitle config ───────────────────────────────────
 
 type StatusConfig = {
-  eyebrow: string;
+  step: JourneyStepKey;
   heading: string;
-  description: string;
+  subtitle: string;
   badgeClass: string;
   badgeText: string;
 };
@@ -96,68 +46,68 @@ function getStatusConfig(status: ReservationViewModel["status"]): StatusConfig {
   switch (status) {
     case "PENDING_DEPOSIT":
       return {
-        eyebrow: "Step 2 of 3 — Verify",
+        step: "verify",
         heading: "Verify your reservation.",
-        description:
+        subtitle:
           "Your vehicle is held. Authorize the checkout hold, then upload your documents before arrival.",
         badgeClass: "border-amber-200 bg-amber-50/50 text-amber-800",
         badgeText: "Awaiting verification",
       };
     case "AWAITING_CAPTURE":
       return {
-        eyebrow: "Step 2 of 3 — Verify",
-        heading: "Verify your reservation.",
-        description:
+        step: "verify",
+        heading: "Processing authorization.",
+        subtitle:
           "Authorization received. We are confirming your payment status — this usually takes a few seconds.",
         badgeClass: "border-blue-200 bg-blue-50/50 text-blue-800",
-        badgeText: "Processing authorization",
+        badgeText: "Processing",
       };
     case "CONFIRMED":
       return {
-        eyebrow: "Step 2 of 3 — Verify",
+        step: "verify",
         heading: "Payment verified.",
-        description:
+        subtitle:
           "Checkout hold authorized. Upload your documents to complete check-in and prepare pickup.",
         badgeClass: "border-emerald-200 bg-emerald-50/40 text-emerald-800",
         badgeText: "Payment verified",
       };
     case "IN_PROGRESS":
       return {
-        eyebrow: "Step 3 of 3 — Pickup",
+        step: "pickup",
         heading: "Rental in progress.",
-        description: "The keys have been handed over. Drive safely and enjoy your trip.",
+        subtitle: "The keys have been handed over. Drive safely and enjoy your trip.",
         badgeClass: "border-neutral-200 bg-neutral-50 text-neutral-800",
         badgeText: "In progress",
       };
     case "COMPLETED":
       return {
-        eyebrow: "Completed",
+        step: "pickup",
         heading: "Rental completed.",
-        description: "Thank you for renting with Nexus Mobility.",
+        subtitle: "Thank you for renting with Nexus Mobility.",
         badgeClass: "border-neutral-200 bg-neutral-50 text-neutral-500",
         badgeText: "Completed",
       };
     case "CANCELLED":
       return {
-        eyebrow: "Reservation cancelled",
+        step: "verify",
         heading: "Reservation cancelled.",
-        description:
+        subtitle:
           "This reservation has been cancelled. If you have questions, contact our operations desk.",
         badgeClass: "border-red-200 bg-red-50/50 text-red-800",
         badgeText: "Cancelled",
       };
     default:
       return {
-        eyebrow: "Reservation status",
-        heading: "Reservation status update.",
-        description: "Please check your rental details below.",
+        step: "verify",
+        heading: "Reservation status.",
+        subtitle: "Please review your rental details below.",
         badgeClass: "border-neutral-200 bg-neutral-50 text-neutral-700",
         badgeText: status,
       };
   }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const TERMINAL_LABELS: Record<string, string> = {
   CMN_T1: "Terminal 1 arrivals (CMN T1)",
@@ -181,86 +131,11 @@ function formatEurCents(cents: number): string {
   return `€${(cents / 100).toFixed(2)}`;
 }
 
-/** Short customer-facing reference: first 8 chars of UUID uppercased. */
 function shortRef(uuid: string): string {
   return uuid.replace(/-/g, "").slice(0, 8).toUpperCase();
 }
 
-// ─── Journey Stepper ─────────────────────────────────────────────────────────
-
-function JourneyStepper({ steps }: { steps: JourneyStep[] }) {
-  return (
-    <nav aria-label="Booking journey progress">
-      <ol className="space-y-3">
-        {steps.map((step) => {
-          const isDone = step.status === "done";
-          const isCurrent = step.status === "current";
-          const isLocked = step.status === "locked";
-
-          return (
-            <li key={step.n} className="flex items-start gap-3">
-              <span
-                aria-current={isCurrent ? "step" : undefined}
-                className={[
-                  "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition-all duration-300",
-                  isDone
-                    ? "bg-[#1E41FC] text-white"
-                    : isCurrent
-                      ? "bg-neutral-950 text-white"
-                      : "border border-neutral-200 bg-neutral-50 text-neutral-400",
-                ].join(" ")}
-              >
-                {isDone ? (
-                  <Check aria-hidden="true" className="h-3 w-3" />
-                ) : isLocked ? (
-                  <Lock aria-hidden="true" className="h-2.5 w-2.5" />
-                ) : (
-                  step.n
-                )}
-              </span>
-
-              <div>
-                <span
-                  className={[
-                    "text-xs font-semibold leading-5",
-                    isDone
-                      ? "text-neutral-400"
-                      : isCurrent
-                        ? "text-neutral-950"
-                        : "text-neutral-400",
-                  ].join(" ")}
-                >
-                  {step.label}
-                  {isDone && (
-                    <span className="sr-only"> — completed</span>
-                  )}
-                  {isCurrent && (
-                    <span className="sr-only"> — current step</span>
-                  )}
-                  {isLocked && (
-                    <span className="sr-only"> — locked</span>
-                  )}
-                </span>
-                {step.sublabel && (
-                  <p
-                    className={[
-                      "text-[10px] font-light leading-4",
-                      isDone ? "text-neutral-300" : isCurrent ? "text-neutral-600" : "text-neutral-300",
-                    ].join(" ")}
-                  >
-                    {step.sublabel}
-                  </p>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
-// ─── Next action panel (right column upper) ───────────────────────────────────
+// ─── Sub-step action panel (right column upper) ───────────────────────────────
 
 function NextAction({ reservation }: { reservation: ReservationViewModel }) {
   const { status, stripeClientSecret } = reservation;
@@ -286,12 +161,10 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
       <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <Clock aria-hidden="true" className="h-4 w-4 text-blue-500" />
-          <h2 className="text-sm font-semibold text-blue-950 font-display">
-            Processing authorization
-          </h2>
+          <h2 className="text-sm font-semibold text-blue-950">Processing authorization</h2>
         </div>
         <p className="text-xs leading-relaxed text-blue-800 font-light">
-          Your authorization is being confirmed. This page will reflect the updated status shortly — you can refresh manually or return to your dashboard.
+          Your authorization is being confirmed. This page will reflect the updated status shortly.
         </p>
         <Link
           className="inline-flex h-9 items-center justify-center rounded-full border border-blue-200 bg-white px-5 text-xs font-semibold text-neutral-900 transition hover:bg-neutral-50 shadow-sm"
@@ -308,12 +181,13 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-500" />
-          <h2 className="text-sm font-semibold text-emerald-950 font-display">
+          <h2 className="text-sm font-semibold text-emerald-950">
             Step 2B — Upload documents
           </h2>
         </div>
         <p className="text-xs leading-relaxed text-emerald-800 font-light">
-          Provide your driver&apos;s license and passport so our terminal operators can pre-approve key delivery before your flight lands.
+          Provide your driver&apos;s license and passport so our terminal operators can
+          pre-approve key delivery before your flight lands.
         </p>
         <Link
           className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-neutral-950 px-5 text-xs font-semibold text-white transition hover:bg-neutral-800 shadow-sm"
@@ -329,9 +203,9 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
   if (status === "CANCELLED") {
     return (
       <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-semibold text-neutral-950 font-display">Reservation cancelled</h2>
+        <h2 className="text-sm font-semibold text-neutral-950">Reservation cancelled</h2>
         <p className="text-xs leading-relaxed text-neutral-600 font-light">
-          This booking was cancelled and any card holds have been released. Browse our fleet to open a new reservation.
+          This booking was cancelled and any card holds have been released.
         </p>
         <Link
           className="inline-flex h-10 w-full items-center justify-center rounded-full bg-neutral-950 px-5 text-xs font-semibold text-white transition hover:bg-neutral-800 shadow-sm"
@@ -345,9 +219,9 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
-      <h2 className="text-sm font-semibold text-neutral-900 font-display">Rental dashboard</h2>
+      <h2 className="text-sm font-semibold text-neutral-900">Rental dashboard</h2>
       <p className="text-xs leading-relaxed text-neutral-600 font-light">
-        Access real-time statuses and QR keys directly inside your customer dashboard.
+        Access real-time statuses and QR keys in your customer dashboard.
       </p>
       <Link
         className="inline-flex h-10 w-full items-center justify-center rounded-full border border-neutral-200 bg-white px-5 text-xs font-semibold text-neutral-900 transition hover:bg-neutral-50 shadow-sm"
@@ -359,9 +233,9 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
   );
 }
 
-// ─── What happens next ────────────────────────────────────────────────────────
+// ─── "To prepare pickup" guide ────────────────────────────────────────────────
 
-function NextStepsGuide({ status }: { status: ReservationViewModel["status"] }) {
+function NextStepsGuide({ status, reservationId }: { status: ReservationViewModel["status"]; reservationId: string }) {
   if (!["PENDING_DEPOSIT", "AWAITING_CAPTURE", "CONFIRMED"].includes(status)) return null;
 
   const steps = [
@@ -369,16 +243,19 @@ function NextStepsGuide({ status }: { status: ReservationViewModel["status"] }) 
       n: "2A",
       label: "Authorize the refundable checkout hold",
       done: ["AWAITING_CAPTURE", "CONFIRMED"].includes(status),
+      href: null,
     },
     {
       n: "2B",
       label: "Upload driver's license and passport",
       done: false,
+      href: status === "CONFIRMED" ? `/reservations/${reservationId}/check-in` : null,
     },
     {
       n: "3",
-      label: "Wait for operator approval — then pickup",
+      label: "Wait for operator approval, then pickup",
       done: false,
+      href: null,
     },
   ];
 
@@ -400,10 +277,14 @@ function NextStepsGuide({ status }: { status: ReservationViewModel["status"] }) 
             >
               {step.done ? <Check aria-hidden="true" className="h-2.5 w-2.5" /> : step.n}
             </span>
-            <span
-              className={step.done ? "text-neutral-400 line-through font-light" : "text-neutral-700 font-medium"}
-            >
-              {step.label}
+            <span className={step.done ? "text-neutral-400 line-through font-light" : "text-neutral-700 font-medium"}>
+              {step.href ? (
+                <Link href={step.href} className="hover:underline">
+                  {step.label}
+                </Link>
+              ) : (
+                step.label
+              )}
             </span>
           </li>
         ))}
@@ -416,55 +297,39 @@ function NextStepsGuide({ status }: { status: ReservationViewModel["status"] }) 
 
 export function ConfirmationView({ reservation }: ConfirmationViewProps) {
   const config = getStatusConfig(reservation.status);
-  const steps = getJourneySteps(reservation.status);
 
   return (
-    <article className="nx-container py-10 md:py-14 space-y-10">
-      {/* ── Header ── */}
-      <header className="space-y-4 max-w-2xl">
-        {/* Eyebrow + badge */}
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
-            {config.eyebrow}
-          </span>
-          <span
-            className={`inline-flex items-center rounded-full border px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${config.badgeClass}`}
-          >
-            {config.badgeText}
-          </span>
-        </div>
-
-        {/* H1 */}
-        <h1 className="nx-h2 font-display font-light text-neutral-900 leading-tight">
-          {config.heading}
-        </h1>
-
-        {/* Subtitle */}
-        <p className="nx-lead text-neutral-600 font-light leading-relaxed">
-          {config.description}
-        </p>
-
-        {/* Booking reference — short + accessible full UUID */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-neutral-500 font-medium">Booking reference</span>
+    <JourneyShell
+      currentStep={config.step}
+      reservationId={reservation.id}
+      heading={config.heading}
+      subtitle={config.subtitle}
+    >
+      {/* Status badge + short ref */}
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        <span
+          className={`inline-flex items-center rounded-full border px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${config.badgeClass}`}
+        >
+          {config.badgeText}
+        </span>
+        <span className="flex items-center gap-2 text-xs text-neutral-500">
+          Booking ref:{" "}
           <span
             aria-label={`Booking reference ${shortRef(reservation.id)}`}
-            className="font-mono text-sm font-semibold text-neutral-900 bg-neutral-50 border border-neutral-200/60 rounded px-2 py-0.5 shadow-sm tracking-wider"
+            className="font-mono font-semibold text-neutral-900 bg-neutral-50 border border-neutral-200/60 rounded px-2 py-0.5 tracking-wider"
           >
             {shortRef(reservation.id)}
           </span>
           <details className="text-[10px] text-neutral-400">
-            <summary className="cursor-pointer hover:text-neutral-600 select-none">
-              Full ID
-            </summary>
+            <summary className="cursor-pointer hover:text-neutral-600 select-none">Full ID</summary>
             <span className="font-mono">{reservation.id}</span>
           </details>
-        </div>
-      </header>
+        </span>
+      </div>
 
-      {/* ── Grid Content ── */}
+      {/* ── Content grid ── */}
       <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr] lg:items-start">
-        {/* ── Left: Reservation summary ── */}
+        {/* Left: Reservation summary */}
         <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="border-b border-neutral-100 px-6 py-4 bg-neutral-50/50">
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
@@ -480,12 +345,8 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
                   <Car aria-hidden="true" className="h-4 w-4" />
                 </span>
                 <div>
-                  <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                    Vehicle
-                  </dt>
-                  <dd className="mt-0.5 text-sm font-semibold text-neutral-900">
-                    {reservation.vehicle.name}
-                  </dd>
+                  <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Vehicle</dt>
+                  <dd className="mt-0.5 text-sm font-semibold text-neutral-900">{reservation.vehicle.name}</dd>
                   {reservation.vehicle.category && (
                     <dd className="text-xs text-neutral-500 font-light uppercase tracking-wider mt-0.5">
                       {reservation.vehicle.category} Class
@@ -501,9 +362,7 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
                 <CalendarDays aria-hidden="true" className="h-4 w-4" />
               </span>
               <div>
-                <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                  Rental dates
-                </dt>
+                <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Rental dates</dt>
                 <dd className="mt-0.5 text-sm font-semibold text-neutral-900 flex flex-wrap items-center gap-2">
                   {formatDate(reservation.pickupDate)}
                   <span className="text-neutral-300 font-normal" aria-hidden="true">&rarr;</span>
@@ -522,18 +381,15 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
                 <MapPin aria-hidden="true" className="h-4 w-4" />
               </span>
               <div>
-                <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                  Pickup terminal
-                </dt>
+                <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Pickup terminal</dt>
                 <dd className="mt-0.5 text-sm font-semibold text-neutral-900">
                   Casablanca Mohammed V Airport (CMN)
                 </dd>
-                {reservation.pickupLocation &&
-                  TERMINAL_LABELS[reservation.pickupLocation] && (
-                    <dd className="text-xs text-neutral-500 font-light mt-0.5">
-                      {TERMINAL_LABELS[reservation.pickupLocation]}
-                    </dd>
-                  )}
+                {reservation.pickupLocation && TERMINAL_LABELS[reservation.pickupLocation] && (
+                  <dd className="text-xs text-neutral-500 font-light mt-0.5">
+                    {TERMINAL_LABELS[reservation.pickupLocation]}
+                  </dd>
+                )}
               </div>
             </div>
 
@@ -560,41 +416,27 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
                     </span>
                   </div>
                   <div className="pt-2.5 border-t border-neutral-100 flex justify-between text-xs">
-                    <span className="font-bold text-neutral-900">
-                      Total authorized checkout hold
-                    </span>
+                    <span className="font-bold text-neutral-900">Total authorized checkout hold</span>
                     <span className="font-bold text-[#1E41FC]">
-                      {formatEurCents(
-                        reservation.totalPriceEurCents + reservation.depositEurCents,
-                      )}
+                      {formatEurCents(reservation.totalPriceEurCents + reservation.depositEurCents)}
                     </span>
                   </div>
                 </dd>
                 <dd className="text-[10px] text-neutral-400 font-light leading-relaxed">
-                  The full checkout hold is authorized on your card via Stripe. No funds are captured until your documents are verified and handoff conditions are met. The security deposit is released on return.
+                  The checkout hold is authorized via Stripe. No funds are captured until your documents are
+                  verified and handoff conditions are met. The security deposit is released on return.
                 </dd>
               </div>
             </div>
           </dl>
         </div>
 
-        {/* ── Right: action + journey ── */}
+        {/* Right: action + prep guide */}
         <div className="space-y-6">
-          {/* Primary action */}
           <NextAction reservation={reservation} />
-
-          {/* Next steps guide */}
-          <NextStepsGuide status={reservation.status} />
-
-          {/* Journey stepper */}
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-              Your journey
-            </h3>
-            <JourneyStepper steps={steps} />
-          </div>
+          <NextStepsGuide status={reservation.status} reservationId={reservation.id} />
         </div>
       </div>
-    </article>
+    </JourneyShell>
   );
 }
