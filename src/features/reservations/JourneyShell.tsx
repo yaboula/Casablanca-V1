@@ -13,8 +13,13 @@
  *   /reservations/[id]/waiting   → step 2C (Verify — awaiting review)
  */
 
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ArrowLeft, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { clientFetch } from "@/lib/api/client-fetch";
 
 // ─── Step definitions ──────────────────────────────────────────────────────────
 
@@ -42,10 +47,10 @@ const VISIBLE_STEPS = [
 
 // ─── URL helpers ───────────────────────────────────────────────────────────────
 
-function stepUrl(key: JourneyStepKey, reservationId?: string): string | null {
+function stepUrl(key: JourneyStepKey, reservationId?: string, vehicleId?: string): string | null {
   if (!reservationId) return null;
   switch (key) {
-    case "reserve":     return null;
+    case "reserve":     return vehicleId ? `/book/${vehicleId}` : null;
     case "verify":      return `/reservations/${reservationId}/confirmed`;
     case "verify-docs": return `/reservations/${reservationId}/check-in`;
     case "pickup":      return null;
@@ -58,9 +63,15 @@ function stepUrl(key: JourneyStepKey, reservationId?: string): string | null {
 function JourneyStepper({
   currentStep,
   reservationId,
+  vehicleId,
+  isCancelling,
+  onCancelNavigate,
 }: {
   currentStep: JourneyStepKey;
   reservationId?: string;
+  vehicleId?: string;
+  isCancelling: boolean;
+  onCancelNavigate: (href: string) => void;
 }) {
   const currentDef = STEPS.find((s) => s.key === currentStep)!;
   const currentN = currentDef.n;
@@ -72,13 +83,15 @@ function JourneyStepper({
           const isDone    = step.n < currentN;
           const isCurrent = step.n === currentN;
           const isLocked  = step.n > currentN;
-          const href = isDone ? stepUrl(step.key as JourneyStepKey, reservationId) : null;
+          const href = isDone ? stepUrl(step.key as JourneyStepKey, reservationId, vehicleId) : null;
+          const isReserve = step.key === "reserve";
 
           const circleClass = [
             "flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors",
             isDone    ? "bg-[var(--nx-accent)] text-white"                          : "",
             isCurrent ? "bg-neutral-950 text-white"                                 : "",
             isLocked  ? "border-2 border-[var(--nx-line)] bg-white text-neutral-400" : "",
+            isCancelling && isReserve ? "opacity-50" : "",
           ].filter(Boolean).join(" ");
 
           const labelClass = [
@@ -89,7 +102,9 @@ function JourneyStepper({
 
           const circleEl = (
             <span aria-current={isCurrent ? "step" : undefined} className={circleClass}>
-              {isDone ? (
+              {isCancelling && isReserve ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : isDone ? (
                 <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
               ) : (
                 <span aria-hidden="true">{step.n}</span>
@@ -98,14 +113,20 @@ function JourneyStepper({
           );
 
           const inner = isDone && href ? (
-            <Link
+            <a
               href={href}
+              onClick={(e) => {
+                if (isReserve) {
+                  e.preventDefault();
+                  onCancelNavigate(href);
+                }
+              }}
               aria-label={`Go back to step ${step.n}: ${step.label}`}
-              className="group flex items-center gap-2"
+              className={`group flex items-center gap-2 ${isCancelling && isReserve ? "pointer-events-none" : ""}`}
             >
               {circleEl}
               <span className={labelClass}>{step.label}</span>
-            </Link>
+            </a>
           ) : (
             <div className="flex items-center gap-2">
               {circleEl}
@@ -138,14 +159,19 @@ function JourneyStepper({
 export type NavAction = {
   label: string;
   href: string;
+  isCancelAction?: boolean;
 };
 
 function NavFooter({
   prev,
   next,
+  isCancelling,
+  onCancelNavigate,
 }: {
   prev?: NavAction;
   next?: NavAction;
+  isCancelling?: boolean;
+  onCancelNavigate?: (href: string) => void;
 }) {
   if (!prev && !next) return null;
 
@@ -153,13 +179,23 @@ function NavFooter({
     <div className="mt-10 flex items-center justify-between border-t border-neutral-100 pt-8">
       <div>
         {prev ? (
-          <Link
+          <a
             href={prev.href}
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 text-xs font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950"
+            onClick={(e) => {
+              if (prev.isCancelAction && onCancelNavigate) {
+                e.preventDefault();
+                onCancelNavigate(prev.href);
+              }
+            }}
+            className={`inline-flex h-10 items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 text-xs font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 ${isCancelling && prev.isCancelAction ? "opacity-50 pointer-events-none" : ""}`}
           >
-            <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
+            {isCancelling && prev.isCancelAction ? (
+              <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
+            )}
             {prev.label}
-          </Link>
+          </a>
         ) : (
           <span />
         )}
@@ -185,6 +221,7 @@ function NavFooter({
 export type JourneyShellProps = {
   currentStep: JourneyStepKey;
   reservationId?: string;
+  vehicleId?: string;
   heading: string;
   subtitle: string;
   /** Back button — appears bottom-left */
@@ -197,6 +234,7 @@ export type JourneyShellProps = {
 export function JourneyShell({
   currentStep,
   reservationId,
+  vehicleId,
   heading,
   subtitle,
   prev,
@@ -205,6 +243,23 @@ export function JourneyShell({
 }: JourneyShellProps) {
   const stepDef = STEPS.find((s) => s.key === currentStep)!;
   const eyebrow = `Step ${stepDef.mainStep} of 3`;
+  const router = useRouter();
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancelAndNavigate = async (href: string) => {
+    if (!reservationId) return;
+    setIsCancelling(true);
+    try {
+      await clientFetch(`/reservations/${reservationId}/cancel`, {
+        method: "PATCH",
+      });
+      router.push(href);
+    } catch {
+      setIsCancelling(false);
+      // Fallback: just redirect if cancel fails
+      router.push(href);
+    }
+  };
 
   return (
     <section className="mx-auto w-full max-w-7xl px-6 py-10 md:py-14">
@@ -220,13 +275,24 @@ export function JourneyShell({
       </div>
 
       {/* Navigable stepper */}
-      <JourneyStepper currentStep={currentStep} reservationId={reservationId} />
+      <JourneyStepper 
+        currentStep={currentStep} 
+        reservationId={reservationId} 
+        vehicleId={vehicleId}
+        isCancelling={isCancelling}
+        onCancelNavigate={handleCancelAndNavigate}
+      />
 
       {/* Page content */}
       {children}
 
       {/* Bottom navigation */}
-      <NavFooter prev={prev} next={next} />
+      <NavFooter 
+        prev={prev} 
+        next={next} 
+        isCancelling={isCancelling} 
+        onCancelNavigate={handleCancelAndNavigate} 
+      />
     </section>
   );
 }

@@ -75,6 +75,7 @@ export function DocumentCheckInView({
     <JourneyShell
       currentStep="verify-docs"
       reservationId={reservation.id}
+      vehicleId={reservation.vehicle?.id}
       heading="Upload your documents."
       subtitle="Upload your passport and driving licence for verification before pickup at Casablanca Mohammed V Airport (CMN)."
       prev={{ label: "Back to payment summary", href: `/reservations/${reservation.id}/confirmed` }}

@@ -306,12 +306,20 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
         ? { label: "Go to dashboard", href: "/dashboard" }
         : undefined;
 
+  const prevNav = {
+    label: "Back to booking form",
+    href: `/book/${reservation.vehicle?.id}`,
+    isCancelAction: true,
+  };
+
   return (
     <JourneyShell
       currentStep={config.step}
       reservationId={reservation.id}
+      vehicleId={reservation.vehicle?.id}
       heading={config.heading}
       subtitle={config.subtitle}
+      prev={prevNav}
       next={nextNav}
     >
       {/* Status badge + short ref */}

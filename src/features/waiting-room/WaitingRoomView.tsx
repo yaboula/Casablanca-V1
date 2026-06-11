@@ -26,8 +26,6 @@ import {
   Wifi,
   WifiOff,
   RefreshCw,
-  ArrowRight,
-  Ticket,
   ShieldCheck,
   AlertCircle,
   MapPin,
@@ -227,6 +225,7 @@ export function WaitingRoomView({
     <JourneyShell
       currentStep="verify"
       reservationId={reservation.id}
+      vehicleId={reservation.vehicle?.id}
       heading={
         approved
           ? "You are ready to drive."
