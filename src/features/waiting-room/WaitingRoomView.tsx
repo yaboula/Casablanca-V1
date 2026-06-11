@@ -40,6 +40,7 @@ import { adaptDocuments } from "@/features/documents/document-adapters";
 import type { ReservationViewModel } from "@/features/reservations/types";
 import type { DocumentViewModel } from "@/features/documents/types";
 import type { SseConnectionState, SseRawEvent, WaitingRoomPhase } from "./types";
+import { JourneyShell } from "@/features/reservations/JourneyShell";
 
 // ---------------------------------------------------------------------------
 // Phase derivation
@@ -215,10 +216,36 @@ export function WaitingRoomView({
     }
   };
 
+  const navNext =
+    approved && reservation.hasQrCode
+      ? { label: "View smart ticket", href: `/reservations/${reservation.id}/ticket` }
+      : rejected
+      ? { label: "Re-upload documents", href: `/reservations/${reservation.id}/check-in` }
+      : undefined;
+
   return (
-    <article className="nx-container py-10 md:py-14 max-w-[720px]">
+    <JourneyShell
+      currentStep="verify"
+      reservationId={reservation.id}
+      heading={
+        approved
+          ? "You are ready to drive."
+          : rejected
+          ? "One document needs attention."
+          : "Documents under review."
+      }
+      subtitle={
+        approved
+          ? "Your documents are approved and your smart ticket is active. Present the pickup pass when you meet your operator in the arrivals hall."
+          : rejected
+          ? "Our operator could not verify one of your uploaded documents. Please review the comments below and re-upload the file."
+          : "Our operators are verifying your documents. This usually takes under 15 minutes — you can safely leave this page or wait."
+      }
+      prev={{ label: "Back to document check-in", href: `/reservations/${reservation.id}/check-in` }}
+      next={navNext}
+    >
       {/* Top mini-bar for live connection status */}
-      <div className="flex items-center justify-between gap-4 border-b border-neutral-100 pb-4 mb-10 text-xs">
+      <div className="flex items-center justify-between gap-4 border-b border-neutral-100 pb-4 mb-10 text-xs max-w-[720px] mx-auto">
         <div className="flex items-center gap-2 text-neutral-500 font-medium">
           <Clock aria-hidden="true" className="h-4 w-4" />
           <span>Waiting Room</span>
@@ -368,27 +395,7 @@ export function WaitingRoomView({
           </div>
         </div>
 
-        {/* Interactive Action buttons */}
         <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
-          {approved && reservation.hasQrCode && (
-            <Link
-              className="nx-btn-primary inline-flex h-11 items-center justify-center gap-2 rounded-full bg-neutral-950 px-6 text-sm font-semibold text-white transition-colors duration-300 hover:bg-[#1E41FC] shadow-sm"
-              href={`/reservations/${reservation.id}/ticket`}
-            >
-              <Ticket aria-hidden="true" className="h-4 w-4" />
-              View smart ticket
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          )}
-          {rejected && (
-            <Link
-              className="nx-btn-primary inline-flex h-11 items-center justify-center gap-2 rounded-full bg-neutral-950 px-6 text-sm font-semibold text-white transition-colors duration-300 hover:bg-[#1E41FC] shadow-sm"
-              href={`/reservations/${reservation.id}/check-in`}
-            >
-              Re-upload documents
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          )}
           <Link
             className="inline-flex h-11 items-center justify-center rounded-full border border-neutral-200 bg-white px-6 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors shadow-sm"
             href="/dashboard"
@@ -408,6 +415,6 @@ export function WaitingRoomView({
           </p>
         )}
       </div>
-    </article>
+    </JourneyShell>
   );
 }
