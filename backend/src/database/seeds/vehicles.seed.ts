@@ -65,6 +65,7 @@ type SeedVehicleInput = {
   seats: number;
   luggageCount: number;
   features: string[];
+  imageFileNames?: string[];
 };
 
 const FLEET: SeedVehicleInput[] = [
@@ -79,6 +80,7 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 2,
     features: [...COMPACT_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Renault",
@@ -91,6 +93,7 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 2,
     features: [...COMPACT_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Fiat",
@@ -103,6 +106,7 @@ const FLEET: SeedVehicleInput[] = [
     seats: 4,
     luggageCount: 1,
     features: [...COMPACT_FEATURES],
+    imageFileNames: ["01.webp", "02.webp"],
   },
   {
     brand: "Dacia",
@@ -115,18 +119,20 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...SEDAN_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Hyundai",
-    model: "Accent",
+    model: "Elantra",
     licensePlate: "CMN-NXM-005",
-    slug: "hyundai-accent",
+    slug: "hyundai-elantra",
     category: VehicleCategory.SEDAN,
     pricePerDayEurCents: 4300,
     transmission: Transmission.AUTOMATIC,
     seats: 5,
     luggageCount: 3,
     features: [...SEDAN_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Toyota",
@@ -139,6 +145,7 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...SEDAN_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp"],
   },
   {
     brand: "Dacia",
@@ -151,6 +158,7 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 4,
     features: [...SUV_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Kia",
@@ -163,6 +171,7 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 4,
     features: [...SUV_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Hyundai",
@@ -175,6 +184,7 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 4,
     features: [...SUV_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "BMW",
@@ -187,23 +197,12 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...LUXURY_FEATURES],
-  },
-  {
-    brand: "Mercedes-Benz",
-    model: "C-Class",
-    licensePlate: "CMN-NXM-011",
-    slug: "mercedes-benz-c-class",
-    category: VehicleCategory.LUXURY,
-    pricePerDayEurCents: 12500,
-    transmission: Transmission.AUTOMATIC,
-    seats: 5,
-    luggageCount: 3,
-    features: [...LUXURY_FEATURES],
+    imageFileNames: ["01.webp", "02.webp"],
   },
   {
     brand: "Range Rover",
     model: "Evoque",
-    licensePlate: "CMN-NXM-012",
+    licensePlate: "CMN-NXM-011",
     slug: "range-rover-evoque",
     category: VehicleCategory.LUXURY,
     pricePerDayEurCents: 15500,
@@ -211,15 +210,16 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...LUXURY_FEATURES],
+    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
 ] as const;
 
-function buildImageUrls(slug: string): string[] {
-  return [
-    `${ASSET_BASE_URL}/${slug}/01.webp`,
-    `${ASSET_BASE_URL}/${slug}/02.webp`,
-    `${ASSET_BASE_URL}/${slug}/03.webp`,
-  ];
+function buildImageUrls(slug: string, imageFileNames?: string[]): string[] {
+  const fileNames = imageFileNames?.length
+    ? imageFileNames
+    : ["01.webp", "02.webp", "03.webp"];
+
+  return fileNames.map((fileName) => `${ASSET_BASE_URL}/${slug}/${fileName}`);
 }
 
 async function seed() {
@@ -227,7 +227,7 @@ async function seed() {
   const repo = AppDataSource.getRepository(Vehicle);
 
   const rows = FLEET.map((vehicle) => {
-    const imageUrls = buildImageUrls(vehicle.slug);
+    const imageUrls = buildImageUrls(vehicle.slug, vehicle.imageFileNames);
 
     return {
       brand: vehicle.brand,
