@@ -18,7 +18,7 @@
 
 import { clientFetch } from "@/lib/api/client-fetch";
 import { normalizeApiError, type ApiErrorPayload } from "@/lib/api/errors";
-import type { ReservationCreateDto } from "./types";
+import type { ReservationCreateDto, QuoteReservationDto, QuoteViewModel } from "./types";
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -37,6 +37,15 @@ export type ReservationApiResponse = {
   totalDays: number;
   totalPriceEurCents: number;
   depositEurCents: number;
+  dailyRateEurCentsSnapshot?: number;
+  subtotalEurCents?: number;
+  totalDueNowEurCents?: number;
+  chargedDayUnitsX2?: number;
+  fullDays?: number;
+  extraHours?: number;
+  extraBillingType?: string;
+  pricingPolicyVersion?: string;
+  currency?: string;
   pickupLocation: string;
   stripeClientSecret: string | null;
   stripePaymentIntentId: string | null;
@@ -104,6 +113,34 @@ export async function createReservation(
     );
 
     return { ok: true, reservation: response.data };
+  } catch (error) {
+    return { ok: false, error: normalizeApiError(error) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// quoteReservation
+// ---------------------------------------------------------------------------
+
+export type QuoteReservationResult =
+  | { ok: true; quote: QuoteViewModel }
+  | { ok: false; error: ApiErrorPayload };
+
+export async function quoteReservation(
+  dto: QuoteReservationDto,
+  signal?: AbortSignal,
+): Promise<QuoteReservationResult> {
+  try {
+    const response = await clientFetch<{ data: QuoteViewModel }>(
+      "/reservations/quote",
+      {
+        method: "POST",
+        body: dto as unknown as Record<string, unknown>,
+        signal,
+      },
+    );
+
+    return { ok: true, quote: response.data };
   } catch (error) {
     return { ok: false, error: normalizeApiError(error) };
   }

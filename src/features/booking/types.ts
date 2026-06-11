@@ -60,10 +60,14 @@ export type BookingDraft = {
  */
 export type ReservationCreateDto = {
   vehicleId: string;
+  /** Preferred backend datetime field. ISO 8601 date-time string. */
+  pickupAt: string;
+  /** Preferred backend datetime field. ISO 8601 date-time string. */
+  returnAt: string;
   /** ISO 8601 date string, e.g. "2026-07-15" */
-  pickupDate: string;
+  pickupDate?: string;
   /** ISO 8601 date string, e.g. "2026-07-20" */
-  returnDate: string;
+  returnDate?: string;
   /** Airport pickup terminal */
   pickupLocation: PickupLocation;
   /** Optional — driver/customer full name */
@@ -110,4 +114,42 @@ export type BookingFormValues = {
   pickupLocation: PickupLocation;
   driverName: string;
   driverPhone: string;
+};
+
+// ---------------------------------------------------------------------------
+// Quote View Model & DTO
+// ---------------------------------------------------------------------------
+
+export type QuoteReservationDto = {
+  vehicleId: string;
+  pickupAt: string;
+  returnAt: string;
+  pickupLocation: PickupLocation;
+};
+
+export type ExtraBillingType = "NONE" | "GRACE" | "HALF_DAY" | "FULL_DAY";
+
+export type PricingQuote = {
+  dailyRateEurCents: number;
+  fullDays: number;
+  extraHours: number;
+  extraBillingType: ExtraBillingType;
+  chargedDayUnitsX2: number;
+  chargedDayUnits: string;
+  subtotalEurCents: number;
+  estimatedTotalEurCents: number;
+  depositEurCents: number;
+  totalDueNowEurCents: number;
+  currency: string;
+  pricingPolicyVersion: string;
+};
+
+export type QuoteViewModel = {
+  available: boolean;
+  pricing: PricingQuote;
+  policy: {
+    graceHours: number;
+    halfDayUntilHours: number;
+    pricingPolicyVersion: string;
+  };
 };

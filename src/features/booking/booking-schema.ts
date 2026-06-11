@@ -3,8 +3,8 @@
  *
  * Fields validated here map exactly to what the backend DTO accepts:
  * - vehicleId (handled by route, not form)
- * - pickupDate (ISO date string)
- * - returnDate (ISO date string)
+ * - pickupDate (ISO date/time string)
+ * - returnDate (ISO date/time string)
  * - pickupLocation (CMN_T1 | CMN_T2)
  * - customerName (optional driver name, max 120)
  * - customerPhone (optional, phone format)
@@ -17,11 +17,9 @@
 import { z } from "zod";
 import { PICKUP_LOCATIONS } from "./types";
 
-// ---------------------------------------------------------------------------
 // Date helpers
-// ---------------------------------------------------------------------------
 
-const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const isoDateRegex = /^\d{4}-\d{2}-\d{2}/;
 
 function isValidDate(value: string): boolean {
   if (!isoDateRegex.test(value)) return false;
@@ -36,20 +34,21 @@ function isTodayOrFuture(value: string): boolean {
   return date >= today;
 }
 
-// ---------------------------------------------------------------------------
 // Field schemas
-// ---------------------------------------------------------------------------
 
 const pickupDateSchema = z
   .string()
-  .min(1, "Pickup date is required.")
-  .refine(isValidDate, "Pickup date must be a valid date.")
-  .refine(isTodayOrFuture, "Pickup date must be today or in the future.");
+  .min(1, "Pickup date and time are required.")
+  .refine(isValidDate, "Pickup date and time must be valid.")
+  .refine(
+    isTodayOrFuture,
+    "Pickup date and time must be today or in the future.",
+  );
 
 const returnDateSchema = z
   .string()
-  .min(1, "Return date is required.")
-  .refine(isValidDate, "Return date must be a valid date.");
+  .min(1, "Return date and time are required.")
+  .refine(isValidDate, "Return date and time must be valid.");
 
 const pickupLocationSchema = z.enum(
   PICKUP_LOCATIONS.map((l) => l.value) as [string, ...string[]],
@@ -57,7 +56,7 @@ const pickupLocationSchema = z.enum(
 );
 
 /**
- * Driver name — maps to customerName in backend DTO (optional).
+ * Driver name maps to customerName in backend DTO (optional).
  * Required in UI for operational clarity even though backend marks it optional.
  */
 const driverNameSchema = z
@@ -78,10 +77,6 @@ const driverPhoneSchema = z
     "Please enter a valid phone number (digits, spaces, +, -, parentheses).",
   );
 
-// ---------------------------------------------------------------------------
-// Composite booking form schema
-// ---------------------------------------------------------------------------
-
 export const bookingFormSchema = z
   .object({
     pickupDate: pickupDateSchema,
@@ -93,12 +88,12 @@ export const bookingFormSchema = z
   .refine(
     (data) => {
       if (!isValidDate(data.pickupDate) || !isValidDate(data.returnDate)) {
-        return true; // Field-level errors already cover this
+        return true;
       }
       return new Date(data.returnDate) > new Date(data.pickupDate);
     },
     {
-      message: "Return date must be after the pickup date.",
+      message: "Return date and time must be after pickup.",
       path: ["returnDate"],
     },
   );
@@ -110,24 +105,3 @@ export type BookingFormSchema = z.infer<typeof bookingFormSchema>;
  * pickupLocation is optional at input because enum resolution may differ.
  */
 export type BookingFormInput = z.input<typeof bookingFormSchema>;
-
-// ---------------------------------------------------------------------------
-// Duration helper (display only — backend owns canonical total)
-// ---------------------------------------------------------------------------
-
-/**
- * Computes display-only day count for UI summary.
- * This value is NEVER sent to the backend as a total or truth.
- * Backend computes the definitive duration and pricing.
- */
-export function computeDisplayDays(
-  pickupDate: string,
-  returnDate: string,
-): number | null {
-  if (!isValidDate(pickupDate) || !isValidDate(returnDate)) return null;
-  const start = new Date(pickupDate);
-  const end = new Date(returnDate);
-  const diffMs = end.getTime() - start.getTime();
-  if (diffMs <= 0) return null;
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-}
