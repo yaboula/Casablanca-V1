@@ -9,11 +9,9 @@
  */
 
 import { useState, useCallback } from "react";
-import Link from "next/link";
 import {
   CheckCircle2,
   AlertTriangle,
-  ArrowRight,
   FileText,
 } from "lucide-react";
 import { DocumentUploadCard } from "./DocumentUploadCard";
@@ -79,6 +77,12 @@ export function DocumentCheckInView({
       reservationId={reservation.id}
       heading="Upload your documents."
       subtitle="Upload your passport and driving licence for verification before pickup at Casablanca Mohammed V Airport (CMN)."
+      prev={{ label: "Back to payment summary", href: `/reservations/${reservation.id}/confirmed` }}
+      next={
+        isAllSubmitted
+          ? { label: "Track review status", href: `/reservations/${reservation.id}/waiting` }
+          : undefined
+      }
     >
       <div className="space-y-8">
 
@@ -160,26 +164,6 @@ export function DocumentCheckInView({
             type={type}
           />
         ))}
-      </div>
-
-      {/* Navigation Footer */}
-      <div className="flex flex-col items-start gap-4 border-t border-neutral-100 pt-8 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          className="text-xs font-semibold text-neutral-500 hover:text-neutral-900 transition-colors"
-          href={`/reservations/${reservation.id}/confirmed`}
-        >
-          &larr; Back to reservation summary
-        </Link>
-
-        {isAllSubmitted && (
-          <Link
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-neutral-950 px-5 text-xs font-semibold text-white transition hover:bg-neutral-800 shadow-sm"
-            href={`/reservations/${reservation.id}/waiting`}
-          >
-            Track review status
-            <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
-          </Link>
-        )}
       </div>
 
       {/* Help Instructions */}

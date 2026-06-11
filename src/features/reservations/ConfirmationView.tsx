@@ -298,12 +298,21 @@ function NextStepsGuide({ status, reservationId }: { status: ReservationViewMode
 export function ConfirmationView({ reservation }: ConfirmationViewProps) {
   const config = getStatusConfig(reservation.status);
 
+  // Nav buttons: confirmed → can go to check-in; never go back to booking form
+  const nextNav =
+    reservation.status === "CONFIRMED"
+      ? { label: "Continue to document check-in", href: `/reservations/${reservation.id}/check-in` }
+      : reservation.status === "AWAITING_CAPTURE"
+        ? { label: "Go to dashboard", href: "/dashboard" }
+        : undefined;
+
   return (
     <JourneyShell
       currentStep={config.step}
       reservationId={reservation.id}
       heading={config.heading}
       subtitle={config.subtitle}
+      next={nextNav}
     >
       {/* Status badge + short ref */}
       <div className="mb-8 flex flex-wrap items-center gap-3">

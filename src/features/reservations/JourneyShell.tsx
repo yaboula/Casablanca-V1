@@ -1,22 +1,22 @@
 /**
  * JourneyShell — shared layout for Reserve → Verify → Pickup steps.
  *
- * Provides the identical header template used in BookingShell (Step X of 3,
- * h1, subtitle) plus a navigable horizontal stepper. Used by:
- *   - /book/[vehicleId]           → step 1 (via BookingShell which inlines this pattern)
- *   - /reservations/[id]/confirmed → step 2 (Verify)
- *   - /reservations/[id]/check-in  → step 2B (Verify — documents)
- *   - /reservations/[id]/waiting   → step 2C (Verify — awaiting review)
+ * Provides:
+ * - Identical header template to BookingShell (Step X of 3, h1, subtitle)
+ * - Navigable horizontal stepper
+ * - Bottom nav bar with ← Back and Continue → buttons
  *
- * Steps are navigable via links when the reservationId is provided. The
- * current step is highlighted; done steps link back; locked steps are
- * presented but not clickable.
+ * Used by:
+ *   /book/[vehicleId]           → step 1 (BookingShell inlines this pattern)
+ *   /reservations/[id]/confirmed → step 2 (Verify)
+ *   /reservations/[id]/check-in  → step 2B (Verify — documents)
+ *   /reservations/[id]/waiting   → step 2C (Verify — awaiting review)
  */
 
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ArrowLeft, ArrowRight } from "lucide-react";
 
-// ─── Step definitions ─────────────────────────────────────────────────────────
+// ─── Step definitions ──────────────────────────────────────────────────────────
 
 export type JourneyStepKey = "reserve" | "verify" | "verify-docs" | "pickup";
 
@@ -24,7 +24,6 @@ type StepDef = {
   key: JourneyStepKey;
   n: number;
   label: string;
-  /** Which main step number this belongs to (for the "Step X of 3" eyebrow) */
   mainStep: 1 | 2 | 3;
 };
 
@@ -35,34 +34,34 @@ const STEPS: StepDef[] = [
   { key: "pickup",      n: 3, label: "Pickup",   mainStep: 3 },
 ];
 
-/** Unique visible steps (de-duped by n for the stepper) */
 const VISIBLE_STEPS = [
-  { n: 1, label: "Reserve",  key: "reserve"     },
-  { n: 2, label: "Verify",   key: "verify"      },
-  { n: 3, label: "Pickup",   key: "pickup"      },
+  { n: 1, label: "Reserve", key: "reserve"     },
+  { n: 2, label: "Verify",  key: "verify"      },
+  { n: 3, label: "Pickup",  key: "pickup"      },
 ] as const;
 
-// ─── URL helpers ──────────────────────────────────────────────────────────────
+// ─── URL helpers ───────────────────────────────────────────────────────────────
 
 function stepUrl(key: JourneyStepKey, reservationId?: string): string | null {
   if (!reservationId) return null;
   switch (key) {
-    case "reserve":     return null; // can't navigate back to booking form
+    case "reserve":     return null;
     case "verify":      return `/reservations/${reservationId}/confirmed`;
     case "verify-docs": return `/reservations/${reservationId}/check-in`;
-    case "pickup":      return null; // not yet a navigable page
+    case "pickup":      return null;
     default:            return null;
   }
 }
 
-// ─── Stepper ─────────────────────────────────────────────────────────────────
+// ─── Stepper ──────────────────────────────────────────────────────────────────
 
-type StepperProps = {
+function JourneyStepper({
+  currentStep,
+  reservationId,
+}: {
   currentStep: JourneyStepKey;
   reservationId?: string;
-};
-
-function JourneyStepper({ currentStep, reservationId }: StepperProps) {
+}) {
   const currentDef = STEPS.find((s) => s.key === currentStep)!;
   const currentN = currentDef.n;
 
@@ -73,26 +72,22 @@ function JourneyStepper({ currentStep, reservationId }: StepperProps) {
           const isDone    = step.n < currentN;
           const isCurrent = step.n === currentN;
           const isLocked  = step.n > currentN;
-
-          // Navigation: done steps and current verify sub-steps are linkable
-          const href = isDone ? stepUrl(step.key as JourneyStepKey, reservationId)
-                     : isCurrent ? null
-                     : null;
+          const href = isDone ? stepUrl(step.key as JourneyStepKey, reservationId) : null;
 
           const circleClass = [
             "flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors",
-            isDone    ? "bg-[var(--nx-accent)] text-white"                      : "",
-            isCurrent ? "bg-neutral-950 text-white"                             : "",
+            isDone    ? "bg-[var(--nx-accent)] text-white"                          : "",
+            isCurrent ? "bg-neutral-950 text-white"                                 : "",
             isLocked  ? "border-2 border-[var(--nx-line)] bg-white text-neutral-400" : "",
           ].filter(Boolean).join(" ");
 
           const labelClass = [
             "text-sm font-bold transition-colors",
             isCurrent ? "text-neutral-950" : "text-neutral-400",
-            isDone && href ? "hover:text-neutral-700" : "",
+            isDone && href ? "group-hover:text-neutral-700" : "",
           ].filter(Boolean).join(" ");
 
-          const circle = (
+          const circleEl = (
             <span aria-current={isCurrent ? "step" : undefined} className={circleClass}>
               {isDone ? (
                 <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
@@ -102,25 +97,19 @@ function JourneyStepper({ currentStep, reservationId }: StepperProps) {
             </span>
           );
 
-          const label = <span className={labelClass}>{step.label}</span>;
-
-          const inner = (
+          const inner = isDone && href ? (
+            <Link
+              href={href}
+              aria-label={`Go back to step ${step.n}: ${step.label}`}
+              className="group flex items-center gap-2"
+            >
+              {circleEl}
+              <span className={labelClass}>{step.label}</span>
+            </Link>
+          ) : (
             <div className="flex items-center gap-2">
-              {isDone && href ? (
-                <Link
-                  href={href}
-                  aria-label={`Go back to step ${step.n}: ${step.label}`}
-                  className="flex items-center gap-2"
-                >
-                  {circle}
-                  {label}
-                </Link>
-              ) : (
-                <>
-                  {circle}
-                  {label}
-                </>
-              )}
+              {circleEl}
+              <span className={labelClass}>{step.label}</span>
             </div>
           );
 
@@ -144,17 +133,64 @@ function JourneyStepper({ currentStep, reservationId }: StepperProps) {
   );
 }
 
+// ─── Nav footer ───────────────────────────────────────────────────────────────
+
+export type NavAction = {
+  label: string;
+  href: string;
+};
+
+function NavFooter({
+  prev,
+  next,
+}: {
+  prev?: NavAction;
+  next?: NavAction;
+}) {
+  if (!prev && !next) return null;
+
+  return (
+    <div className="mt-10 flex items-center justify-between border-t border-neutral-100 pt-8">
+      <div>
+        {prev ? (
+          <Link
+            href={prev.href}
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 text-xs font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950"
+          >
+            <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
+            {prev.label}
+          </Link>
+        ) : (
+          <span />
+        )}
+      </div>
+
+      <div>
+        {next && (
+          <Link
+            href={next.href}
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-neutral-950 px-5 text-xs font-semibold text-white shadow-sm transition hover:bg-neutral-800"
+          >
+            {next.label}
+            <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
-type JourneyShellProps = {
-  /** Which step this page represents */
+export type JourneyShellProps = {
   currentStep: JourneyStepKey;
-  /** Reservation UUID — enables navigable back-links between steps */
   reservationId?: string;
-  /** Page h1 */
   heading: string;
-  /** Subtitle below the h1 */
   subtitle: string;
+  /** Back button — appears bottom-left */
+  prev?: NavAction;
+  /** Forward button — appears bottom-right */
+  next?: NavAction;
   children: React.ReactNode;
 };
 
@@ -163,6 +199,8 @@ export function JourneyShell({
   reservationId,
   heading,
   subtitle,
+  prev,
+  next,
   children,
 }: JourneyShellProps) {
   const stepDef = STEPS.find((s) => s.key === currentStep)!;
@@ -170,7 +208,7 @@ export function JourneyShell({
 
   return (
     <section className="mx-auto w-full max-w-7xl px-6 py-10 md:py-14">
-      {/* Header — identical template to BookingShell */}
+      {/* Header */}
       <div className="mb-8 max-w-2xl">
         <p className="text-sm font-bold uppercase tracking-[0.14em] text-neutral-500">
           {eyebrow}
@@ -186,6 +224,9 @@ export function JourneyShell({
 
       {/* Page content */}
       {children}
+
+      {/* Bottom navigation */}
+      <NavFooter prev={prev} next={next} />
     </section>
   );
 }
