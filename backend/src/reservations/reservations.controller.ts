@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
+import { QuoteReservationDto } from './dto/quote-reservation.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -45,6 +46,18 @@ export class ReservationsController {
       idempotencyKey,
     );
     return { data: reservation };
+  }
+
+  /**
+   * POST /api/v1/reservations/quote
+   * Returns authoritative backend pricing and availability without creating
+   * a reservation or Stripe PaymentIntent.
+   */
+  @Post('quote')
+  @HttpCode(HttpStatus.OK)
+  async quote(@Body() dto: QuoteReservationDto) {
+    const quote = await this.reservationsService.quote(dto);
+    return { data: quote };
   }
 
   /**

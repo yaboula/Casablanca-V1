@@ -12,6 +12,7 @@ import {
 import { User } from "../users/user.entity";
 import { Vehicle } from "../vehicles/vehicle.entity";
 import { ReservationDocument } from "../documents/reservation-document.entity";
+import { ExtraBillingType } from "./pricing.service";
 
 export enum ReservationStatus {
   /** Customer submitted booking, payment intent created but not yet captured */
@@ -93,6 +94,49 @@ export class Reservation {
   /** Fixed deposit — always 1000 (10 EUR) */
   @Column({ name: "deposit_eur_cents", type: "integer", default: 1000 })
   depositEurCents: number;
+
+  @Column({ name: "daily_rate_eur_cents_snapshot", type: "integer", default: 0 })
+  dailyRateEurCentsSnapshot: number;
+
+  @Column({ name: "subtotal_eur_cents", type: "integer", default: 0 })
+  subtotalEurCents: number;
+
+  @Column({ name: "total_due_now_eur_cents", type: "integer", default: 1000 })
+  totalDueNowEurCents: number;
+
+  @Column({ name: "charged_day_units_x2", type: "integer", default: 2 })
+  chargedDayUnitsX2: number;
+
+  @Column({ name: "full_days", type: "integer", default: 1 })
+  fullDays: number;
+
+  @Column({
+    name: "extra_hours",
+    type: "numeric",
+    precision: 6,
+    scale: 2,
+    default: 0,
+  })
+  extraHours: number;
+
+  @Column({
+    name: "extra_billing_type",
+    type: "varchar",
+    length: 20,
+    default: ExtraBillingType.NONE,
+  })
+  extraBillingType: ExtraBillingType;
+
+  @Column({
+    name: "pricing_policy_version",
+    type: "varchar",
+    length: 80,
+    default: "legacy",
+  })
+  pricingPolicyVersion: string;
+
+  @Column({ name: "currency", type: "varchar", length: 3, default: "EUR" })
+  currency: string;
 
   // ── Pickup ─────────────────────────────────────────────────
 

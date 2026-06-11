@@ -19,6 +19,7 @@ import { User, UserRole } from "../users/user.entity";
 import { StripeService } from "../stripe/stripe.service";
 import { QrService } from "../qr/qr.service";
 import { CreateReservationDto } from "./dto/create-reservation.dto";
+import { PricingService } from "./pricing.service";
 
 // ─── Constantes de dominio ────────────────────────────────────────────────────
 
@@ -132,7 +133,9 @@ const mockReservationsRepo = {
   findOne: jest.fn(),
   createQueryBuilder: jest.fn().mockReturnValue({
     where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
     setLock: jest.fn().mockReturnThis(),
+    getCount: jest.fn().mockResolvedValue(0),
     getOne: jest.fn().mockImplementation(() => mockReservationsRepo.findOne()),
   }),
   find: jest.fn(),
@@ -148,6 +151,11 @@ const mockVehiclesRepo = {
 };
 const mockDataSource = {
   createQueryRunner: jest.fn(),
+  getRepository: jest.fn().mockImplementation((entity: any) => {
+    if (entity === Vehicle) return mockVehiclesRepo;
+    if (entity === Reservation) return mockReservationsRepo;
+    return {};
+  }),
   transaction: jest
     .fn()
     .mockImplementation(async (cb: (manager: any) => Promise<any>) => {
@@ -196,10 +204,18 @@ describe("ReservationsService", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockReservationsRepo.createQueryBuilder.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      setLock: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(0),
+      getOne: jest.fn().mockImplementation(() => mockReservationsRepo.findOne()),
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReservationsService,
+        PricingService,
         {
           provide: getRepositoryToken(Reservation),
           useValue: mockReservationsRepo,
@@ -233,6 +249,46 @@ describe("ReservationsService", () => {
   // ══════════════════════════════════════════════════════════════════════════
   // create()
   // ══════════════════════════════════════════════════════════════════════════
+
+  describe("quote()", () => {
+    const quoteDto = {
+      vehicleId: "vehicle-abc",
+      pickupAt: "2027-06-11T14:00:00.000Z",
+      returnAt: "2027-06-12T20:00:00.000Z",
+      pickupLocation: PickupLocation.CMN_T1,
+    };
+
+    it("returns authoritative pricing and availability", async () => {
+      mockVehiclesRepo.findOne.mockResolvedValue(makeVehicle());
+      mockReservationsRepo.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(0),
+      });
+
+      const result = await service.quote(quoteDto);
+
+      expect(result.available).toBe(true);
+      expect(result.pricing.extraBillingType).toBe("HALF_DAY");
+      expect(result.pricing.chargedDayUnits).toBe("1.5");
+      expect(result.pricing.subtotalEurCents).toBe(7500);
+      expect(result.policy.graceHours).toBe(3);
+    });
+
+    it("marks overlapping active reservations as unavailable", async () => {
+      mockVehiclesRepo.findOne.mockResolvedValue(makeVehicle());
+      mockReservationsRepo.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(1),
+      });
+
+      const result = await service.quote(quoteDto);
+
+      expect(result.available).toBe(false);
+      expect(mockStripeService.createPaymentIntent).not.toHaveBeenCalled();
+    });
+  });
 
   describe("create()", () => {
     const tomorrow = new Date(Date.now() + ONE_DAY_MS).toISOString();
@@ -353,12 +409,12 @@ describe("ReservationsService", () => {
       const saved = qr._repoMocks.createdData;
       expect(saved).toBeDefined();
 
-      const days = Math.ceil(
-        (new Date(threeDaysLater).getTime() - new Date(tomorrow).getTime()) /
-          (1000 * 60 * 60 * 24),
-      );
       // totalPriceEurCents viene del servidor: pricePerDay × days
-      expect(saved.totalPriceEurCents).toBe(10000 * days);
+      expect(saved.totalPriceEurCents).toBe(20000);
+      expect(saved.dailyRateEurCentsSnapshot).toBe(10000);
+      expect(saved.subtotalEurCents).toBe(saved.totalPriceEurCents);
+      expect(saved.totalDueNowEurCents).toBe(DEPOSIT_EUR_CENTS);
+      expect(saved.pricingPolicyVersion).toBe("v1-extra-hour-grace");
       // Depósito siempre fijo en 1000 (10 €) — nunca del cliente
       expect(saved.depositEurCents).toBe(DEPOSIT_EUR_CENTS);
     });

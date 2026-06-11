@@ -5,6 +5,7 @@ import { Reservation } from './reservation.entity';
 import { Vehicle } from '../vehicles/vehicle.entity';
 import { ReservationsService } from './reservations.service';
 import { ReservationsController } from './reservations.controller';
+import { PricingService } from './pricing.service';
 import { StripeModule } from '../stripe/stripe.module';
 import { QrModule } from '../qr/qr.module';
 
@@ -15,7 +16,7 @@ import { QrModule } from '../qr/qr.module';
     StripeModule,
     QrModule,
   ],
-  providers: [ReservationsService],
+  providers: [ReservationsService, PricingService],
   controllers: [ReservationsController],
   exports: [ReservationsService],
 })

@@ -1,33 +1,44 @@
 import {
-  IsUUID,
-  IsISO8601,
   IsEnum,
+  IsISO8601,
   IsOptional,
   IsString,
-  MaxLength,
+  IsUUID,
   Matches,
+  MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { PickupLocation } from '../reservation.entity';
 
 /**
  * DTO for creating a new reservation.
  *
- * SECURITY NOTE: totalPriceEUR is intentionally NOT accepted from the client.
- * Price is always recalculated server-side using vehicle.pricePerDayEurCents × totalDays.
- * This prevents price tampering attacks.
+ * SECURITY NOTE: pricing fields are intentionally NOT accepted from the client.
+ * Price, duration, deposit, and payment amount are always recalculated
+ * server-side using the active backend pricing policy.
  */
 export class CreateReservationDto {
-  @IsUUID('4', { message: 'vehicleId debe ser un UUID v4 válido.' })
+  @IsUUID('4', { message: 'vehicleId must be a valid UUID v4.' })
   vehicleId: string;
 
-  @IsISO8601({}, { message: 'pickupDate debe estar en formato ISO 8601.' })
-  pickupDate: string;
+  @ValidateIf((dto: CreateReservationDto) => !dto.pickupDate)
+  @IsISO8601({}, { message: 'pickupAt must be ISO 8601.' })
+  pickupAt?: string;
 
-  @IsISO8601({}, { message: 'returnDate debe estar en formato ISO 8601.' })
-  returnDate: string;
+  @ValidateIf((dto: CreateReservationDto) => !dto.returnDate)
+  @IsISO8601({}, { message: 'returnAt must be ISO 8601.' })
+  returnAt?: string;
+
+  @IsOptional()
+  @IsISO8601({}, { message: 'pickupDate must be ISO 8601.' })
+  pickupDate?: string;
+
+  @IsOptional()
+  @IsISO8601({}, { message: 'returnDate must be ISO 8601.' })
+  returnDate?: string;
 
   @IsEnum(PickupLocation, {
-    message: `pickupLocation debe ser uno de: ${Object.values(PickupLocation).join(', ')}`,
+    message: `pickupLocation must be one of: ${Object.values(PickupLocation).join(', ')}`,
   })
   pickupLocation: PickupLocation;
 
@@ -38,6 +49,8 @@ export class CreateReservationDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\+?[0-9\s\-().]{7,30}$/, { message: 'Número de teléfono inválido.' })
+  @Matches(/^\+?[0-9\s\-().]{7,30}$/, {
+    message: 'Invalid phone number.',
+  })
   customerPhone?: string;
 }

@@ -17,13 +17,18 @@ import {
   isReservationTransitionAllowed,
 } from "./reservation-policy";
 import { CreateReservationDto } from "./dto/create-reservation.dto";
+import { QuoteReservationDto } from "./dto/quote-reservation.dto";
 import { Reservation, ReservationStatus } from "./reservation.entity";
+import {
+  GRACE_HOURS,
+  HALF_DAY_UNTIL_HOURS,
+  PricingQuote,
+  PricingService,
+} from "./pricing.service";
 import { QrService } from "../qr/qr.service";
 import { StripeService } from "../stripe/stripe.service";
 import { User, UserRole } from "../users/user.entity";
 import { Vehicle, VehicleStatus } from "../vehicles/vehicle.entity";
-
-const DEPOSIT_EUR_CENTS = 1000;
 
 @Injectable()
 export class ReservationsService {
@@ -37,16 +42,64 @@ export class ReservationsService {
     private readonly dataSource: DataSource,
     private readonly stripeService: StripeService,
     private readonly qrService: QrService,
+    private readonly pricingService: PricingService,
   ) {}
+
+  async quote(dto: QuoteReservationDto): Promise<{
+    available: boolean;
+    pricing: PricingQuote;
+    policy: {
+      graceHours: number;
+      halfDayUntilHours: number;
+      pricingPolicyVersion: string;
+    };
+  }> {
+    const { pickupAt, returnAt } = this.resolveReservationDates(dto);
+    this.validateReservationWindow(pickupAt, returnAt);
+
+    const vehicle = await this.dataSource
+      .getRepository(Vehicle)
+      .findOne({ where: { id: dto.vehicleId } });
+
+    if (!vehicle) {
+      throw new NotFoundException(`Vehículo ${dto.vehicleId} no encontrado.`);
+    }
+
+    if (!this.isVehicleBookable(vehicle)) {
+      throw new ConflictException(
+        "El vehículo no está disponible para alquiler.",
+      );
+    }
+
+    const [pricing, overlapping] = await Promise.all([
+      Promise.resolve(
+        this.pricingService.calculateReservationPrice({
+          pickupAt,
+          returnAt,
+          dailyRateEurCents: vehicle.pricePerDayEurCents,
+        }),
+      ),
+      this.countOverlappingReservations(dto.vehicleId, pickupAt, returnAt),
+    ]);
+
+    return {
+      available: overlapping === 0,
+      pricing,
+      policy: {
+        graceHours: GRACE_HOURS,
+        halfDayUntilHours: HALF_DAY_UNTIL_HOURS,
+        pricingPolicyVersion: pricing.pricingPolicyVersion,
+      },
+    };
+  }
 
   async create(
     dto: CreateReservationDto,
     user: User,
     rawIdempotencyKey?: string,
   ): Promise<Reservation> {
-    const pickupDate = new Date(dto.pickupDate);
-    const returnDate = new Date(dto.returnDate);
-    const now = new Date();
+    const { pickupAt: pickupDate, returnAt: returnDate } =
+      this.resolveReservationDates(dto);
     const idempotencyKey = this.normalizeIdempotencyKey(rawIdempotencyKey);
 
     if (idempotencyKey) {
@@ -60,26 +113,7 @@ export class ReservationsService {
       }
     }
 
-    if (isNaN(pickupDate.getTime()) || isNaN(returnDate.getTime())) {
-      throw new BadRequestException("Fechas inválidas.");
-    }
-
-    if (pickupDate < now && process.env.BYPASS_STRIPE !== "true") {
-      throw new BadRequestException("pickupDate no puede ser en el pasado.");
-    }
-
-    if (returnDate <= pickupDate) {
-      throw new BadRequestException(
-        "returnDate debe ser posterior a pickupDate.",
-      );
-    }
-
-    const diffMs = returnDate.getTime() - pickupDate.getTime();
-    const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-    if (totalDays < 1) {
-      throw new BadRequestException("El alquiler mínimo es 1 día.");
-    }
+    this.validateReservationWindow(pickupDate, returnDate);
 
     const reservationUuid = uuidv4();
 
@@ -99,14 +133,17 @@ export class ReservationsService {
         throw new NotFoundException(`Vehículo ${dto.vehicleId} no encontrado.`);
       }
 
-      if (
-        vehicle.status === VehicleStatus.MAINTENANCE ||
-        vehicle.status === VehicleStatus.INACTIVE
-      ) {
+      if (!this.isVehicleBookable(vehicle)) {
         throw new ConflictException(
           "El vehículo no está disponible para alquiler.",
         );
       }
+
+      const pricing = this.pricingService.calculateReservationPrice({
+        pickupAt: pickupDate,
+        returnAt: returnDate,
+        dailyRateEurCents: vehicle.pricePerDayEurCents,
+      });
 
       const overlapping = await queryRunner.manager
         .getRepository(Reservation)
@@ -125,7 +162,7 @@ export class ReservationsService {
         );
       }
 
-      const totalPriceEurCents = vehicle.pricePerDayEurCents * totalDays;
+      const totalPriceEurCents = pricing.subtotalEurCents;
 
       reservation = queryRunner.manager.getRepository(Reservation).create({
         id: reservationUuid,
@@ -133,9 +170,18 @@ export class ReservationsService {
         vehicleId: vehicle.id,
         pickupDate,
         returnDate,
-        totalDays,
+        totalDays: Math.ceil(pricing.chargedDayUnitsX2 / 2),
         totalPriceEurCents,
-        depositEurCents: DEPOSIT_EUR_CENTS,
+        depositEurCents: pricing.depositEurCents,
+        dailyRateEurCentsSnapshot: pricing.dailyRateEurCents,
+        subtotalEurCents: pricing.subtotalEurCents,
+        totalDueNowEurCents: pricing.totalDueNowEurCents,
+        chargedDayUnitsX2: pricing.chargedDayUnitsX2,
+        fullDays: pricing.fullDays,
+        extraHours: pricing.extraHours,
+        extraBillingType: pricing.extraBillingType,
+        pricingPolicyVersion: pricing.pricingPolicyVersion,
+        currency: pricing.currency,
         pickupLocation: dto.pickupLocation,
         status: ReservationStatus.PENDING_DEPOSIT,
         stripePaymentIntentId: null,
@@ -177,12 +223,16 @@ export class ReservationsService {
           client_secret: `pi_dev_mock_secret_${Date.now()}`,
         }
       : await this.stripeService.createPaymentIntent(
-          DEPOSIT_EUR_CENTS,
+          reservation.totalDueNowEurCents,
           reservationUuid,
           {
             userId: user.id,
             vehicleId: reservation.vehicleId,
-            totalDays: String(totalDays),
+            subtotalEurCents: String(reservation.subtotalEurCents),
+            depositEurCents: String(reservation.depositEurCents),
+            totalDueNowEurCents: String(reservation.totalDueNowEurCents),
+            chargedDayUnitsX2: String(reservation.chargedDayUnitsX2),
+            pricingPolicyVersion: reservation.pricingPolicyVersion,
           },
         );
 
@@ -374,6 +424,58 @@ export class ReservationsService {
     return reservation;
   }
 
+  private resolveReservationDates(
+    dto: Pick<CreateReservationDto, "pickupAt" | "returnAt" | "pickupDate" | "returnDate">,
+  ): { pickupAt: Date; returnAt: Date } {
+    const pickupValue = dto.pickupAt ?? dto.pickupDate;
+    const returnValue = dto.returnAt ?? dto.returnDate;
+
+    if (!pickupValue || !returnValue) {
+      throw new BadRequestException("pickupAt and returnAt are required.");
+    }
+
+    return {
+      pickupAt: new Date(pickupValue),
+      returnAt: new Date(returnValue),
+    };
+  }
+
+  private validateReservationWindow(pickupAt: Date, returnAt: Date): void {
+    const now = new Date();
+
+    if (Number.isNaN(pickupAt.getTime()) || Number.isNaN(returnAt.getTime())) {
+      throw new BadRequestException("Invalid pickup or return datetime.");
+    }
+
+    if (pickupAt < now && process.env.BYPASS_STRIPE !== "true") {
+      throw new BadRequestException("pickupAt cannot be in the past.");
+    }
+
+    if (returnAt <= pickupAt) {
+      throw new BadRequestException("returnAt must be after pickupAt.");
+    }
+  }
+
+  private isVehicleBookable(vehicle: Vehicle): boolean {
+    return vehicle.status === VehicleStatus.AVAILABLE;
+  }
+
+  private async countOverlappingReservations(
+    vehicleId: string,
+    pickupAt: Date,
+    returnAt: Date,
+  ): Promise<number> {
+    return this.reservationsRepo
+      .createQueryBuilder("r")
+      .where("r.vehicleId = :vehicleId", { vehicleId })
+      .andWhere("r.status IN (:...statuses)", {
+        statuses: BLOCKING_RESERVATION_STATUSES,
+      })
+      .andWhere("r.pickupDate < :returnAt", { returnAt })
+      .andWhere("r.returnDate > :pickupAt", { pickupAt })
+      .getCount();
+  }
+
   private async retryStripeAction(
     action: () => Promise<unknown>,
     label: string,
@@ -440,12 +542,11 @@ export class ReservationsService {
     reservation: Reservation,
     dto: CreateReservationDto,
   ): void {
+    const { pickupAt, returnAt } = this.resolveReservationDates(dto);
     const samePayload =
       reservation.vehicleId === dto.vehicleId &&
-      reservation.pickupDate.toISOString() ===
-        new Date(dto.pickupDate).toISOString() &&
-      reservation.returnDate.toISOString() ===
-        new Date(dto.returnDate).toISOString() &&
+      reservation.pickupDate.toISOString() === pickupAt.toISOString() &&
+      reservation.returnDate.toISOString() === returnAt.toISOString() &&
       reservation.pickupLocation === dto.pickupLocation &&
       (reservation.customerName ?? null) === (dto.customerName ?? null) &&
       (reservation.customerPhone ?? null) === (dto.customerPhone ?? null);
