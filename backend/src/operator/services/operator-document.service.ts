@@ -125,7 +125,7 @@ export class OperatorDocumentService {
     documentId: string,
     operatorId: string,
   ): Promise<DocumentReviewResultDto> {
-    const { reservationId, bothApproved, doc } =
+    const { reservationId, captureQueued, doc, reservationStatus } =
       await this.dataSource.transaction(async (manager) => {
         const document = await manager
           .getRepository(ReservationDocument)
@@ -167,43 +167,57 @@ export class OperatorDocumentService {
           approvedTypes.has(DocumentType.PASSPORT) &&
           approvedTypes.has(DocumentType.DRIVING_LICENSE);
 
+        let captureQueued = false;
+        let reservationStatus = ReservationStatus.PENDING_DEPOSIT;
+
         if (bothApproved) {
           const reservation = await manager
             .getRepository(Reservation)
             .createQueryBuilder("reservation")
             .where("reservation.id = :id", { id: document.reservationId })
-            .andWhere("reservation.status = :status", {
-              status: ReservationStatus.PENDING_DEPOSIT,
-            })
             .setLock("pessimistic_write")
             .getOne();
 
           if (reservation) {
-            if (
-              !isReservationTransitionAllowed(
-                reservation.status,
-                ReservationStatus.AWAITING_CAPTURE,
-              )
+            reservationStatus = reservation.status;
+
+            if (reservation.status === ReservationStatus.PENDING_DEPOSIT) {
+              if (
+                !isReservationTransitionAllowed(
+                  reservation.status,
+                  ReservationStatus.AWAITING_CAPTURE,
+                )
+              ) {
+                throw new ConflictException(
+                  `No se puede mover la reserva ${reservation.id} desde ${reservation.status} a ${ReservationStatus.AWAITING_CAPTURE}.`,
+                );
+              }
+
+              reservation.status = ReservationStatus.AWAITING_CAPTURE;
+              reservation.qrCodeHash = this.qrService.generateHash(
+                reservation.id,
+                reservation.userId,
+                reservation.pickupDate,
+              );
+              await manager.getRepository(Reservation).save(reservation);
+              reservationStatus = ReservationStatus.AWAITING_CAPTURE;
+              captureQueued = true;
+            } else if (
+              reservation.status !== ReservationStatus.AWAITING_CAPTURE &&
+              reservation.status !== ReservationStatus.CONFIRMED
             ) {
               throw new ConflictException(
-                `No se puede mover la reserva ${reservation.id} desde ${reservation.status} a ${ReservationStatus.AWAITING_CAPTURE}.`,
+                `No se puede completar la revisión documental de una reserva en estado ${reservation.status}.`,
               );
             }
-
-            reservation.status = ReservationStatus.AWAITING_CAPTURE;
-            reservation.qrCodeHash = this.qrService.generateHash(
-              reservation.id,
-              reservation.userId,
-              reservation.pickupDate,
-            );
-            await manager.getRepository(Reservation).save(reservation);
           }
         }
 
         return {
           reservationId: document.reservationId,
-          bothApproved,
+          captureQueued,
           doc: document,
+          reservationStatus,
         };
       });
 
@@ -228,7 +242,7 @@ export class OperatorDocumentService {
         metadata: { documentType: doc.type },
       }),
     );
-    if (bothApproved) {
+    if (captureQueued) {
       await this.captureStripeQueue.add(
         "capture",
         { reservationId },
@@ -256,9 +270,7 @@ export class OperatorDocumentService {
 
     return {
       document: toReviewedDocumentResponseDto(doc),
-      reservationStatus: bothApproved
-        ? ReservationStatus.AWAITING_CAPTURE
-        : ReservationStatus.PENDING_DEPOSIT,
+      reservationStatus,
     };
   }
 
@@ -273,21 +285,28 @@ export class OperatorDocumentService {
     reason: string,
     operatorId: string,
   ): Promise<ReviewedDocumentResponseDto> {
-    const doc = await this.docsRepo.findOne({ where: { id: documentId } });
+    const doc = await this.dataSource.transaction(async (manager) => {
+      const document = await manager
+        .getRepository(ReservationDocument)
+        .findOne({
+          where: { id: documentId },
+          lock: { mode: "pessimistic_write" },
+        });
 
-    if (!doc) {
-      throw new NotFoundException("Documento no encontrado.");
-    }
+      if (!document) {
+        throw new NotFoundException("Documento no encontrado.");
+      }
 
-    if (doc.status !== DocumentStatus.PENDING_REVIEW) {
-      throw new ConflictException("El documento ya fue procesado.");
-    }
+      if (document.status !== DocumentStatus.PENDING_REVIEW) {
+        throw new ConflictException("El documento ya fue procesado.");
+      }
 
-    doc.status = DocumentStatus.REJECTED;
-    doc.rejectionReason = reason;
-    doc.reviewedBy = operatorId;
-    doc.reviewedAt = new Date();
-    await this.docsRepo.save(doc);
+      document.status = DocumentStatus.REJECTED;
+      document.rejectionReason = reason;
+      document.reviewedBy = operatorId;
+      document.reviewedAt = new Date();
+      return manager.getRepository(ReservationDocument).save(document);
+    });
 
     this.sseService.emitDocumentStatus(
       doc.reservationId,
