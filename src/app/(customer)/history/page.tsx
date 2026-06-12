@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/route-guards";
 import { getDashboardData } from "@/features/dashboard/dashboard-service";
 import { TripsHistoryView } from "@/features/dashboard/TripsHistoryView";
+import { getDefaultRouteForRole } from "@/features/auth/auth-redirects";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,10 @@ export const metadata: Metadata = {
 
 export default async function HistoryPage() {
   const user = await requireAuthenticatedUser("/history");
+
+  if (user.role !== "USER") {
+    redirect(getDefaultRouteForRole(user.role));
+  }
 
   let data;
   try {

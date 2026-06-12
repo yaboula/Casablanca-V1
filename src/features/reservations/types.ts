@@ -27,9 +27,14 @@ export type ReservationApi = {
   totalPriceEurCents?: unknown;
   depositEurCents?: unknown;
   pickupLocation?: unknown;
-  stripeClientSecret?: unknown;
-  stripePaymentIntentId?: unknown;
-  qrCodeHash?: unknown;
+  depositStatus?: unknown;
+  depositCapturedAt?: unknown;
+  depositLastFailureAt?: unknown;
+  depositLastFailureReason?: unknown;
+  depositRefundStatus?: unknown;
+  depositRefundAttemptedAt?: unknown;
+  depositRefundFailureAt?: unknown;
+  depositRefundFailureReason?: unknown;
   customerName?: unknown;
   customerPhone?: unknown;
   userId?: unknown;
@@ -39,6 +44,15 @@ export type ReservationApi = {
 };
 
 export type ReservationDetailApiResponse = {
+  data?: unknown;
+};
+
+export type ReservationTicketApi = {
+  ticketToken?: unknown;
+  expiresAt?: unknown;
+};
+
+export type ReservationTicketApiResponse = {
   data?: unknown;
 };
 
@@ -55,6 +69,20 @@ export type ReservationStatus =
   | "CANCELLED";
 
 export type PickupLocation = "CMN_T1" | "CMN_T2";
+
+export type DepositStatus =
+  | "PENDING"
+  | "CAPTURE_QUEUED"
+  | "CAPTURED"
+  | "FAILED"
+  | "CANCELLED";
+
+export type DepositRefundStatus =
+  | "NOT_APPLICABLE"
+  | "NOT_REQUESTED"
+  | "PENDING"
+  | "SUCCEEDED"
+  | "FAILED";
 
 // ---------------------------------------------------------------------------
 // Embedded vehicle (eager-loaded in reservation response)
@@ -78,9 +106,6 @@ export type ReservationVehicleModel = {
  * Rules:
  * - All fields are plain JSON (strings, numbers, null). No Date objects.
  * - Financial fields are in EUR cents. Display helpers convert to EUR.
- * - stripeClientSecret is included so the confirmation page can pass it to
- *   Stripe Elements (Commit I). It must NOT be stored in localStorage.
- * - qrCodeHash is NOT exposed in the UI yet (smart ticket is Commit K+).
  * - Status text is derived from the backend status value, not invented.
  */
 export type ReservationViewModel = {
@@ -96,16 +121,21 @@ export type ReservationViewModel = {
   /** Deposit in EUR cents (typically 1000 = 10 EUR) */
   depositEurCents: number;
   pickupLocation: PickupLocation | null;
-  /**
-   * Transient Stripe client secret — use only to mount Stripe Elements.
-   * Do not log, store in localStorage, or expose beyond payment component.
-   * Will be null if payment was already captured or PI was not created.
-   */
-  stripeClientSecret: string | null;
-  /** null until reservation is CONFIRMED */
-  hasQrCode: boolean;
+  depositStatus: DepositStatus | null;
+  depositCapturedAt: string | null;
+  depositLastFailureAt: string | null;
+  depositLastFailureReason: string | null;
+  depositRefundStatus: DepositRefundStatus | null;
+  depositRefundAttemptedAt: string | null;
+  depositRefundFailureAt: string | null;
+  depositRefundFailureReason: string | null;
   customerName: string | null;
   customerPhone: string | null;
   vehicle: ReservationVehicleModel | null;
   createdAt: string;
+};
+
+export type ReservationTicketViewModel = {
+  ticketToken: string;
+  expiresAt: string;
 };

@@ -42,8 +42,7 @@ type OperatorDeliveryDetailViewProps = {
 };
 
 export function OperatorDeliveryDetailView({ delivery }: OperatorDeliveryDetailViewProps) {
-  // Subscribe to live delivery updates. Will call router.refresh() on event.
-  useOperatorDeliveriesSse();
+  const connectionState = useOperatorDeliveriesSse();
 
   const isCompleted = delivery.status === "COMPLETED";
 
@@ -65,6 +64,13 @@ export function OperatorDeliveryDetailView({ delivery }: OperatorDeliveryDetailV
             </h1>
             <p className="mt-1 text-xs text-neutral-500 font-mono">
               Reservation ID: {delivery.id.toUpperCase()}
+            </p>
+            <p className="mt-2 text-[11px] text-neutral-500">
+              {connectionState === "live"
+                ? "Live backend updates connected."
+                : connectionState === "fallback"
+                  ? "Live stream unavailable. Auto-refresh fallback is active."
+                  : "Reconnecting live backend updates."}
             </p>
           </div>
           <div>

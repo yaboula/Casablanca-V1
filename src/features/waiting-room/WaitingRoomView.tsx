@@ -37,6 +37,7 @@ import { useReservationSse } from "./useReservationSse";
 import { clientFetch } from "@/lib/api/client-fetch";
 import { adaptReservation } from "@/features/reservations/reservation-adapters";
 import { adaptDocuments } from "@/features/documents/document-adapters";
+import { canAccessCustomerTicket } from "@/features/reservations/reservation-helpers";
 import type { ReservationViewModel } from "@/features/reservations/types";
 import type { DocumentViewModel } from "@/features/documents/types";
 import type { SseConnectionState, SseRawEvent, WaitingRoomPhase } from "./types";
@@ -272,7 +273,7 @@ export function WaitingRoomView({
   };
 
   const navNext =
-    approved && reservation.hasQrCode
+    approved && canAccessCustomerTicket(reservation)
       ? { label: "View smart ticket", href: `/reservations/${reservation.id}/ticket` }
       : rejected
       ? { label: "Re-upload documents", href: `/reservations/${reservation.id}/check-in` }
@@ -320,7 +321,9 @@ export function WaitingRoomView({
       }
       subtitle={
         approved
-          ? "Your documents are approved and your smart ticket is active."
+          ? canAccessCustomerTicket(reservation)
+            ? "Your documents are approved and your smart ticket is active."
+            : "Your documents are approved and payment capture is being finalized."
           : rejected
           ? "An operator could not verify one of your documents. Review the feedback below and re-upload."
           : "Your documents are with the operator team. This page updates automatically."
@@ -367,7 +370,9 @@ export function WaitingRoomView({
                   </h2>
                   <p className="mt-1.5 text-sm text-neutral-600 font-light leading-relaxed">
                     {approved
-                      ? "Present your smart ticket at the arrivals hall when you meet your operator."
+                      ? canAccessCustomerTicket(reservation)
+                        ? "Present your smart ticket at the arrivals hall when you meet your operator."
+                        : "Your pickup pass will appear automatically as soon as payment capture is confirmed."
                       : rejected
                       ? "Check the feedback below and re-upload the required file to continue."
                       : "This page updates automatically. You can safely leave and return from My trips."}
@@ -408,7 +413,7 @@ export function WaitingRoomView({
             )}
 
             {/* Approved CTA */}
-            {approved && reservation.hasQrCode && (
+            {approved && canAccessCustomerTicket(reservation) && (
               <div className="mt-5">
                 <Link
                   href={`/reservations/${reservation.id}/ticket`}
@@ -467,7 +472,7 @@ export function WaitingRoomView({
                     title: rejected ? "Re-upload the flagged document" : "Approval unlocks your ticket",
                     body: rejected
                       ? "Once you re-upload, the operator will review it again."
-                      : "Your smart pickup ticket becomes active the moment your documents are verified.",
+                      : "Your smart pickup ticket becomes active once your reservation is confirmed and payment capture completes.",
                   },
                   {
                     n: 3,

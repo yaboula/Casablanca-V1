@@ -21,6 +21,7 @@ import {
   getOrCreateIdempotencyKey,
 } from "./idempotency";
 import { createReservation } from "./booking-service";
+import { rememberPaymentClientSecret } from "@/features/payments/payment-client-secret-cache";
 import type { BookingFormSchema } from "./booking-schema";
 import type { PickupLocation, ReservationCreateDto } from "./types";
 import { useQuote } from "./use-quote";
@@ -158,6 +159,10 @@ export function BookingShell({ vehicle }: BookingShellProps) {
 
         if (result.ok) {
           clearIdempotencyKey();
+          rememberPaymentClientSecret(
+            result.reservation.id,
+            result.reservation.stripeClientSecret,
+          );
           router.push(`/reservations/${result.reservation.id}/confirmed`);
           return;
         }

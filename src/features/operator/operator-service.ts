@@ -18,6 +18,7 @@ import "server-only";
 import { serverFetch } from "@/lib/api/server-fetch";
 import {
   adaptDeliveries,
+  adaptDelivery,
   adaptDeliveryStats,
   adaptPendingDocuments,
 } from "./operator-adapters";
@@ -48,15 +49,12 @@ export async function getDeliveries(
 export async function getDeliveryDetail(
   reservationId: string,
 ): Promise<DeliveryViewModel | null> {
-  // Since there's no single detail endpoint for operator deliveries, we fetch
-  // today's deliveries and find the match. If it's for a different date, the
-  // operator can't scan it yet anyway per business rules (deliveries are daily).
-  // We can pass a wide date range if needed, but the current backend
-  // GET /operator/deliveries endpoint returns today by default.
-  // We'll fetch today's list since handoffs happen on the pickup date.
-  const deliveries = await getDeliveries();
-  const match = deliveries.find((d) => d.id === reservationId);
-  return match ?? null;
+  const response = await serverFetch<{ data?: unknown }>(
+    `/operator/deliveries/${encodeURIComponent(reservationId)}`,
+    { cache: "no-store" },
+  );
+
+  return adaptDelivery(response.data);
 }
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,8 @@
 import type {
   ReservationApi,
   ReservationStatus,
+  DepositStatus,
+  DepositRefundStatus,
   PickupLocation,
   ReservationVehicleModel,
   ReservationViewModel,
@@ -30,6 +32,20 @@ const RESERVATION_STATUSES = new Set<string>([
 ]);
 
 const PICKUP_LOCATIONS = new Set<string>(["CMN_T1", "CMN_T2"]);
+const DEPOSIT_STATUSES = new Set<string>([
+  "PENDING",
+  "CAPTURE_QUEUED",
+  "CAPTURED",
+  "FAILED",
+  "CANCELLED",
+]);
+const DEPOSIT_REFUND_STATUSES = new Set<string>([
+  "NOT_APPLICABLE",
+  "NOT_REQUESTED",
+  "PENDING",
+  "SUCCEEDED",
+  "FAILED",
+]);
 
 // ---------------------------------------------------------------------------
 // Primitive helpers (mirrored from vehicle-adapters for consistency)
@@ -105,8 +121,6 @@ function adaptReservationVehicle(
  * Adapts a raw backend reservation API object to a safe view model.
  * Returns null if the reservation id is missing (cannot identify the resource).
  *
- * stripeClientSecret is passed through as-is for use by Stripe Elements.
- * It is the caller's responsibility to not store it beyond the payment step.
  */
 export function adaptReservation(
   input: ReservationApi,
@@ -132,9 +146,6 @@ export function adaptReservation(
     return null;
   }
 
-  const stripeClientSecret = asNonEmptyString(input.stripeClientSecret);
-  const qrCodeHash = asNonEmptyString(input.qrCodeHash);
-
   return {
     id,
     status,
@@ -147,8 +158,22 @@ export function adaptReservation(
       input.pickupLocation,
       PICKUP_LOCATIONS,
     ),
-    stripeClientSecret,
-    hasQrCode: qrCodeHash !== null,
+    depositStatus: asEnum<DepositStatus>(
+      input.depositStatus,
+      DEPOSIT_STATUSES,
+    ),
+    depositCapturedAt: asIsoString(input.depositCapturedAt),
+    depositLastFailureAt: asIsoString(input.depositLastFailureAt),
+    depositLastFailureReason: asNonEmptyString(input.depositLastFailureReason),
+    depositRefundStatus: asEnum<DepositRefundStatus>(
+      input.depositRefundStatus,
+      DEPOSIT_REFUND_STATUSES,
+    ),
+    depositRefundAttemptedAt: asIsoString(input.depositRefundAttemptedAt),
+    depositRefundFailureAt: asIsoString(input.depositRefundFailureAt),
+    depositRefundFailureReason: asNonEmptyString(
+      input.depositRefundFailureReason,
+    ),
     customerName: asNonEmptyString(input.customerName),
     customerPhone: asNonEmptyString(input.customerPhone),
     vehicle: adaptReservationVehicle(input.vehicle),

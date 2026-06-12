@@ -5,8 +5,8 @@
  * This component renders only the content section.
  *
  * Payment state rules:
- * - PENDING_DEPOSIT + stripeClientSecret: show Stripe deposit panel
- * - PENDING_DEPOSIT + no secret: show config error
+ * - PENDING_DEPOSIT: show Stripe deposit panel only when a transient client secret is available
+ * - PENDING_DEPOSIT + no secret: show an honest recovery state
  * - AWAITING_CAPTURE: show processing state
  * - CONFIRMED: show "upload documents" CTA
  * - CANCELLED: show cancellation state
@@ -138,7 +138,7 @@ function shortRef(uuid: string): string {
 // ─── Sub-step action panel (right column upper) ───────────────────────────────
 
 function NextAction({ reservation }: { reservation: ReservationViewModel }) {
-  const { status, stripeClientSecret } = reservation;
+  const { status } = reservation;
 
   if (status === "PENDING_DEPOSIT") {
     return (
@@ -147,7 +147,7 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
           Step 2A — Authorize checkout hold
         </h2>
         <PaymentPanelLoader
-          clientSecret={stripeClientSecret}
+          clientSecret={null}
           depositEurCents={reservation.depositEurCents}
           reservationId={reservation.id}
           totalPriceEurCents={reservation.totalPriceEurCents}
@@ -218,11 +218,11 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
-      <h2 className="text-sm font-semibold text-neutral-900">Rental dashboard</h2>
-      <p className="text-xs leading-relaxed text-neutral-600 font-light">
-        Access real-time statuses and QR keys in your customer dashboard.
-      </p>
+      <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-semibold text-neutral-900">Rental dashboard</h2>
+        <p className="text-xs leading-relaxed text-neutral-600 font-light">
+          Access real-time reservation status in your customer dashboard.
+        </p>
       <Link
         className="inline-flex h-10 w-full items-center justify-center rounded-full border border-neutral-200 bg-white px-5 text-xs font-semibold text-neutral-900 transition hover:bg-neutral-50 shadow-sm"
         href="/dashboard"

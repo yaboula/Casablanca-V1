@@ -9,6 +9,7 @@ import type {
   ReservationViewModel,
   ReservationApi,
 } from "@/features/reservations/types";
+import { canAccessCustomerTicket } from "@/features/reservations/reservation-helpers";
 
 // ---------------------------------------------------------------------------
 // Backend API response shape for GET /reservations/my
@@ -36,9 +37,10 @@ export type DashboardData = {
 
 export type ReservationNextAction =
   | "complete_payment"   // PENDING_DEPOSIT
+  | "payment_processing" // AWAITING_CAPTURE
   | "upload_documents"   // CONFIRMED — docs needed
   | "await_review"       // CONFIRMED — docs submitted
-  | "view_ticket"        // CONFIRMED + hasQrCode
+  | "view_ticket"        // CONFIRMED + captured deposit
   | "active"             // IN_PROGRESS
   | "completed"          // COMPLETED
   | "cancelled";         // CANCELLED
@@ -48,10 +50,11 @@ export function deriveNextAction(
 ): ReservationNextAction {
   switch (reservation.status) {
     case "PENDING_DEPOSIT":
-    case "AWAITING_CAPTURE":
       return "complete_payment";
+    case "AWAITING_CAPTURE":
+      return "payment_processing";
     case "CONFIRMED":
-      if (reservation.hasQrCode) return "view_ticket";
+      if (canAccessCustomerTicket(reservation)) return "view_ticket";
       return "upload_documents";
     case "IN_PROGRESS":
       return "active";

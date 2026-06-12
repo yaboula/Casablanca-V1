@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/route-guards";
 import { getReservationDetail } from "@/features/reservations/reservation-service";
 import { getReservationDocuments } from "@/features/documents/document-service";
 import { DocumentCheckInView } from "@/features/documents/DocumentCheckInView";
 import { ApiError } from "@/lib/api/errors";
+import { getDefaultRouteForRole } from "@/features/auth/auth-redirects";
 
 type CheckInPageProps = {
   params: Promise<{
@@ -28,9 +29,13 @@ export default async function CheckInPage({ params }: CheckInPageProps) {
   const { reservationId } = await params;
 
   // Auth required — unauthenticated users redirected to login with return path.
-  await requireAuthenticatedUser(
+  const user = await requireAuthenticatedUser(
     `/reservations/${reservationId}/check-in`,
   );
+
+  if (user.role !== "USER") {
+    redirect(getDefaultRouteForRole(user.role));
+  }
 
   let reservation;
   let documents;

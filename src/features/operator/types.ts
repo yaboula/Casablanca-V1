@@ -45,7 +45,6 @@ export type DeliveryViewModel = {
   pickupLocation: string;
   totalDays: number;
   status: string;
-  qrCodeHash: string | null;
   balanceDueEUR: number;
   documents: DeliveryDocumentSummary[];
 };
@@ -119,6 +118,12 @@ export type DeliveryActionApiResponse = {
   data?: unknown;
   message?: string;
 };
+
+export type OperatorSseConnectionState =
+  | "live"
+  | "degraded"
+  | "fallback"
+  | "closed";
 
 // ---------------------------------------------------------------------------
 // Action state — for UI locking

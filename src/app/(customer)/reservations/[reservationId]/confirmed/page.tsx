@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/route-guards";
 import { getReservationDetail } from "@/features/reservations/reservation-service";
 import { ConfirmationView } from "@/features/reservations/ConfirmationView";
 import { ApiError } from "@/lib/api/errors";
+import { getDefaultRouteForRole } from "@/features/auth/auth-redirects";
 
 type ConfirmedPageProps = {
   params: Promise<{
@@ -45,9 +46,13 @@ export default async function ConfirmedPage({ params }: ConfirmedPageProps) {
   const { reservationId } = await params;
 
   // Auth required — unauthenticated users redirected to login with return path.
-  await requireAuthenticatedUser(
+  const user = await requireAuthenticatedUser(
     `/reservations/${reservationId}/confirmed`,
   );
+
+  if (user.role !== "USER") {
+    redirect(getDefaultRouteForRole(user.role));
+  }
 
   let reservation;
 

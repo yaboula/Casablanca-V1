@@ -15,7 +15,10 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
   const router = useRouter();
   const [actionState, setActionState] = useState<DeliveryActionState>("idle");
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [qrPayload, setQrPayload] = useState("");
+  const [ticketToken, setTicketToken] = useState("");
+  const [manualReason, setManualReason] = useState("");
+  const [identityConfirmed, setIdentityConfirmed] = useState(false);
+  const [documentsConfirmed, setDocumentsConfirmed] = useState(false);
 
   const isBusy = ["scanning", "checking_in", "completing"].includes(actionState);
 
@@ -33,7 +36,7 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
 
   async function handleScanQr(e: React.FormEvent) {
     e.preventDefault();
-    if (!qrPayload.trim()) return;
+    if (!ticketToken.trim()) return;
 
     setActionState("scanning");
     setFeedbackMessage(null);
@@ -43,22 +46,30 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
         `/operator/delivery/${delivery.id}/scan-qr`,
         {
           method: "POST",
-          body: { qrCodeHash: qrPayload.trim() },
+          body: { ticketToken: ticketToken.trim() },
         }
       );
       setActionState("success");
-      setFeedbackMessage("QR scan successful. Delivery in progress.");
-      setQrPayload("");
+      setFeedbackMessage("Ticket scan accepted. Delivery is now in progress.");
+      setTicketToken("");
       router.refresh();
     } catch (err) {
       const normalized = normalizeApiError(err);
       setActionState("error");
-      setFeedbackMessage(normalized.message || "Invalid or expired QR code.");
+      setFeedbackMessage(normalized.message || "Ticket scan failed.");
     }
   }
 
   async function handleManualCheckIn() {
-    if (!window.confirm("Confirm manual vehicle handover without QR scan?")) return;
+    if (!manualReason.trim() || !identityConfirmed || !documentsConfirmed) {
+      setActionState("error");
+      setFeedbackMessage(
+        "Manual check-in requires a reason plus explicit identity and document confirmation.",
+      );
+      return;
+    }
+
+    if (!window.confirm("Confirm manual vehicle handover without ticket scan?")) return;
 
     setActionState("checking_in");
     setFeedbackMessage(null);
@@ -66,10 +77,20 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
     try {
       await clientFetch(
         `/operator/delivery/${delivery.id}/checkin`,
-        { method: "PATCH" }
+        {
+          method: "PATCH",
+          body: {
+            reason: manualReason.trim(),
+            identityConfirmed,
+            documentsConfirmed,
+          },
+        }
       );
       setActionState("success");
       setFeedbackMessage("Manual check-in successful. Delivery in progress.");
+      setManualReason("");
+      setIdentityConfirmed(false);
+      setDocumentsConfirmed(false);
       router.refresh();
     } catch (err) {
       const normalized = normalizeApiError(err);
@@ -86,7 +107,7 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
 
     try {
       await clientFetch(
-        `/reservations/${delivery.id}/complete`,
+        `/operator/deliveries/${delivery.id}/complete`,
         { method: "PATCH" }
       );
       setActionState("success");
@@ -153,7 +174,7 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
     <div className="rounded-lg border border-[var(--nx-line)] bg-white p-6">
       <h3 className="text-sm font-black text-neutral-950">Vehicle Handoff</h3>
       <p className="mt-1 text-sm text-neutral-500">
-        Scan the customer&apos;s smart ticket to securely release the vehicle.
+        Scan the customer&apos;s signed smart ticket to securely release the vehicle.
       </p>
 
       {!docsReady && (
@@ -178,17 +199,17 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
 
       <form onSubmit={handleScanQr} className="mt-6 flex gap-2">
         <label htmlFor="qr-payload" className="sr-only">
-          QR Code Payload
+          Ticket token payload
         </label>
         <div className="relative flex-1">
           <QrCode aria-hidden="true" className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
           <input
             id="qr-payload"
             type="text"
-            value={qrPayload}
-            onChange={(e) => setQrPayload(e.target.value)}
+            value={ticketToken}
+            onChange={(e) => setTicketToken(e.target.value)}
             disabled={isBusy}
-            placeholder="Scan or enter QR hash..."
+            placeholder="Scan or paste signed ticket token..."
             className="h-11 w-full rounded-md border border-[var(--nx-line)] bg-white pl-10 pr-4 text-sm text-neutral-950 placeholder-neutral-400 focus:border-neutral-950 focus:outline-none disabled:opacity-50"
             autoComplete="off"
             required
@@ -196,7 +217,7 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
         </div>
         <button
           type="submit"
-          disabled={isBusy || !qrPayload.trim()}
+          disabled={isBusy || !ticketToken.trim()}
           className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md bg-neutral-950 px-6 font-bold text-white transition hover:bg-neutral-800 disabled:opacity-50"
         >
           {actionState === "scanning" ? (
@@ -210,8 +231,34 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
 
       <div className="mt-6 border-t border-[var(--nx-line)] pt-6">
         <p className="text-xs text-neutral-500 mb-3">
-          Fallback action if scanner fails or customer cannot produce ticket:
+          Fallback action if scanning fails or the customer cannot produce a valid ticket:
         </p>
+        <textarea
+          value={manualReason}
+          onChange={(e) => setManualReason(e.target.value)}
+          disabled={isBusy}
+          rows={3}
+          placeholder="Required reason for manual override"
+          className="mb-3 w-full resize-none rounded-md border border-[var(--nx-line)] bg-white px-4 py-3 text-sm text-neutral-950 placeholder-neutral-400 focus:border-neutral-950 focus:outline-none disabled:opacity-50"
+        />
+        <label className="mb-2 flex items-center gap-2 text-xs font-medium text-neutral-700">
+          <input
+            type="checkbox"
+            checked={identityConfirmed}
+            onChange={(e) => setIdentityConfirmed(e.target.checked)}
+            disabled={isBusy}
+          />
+          Identity checked against the presenting customer
+        </label>
+        <label className="mb-4 flex items-center gap-2 text-xs font-medium text-neutral-700">
+          <input
+            type="checkbox"
+            checked={documentsConfirmed}
+            onChange={(e) => setDocumentsConfirmed(e.target.checked)}
+            disabled={isBusy}
+          />
+          Physical documents checked before handoff
+        </label>
         <button
           type="button"
           onClick={handleManualCheckIn}
@@ -221,7 +268,7 @@ export function HandoffActionsPanel({ delivery }: HandoffActionsPanelProps) {
           {actionState === "checking_in" ? (
             <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
           ) : (
-            "Manual check-in (Bypass QR)"
+            "Manual check-in"
           )}
         </button>
       </div>

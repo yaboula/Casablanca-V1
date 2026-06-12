@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/route-guards";
+import { getDefaultRouteForRole } from "@/features/auth/auth-redirects";
 import { getReservationDetail } from "@/features/reservations/reservation-service";
 import { getReservationDocuments } from "@/features/documents/document-service";
 import { WaitingRoomView } from "@/features/waiting-room/WaitingRoomView";
@@ -27,9 +28,13 @@ export async function generateMetadata({
 export default async function WaitingPage({ params }: WaitingPageProps) {
   const { reservationId } = await params;
 
-  await requireAuthenticatedUser(
+  const user = await requireAuthenticatedUser(
     `/reservations/${reservationId}/waiting`,
   );
+
+  if (user.role !== "USER") {
+    redirect(getDefaultRouteForRole(user.role));
+  }
 
   let reservation;
   let documents;

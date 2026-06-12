@@ -77,7 +77,11 @@ export function OperatorDocumentReviewCard({
       const normalized = normalizeApiError(err);
       setActionState("error");
       setFeedbackKind("error");
-      setFeedbackMessage(normalized.message || "Approval failed. Please try again.");
+      setFeedbackMessage(
+        normalized.kind === "conflict"
+          ? "This document was already reviewed by another operator. Refreshing queue."
+          : normalized.message || "Approval failed. Please try again.",
+      );
       // If conflict (already reviewed), also refetch queue to sync state
       if (normalized.kind === "conflict") {
         onReviewed(doc.id);
@@ -112,7 +116,11 @@ export function OperatorDocumentReviewCard({
       const normalized = normalizeApiError(err);
       setActionState("error");
       setFeedbackKind("error");
-      setFeedbackMessage(normalized.message || "Rejection failed. Please try again.");
+      setFeedbackMessage(
+        normalized.kind === "conflict"
+          ? "This document was already reviewed by another operator. Refreshing queue."
+          : normalized.message || "Rejection failed. Please try again.",
+      );
       if (normalized.kind === "conflict") {
         onReviewed(doc.id);
       }

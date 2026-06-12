@@ -46,7 +46,7 @@ function adaptDeliveryDocument(raw: unknown): DeliveryDocumentSummary | null {
   };
 }
 
-function adaptDelivery(raw: unknown): DeliveryViewModel | null {
+export function adaptDelivery(raw: unknown): DeliveryViewModel | null {
   if (!raw || typeof raw !== "object") return null;
   const d = raw as Record<string, unknown>;
   const id = typeof d.id === "string" ? d.id : null;
@@ -70,7 +70,6 @@ function adaptDelivery(raw: unknown): DeliveryViewModel | null {
       typeof d.pickupLocation === "string" ? d.pickupLocation : "CMN",
     totalDays: typeof d.totalDays === "number" ? d.totalDays : 0,
     status: typeof d.status === "string" ? d.status : "CONFIRMED",
-    qrCodeHash: typeof d.qrCodeHash === "string" ? d.qrCodeHash : null,
     balanceDueEUR: typeof d.balanceDueEUR === "number" ? d.balanceDueEUR : 0,
     documents,
   };

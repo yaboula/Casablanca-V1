@@ -216,8 +216,7 @@ export function OperatorDashboardView({
   deliveries,
   stats,
 }: OperatorDashboardViewProps) {
-  // Subscribe to live delivery updates. Calls router.refresh() automatically.
-  useOperatorDeliveriesSse();
+  const connectionState = useOperatorDeliveriesSse();
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
@@ -363,12 +362,28 @@ export function OperatorDashboardView({
       </div>
 
       {/* Connection Indicator Footer */}
-      <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50/50 px-4 py-2.5 rounded-full border border-green-200 w-fit">
+      <div
+        className={`flex items-center gap-2 px-4 py-2.5 rounded-full border w-fit text-xs font-semibold ${
+          connectionState === "live"
+            ? "text-green-700 bg-green-50/50 border-green-200"
+            : connectionState === "fallback"
+              ? "text-amber-800 bg-amber-50 border-amber-200"
+              : "text-neutral-700 bg-neutral-50 border-neutral-200"
+        }`}
+      >
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+          <span
+            className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
+              connectionState === "live" ? "animate-ping bg-green-400" : "bg-current"
+            }`}
+          />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />
         </span>
-        Live delivery updates active
+        {connectionState === "live"
+          ? "Live delivery updates active"
+          : connectionState === "fallback"
+            ? "Live stream unavailable — auto-refresh fallback active"
+            : "Reconnecting delivery updates"}
       </div>
     </section>
   );

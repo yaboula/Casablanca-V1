@@ -56,7 +56,7 @@ export function RegisterForm({ redirectTo = "/dashboard" }: RegisterFormProps) {
       return;
     }
 
-    router.replace(getSafeRedirect(redirectTo));
+    router.replace(getSafeRedirect(redirectTo, payload?.user?.role));
     router.refresh();
   }
 

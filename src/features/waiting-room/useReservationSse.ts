@@ -18,7 +18,7 @@
  * Caller contract:
  * - onEvent() should trigger a refetch of reservation + documents.
  * - Do NOT manually apply SSE event data as truth — always refetch.
- * - "ping" events are filtered here — caller never sees them.
+ * - "keepalive" events are filtered here — caller never sees them.
  *
  * Backend SSE URL: /api/v1/sse/reservation/:id
  * Auth: EventSource uses credentials:"include" (cookie auth).
@@ -142,7 +142,7 @@ export function useReservationSse({
       } catch {
         return; // Malformed event — ignore
       }
-      if (parsed.type === "ping") return; // keepalive — ignore
+      if (parsed.type === "keepalive") return; // keepalive — ignore
       onEvent(parsed);
     };
 

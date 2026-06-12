@@ -22,6 +22,7 @@ import { RefreshCw, ClipboardCheck, AlertTriangle } from "lucide-react";
 import { clientFetch } from "@/lib/api/client-fetch";
 import { adaptPendingDocuments } from "./operator-adapters";
 import { OperatorDocumentReviewCard } from "./OperatorDocumentReviewCard";
+import { useOperatorDocumentsSse } from "@/hooks/useOperatorDeliveriesSse";
 import type { PendingDocumentViewModel, PendingDocumentsApiResponse } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +40,7 @@ type OperatorDocumentsViewProps = {
 export function OperatorDocumentsView({
   initialDocuments,
 }: OperatorDocumentsViewProps) {
+  const connectionState = useOperatorDocumentsSse();
   const [documents, setDocuments] =
     useState<PendingDocumentViewModel[]>(initialDocuments);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -107,6 +109,21 @@ export function OperatorDocumentsView({
         </div>
 
         <div className="flex items-center gap-3">
+          <span
+            className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border ${
+              connectionState === "live"
+                ? "border-green-200 bg-green-50 text-green-700"
+                : connectionState === "fallback"
+                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                  : "border-neutral-200 bg-neutral-50 text-neutral-600"
+            }`}
+          >
+            {connectionState === "live"
+              ? "Live"
+              : connectionState === "fallback"
+                ? "Polling"
+                : "Reconnecting"}
+          </span>
           {lastRefreshedAt && (
             <span className="text-xs text-neutral-400 font-light">
               Updated {formatTime(lastRefreshedAt)}

@@ -19,7 +19,6 @@ import {
   Car,
   Clock,
   CheckCircle2,
-  AlertTriangle,
   Ticket,
   UploadCloud,
   ArrowRight,
@@ -32,6 +31,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { ReservationViewModel } from "@/features/reservations/types";
+import { canAccessCustomerTicket } from "@/features/reservations/reservation-helpers";
 import type { DashboardData, ReservationNextAction } from "./types";
 import { deriveNextAction } from "./types";
 import { CancelReservationButton } from "./CancelReservationButton";
@@ -113,6 +113,13 @@ const NEXT_ACTION_CTA: Record<ReservationNextAction, NextActionCta | null> = {
     icon: Clock,
     variant: "secondary",
     rowText: "Documents under review",
+  },
+  payment_processing: {
+    label: "Track payment status",
+    href: (id) => `/reservations/${id}/confirmed`,
+    icon: Clock,
+    variant: "secondary",
+    rowText: "Payment processing",
   },
   view_ticket: {
     label: "View pickup ticket",
@@ -489,16 +496,11 @@ export function DashboardView({ userName, data }: DashboardViewProps) {
   const needsAttention = reservations.filter((r) =>
     r.status === "PENDING_DEPOSIT" || r.status === "AWAITING_CAPTURE",
   );
-  const inReview = reservations.filter(
-    (r) => r.status === "CONFIRMED" && !r.hasQrCode,
-  );
+  const inReview = reservations.filter((r) => r.status === "CONFIRMED" && !canAccessCustomerTicket(r));
   const readyForPickup = reservations.filter(
-    (r) => r.status === "CONFIRMED" && r.hasQrCode,
+    (r) => canAccessCustomerTicket(r),
   );
   const active = reservations.filter((r) => r.status === "IN_PROGRESS");
-  // Cancelled: only future-dated or no pickup date match; kept separate
-  const cancelled = reservations.filter((r) => r.status === "CANCELLED");
-  const completed = reservations.filter((r) => r.status === "COMPLETED");
 
   // Priority hero: first from needsAttention, then active, then readyForPickup, then inReview
   const heroCandidate =
@@ -608,7 +610,7 @@ export function DashboardView({ userName, data }: DashboardViewProps) {
                   ? "Active rental"
                   : heroCandidate.status === "PENDING_DEPOSIT" || heroCandidate.status === "AWAITING_CAPTURE"
                   ? "Reservation awaiting payment"
-                  : heroCandidate.hasQrCode
+                  : canAccessCustomerTicket(heroCandidate)
                   ? "Ready for pickup"
                   : "Current reservation"
               }>

@@ -1,15 +1,8 @@
 /**
  * Waiting room feature types.
  *
- * Describes the SSE event shapes from GET /api/v1/sse/reservation/:id
- * and the connection/display state for the waiting room.
- *
- * Backend SSE source: backend/src/sse/sse.service.ts
- *
- * SSE event types:
- *   "ping"                     — keepalive, ignore
- *   "DOCUMENT_STATUS_UPDATE"   — document approved/rejected
- *   "RESERVATION_STATUS_UPDATE"— reservation status changed
+ * Describes the normalized SSE event shapes from
+ * GET /api/v1/sse/reservation/:id and the connection/display state.
  */
 
 // ---------------------------------------------------------------------------
@@ -17,25 +10,22 @@
 // ---------------------------------------------------------------------------
 
 export type SsePingEvent = {
-  type: "ping";
-  timestamp: number;
+  type: "keepalive";
+  updatedAt: string;
 };
 
 export type SseDocumentStatusEvent = {
-  type: "DOCUMENT_STATUS_UPDATE";
-  documentStatus: string;
-  documentType: string | null;
-  rejectionReason: string | null;
-  reservationId: string;
-  timestamp: number;
+  type: "reservation.document.updated";
+  resourceId: string;
+  status: string;
+  updatedAt: string;
 };
 
 export type SseReservationStatusEvent = {
-  type: "RESERVATION_STATUS_UPDATE";
+  type: "reservation.status.updated";
+  resourceId: string;
   status: string;
-  reservationId: string;
-  timestamp: number;
-  [key: string]: unknown;
+  updatedAt: string;
 };
 
 export type SseRawEvent =
@@ -68,7 +58,7 @@ export type WaitingRoomPhase =
   | "loading"          // Initial data not yet available
   | "docs_pending"     // Documents submitted, awaiting operator review
   | "docs_rejected"    // One or more documents rejected
-  | "ready"            // All docs approved, ticket data available
+  | "ready"            // All docs approved, ticket can be requested
   | "confirmed"        // Reservation CONFIRMED (may or may not have ticket)
   | "in_progress"      // Rental in progress
   | "completed"        // Rental completed

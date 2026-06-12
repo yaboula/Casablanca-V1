@@ -15,7 +15,9 @@
  */
 
 import dynamic from "next/dynamic";
+import { useMemo } from "react";
 import { Loader2, AlertTriangle } from "lucide-react";
+import { consumePaymentClientSecret } from "./payment-client-secret-cache";
 
 const StripeDepositPanel = dynamic(
   () =>
@@ -59,7 +61,12 @@ export function PaymentPanelLoader({
   depositEurCents,
   totalPriceEurCents,
 }: PaymentPanelLoaderProps) {
-  if (!clientSecret) {
+  const effectiveClientSecret = useMemo(
+    () => clientSecret ?? consumePaymentClientSecret(reservationId),
+    [clientSecret, reservationId],
+  );
+
+  if (!effectiveClientSecret) {
     return (
       <div
         className="rounded-lg border border-red-200 bg-red-50 p-5"
@@ -98,7 +105,7 @@ export function PaymentPanelLoader({
 
   return (
     <StripeDepositPanel
-      clientSecret={clientSecret}
+      clientSecret={effectiveClientSecret}
       depositEurCents={depositEurCents}
       reservationId={reservationId}
       totalPriceEurCents={totalPriceEurCents}

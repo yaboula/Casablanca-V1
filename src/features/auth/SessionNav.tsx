@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CurrentUser } from "@/lib/auth/types";
+import { getDefaultRouteForRole } from "./auth-redirects";
 import { LogoutButton } from "./LogoutButton";
 
 export function SessionNav() {
@@ -58,7 +59,10 @@ export function SessionNav() {
       <span className="text-xs font-medium text-neutral-400">
         {user.fullName || user.email}
       </span>
-      <Link className="text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition-colors" href="/dashboard">
+      <Link
+        className="text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition-colors"
+        href={getDefaultRouteForRole(user.role)}
+      >
         Dashboard
       </Link>
       {user.role === "OPERATOR" || user.role === "ADMIN" ? (
@@ -75,4 +79,3 @@ export function SessionNav() {
     </div>
   );
 }
-

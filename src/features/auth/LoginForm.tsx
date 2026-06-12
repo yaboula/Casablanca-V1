@@ -52,7 +52,7 @@ export function LoginForm({ redirectTo = "/dashboard" }: LoginFormProps) {
       return;
     }
 
-    router.replace(getSafeRedirect(redirectTo));
+    router.replace(getSafeRedirect(redirectTo, payload?.user?.role));
     router.refresh();
   }
 
