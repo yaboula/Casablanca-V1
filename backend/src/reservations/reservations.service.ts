@@ -263,6 +263,8 @@ export class ReservationsService {
   }
 
   async cancel(id: string, user: User): Promise<Reservation> {
+    this.assertCustomerOnly(user);
+
     const result = await this.dataSource.transaction(async (manager) => {
       const reservation = await manager
         .getRepository(Reservation)
@@ -279,11 +281,7 @@ export class ReservationsService {
         throw new ForbiddenException("No tienes acceso a esta reserva.");
       }
 
-      if (
-        reservation.status === ReservationStatus.CONFIRMED &&
-        user.role !== UserRole.OPERATOR &&
-        user.role !== UserRole.ADMIN
-      ) {
+      if (reservation.status === ReservationStatus.CONFIRMED) {
         throw new BadRequestException(
           `No se puede cancelar una reserva en estado '${reservation.status}'.`,
         );
@@ -306,23 +304,13 @@ export class ReservationsService {
     });
 
     if (result.stripePaymentIntentId) {
-      if (result.originalStatus === ReservationStatus.CONFIRMED) {
-        this.retryStripeAction(
-          () =>
-            this.stripeService.refundPaymentIntent(
-              result.stripePaymentIntentId!,
-            ),
-          `refundPaymentIntent(${result.stripePaymentIntentId})`,
-        );
-      } else {
-        this.stripeService
-          .cancelPaymentIntent(result.stripePaymentIntentId)
-          .catch((err) => {
-            this.logger.error(
-              `[cancel] Stripe cancelPaymentIntent failed (non-fatal): ${err.message}`,
-            );
-          });
-      }
+      this.stripeService
+        .cancelPaymentIntent(result.stripePaymentIntentId)
+        .catch((err) => {
+          this.logger.error(
+            `[cancel] Stripe cancelPaymentIntent failed (non-fatal): ${err.message}`,
+          );
+        });
     }
 
     return result.saved;
@@ -386,6 +374,8 @@ export class ReservationsService {
     page: number;
     limit: number;
   }> {
+    this.assertCustomerOnly(user);
+
     const { page, limit } = opts;
     const skip = (page - 1) * limit;
 
@@ -396,18 +386,17 @@ export class ReservationsService {
       take: limit,
     };
 
-    const [data, total] =
-      user.role === UserRole.OPERATOR || user.role === UserRole.ADMIN
-        ? await this.reservationsRepo.findAndCount(baseOptions)
-        : await this.reservationsRepo.findAndCount({
-            ...baseOptions,
-            where: { userId: user.id },
-          });
+    const [data, total] = await this.reservationsRepo.findAndCount({
+      ...baseOptions,
+      where: { userId: user.id },
+    });
 
     return { data, total, page, limit };
   }
 
   async findById(id: string, user: User): Promise<Reservation> {
+    this.assertCustomerOnly(user);
+
     const reservation = await this.reservationsRepo.findOne({
       where: { id },
       relations: { vehicle: true, documents: true },
@@ -417,7 +406,7 @@ export class ReservationsService {
       throw new NotFoundException(`Reserva ${id} no encontrada.`);
     }
 
-    if (user.role === UserRole.USER && reservation.userId !== user.id) {
+    if (reservation.userId !== user.id) {
       throw new ForbiddenException("No tienes acceso a esta reserva.");
     }
 
@@ -567,6 +556,14 @@ export class ReservationsService {
         `Transición inválida de reserva: '${current}' -> '${next}'. Permitidas: ${
           getAllowedReservationTransitions(current).join(", ") || "ninguna"
         }.`,
+      );
+    }
+  }
+
+  private assertCustomerOnly(user: User): void {
+    if (user.role !== UserRole.USER) {
+      throw new ForbiddenException(
+        "Este endpoint es solo para clientes. Usa los endpoints de staff/operator.",
       );
     }
   }

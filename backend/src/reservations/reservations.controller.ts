@@ -33,7 +33,8 @@ export class ReservationsController {
    * Returns the reservation including stripeClientSecret for frontend payment confirmation.
    */
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() dto: CreateReservationDto,
@@ -62,11 +63,12 @@ export class ReservationsController {
 
   /**
    * GET /api/v1/reservations/my
-   * Returns the caller's reservations.
-   * OPERATOR/ADMIN see all reservations.
+   * Returns the customer's own reservations.
+   * Staff must use /operator endpoints; this route never lists all bookings.
    */
   @Get('my')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   async findMy(
     @CurrentUser() user: User,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -77,12 +79,12 @@ export class ReservationsController {
 
   /**
    * GET /api/v1/reservations/:id
-   * Returns a single reservation.
-   * USER can only access their own — ForbiddenException otherwise.
-   * OPERATOR/ADMIN can access any.
+   * Returns a customer's own reservation.
+   * Staff must use /operator endpoints.
    */
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
@@ -93,11 +95,12 @@ export class ReservationsController {
 
   /**
    * PATCH /api/v1/reservations/:id/cancel
-   * Customer cancels a PENDING_DEPOSIT reservation.
-   * OPERATOR/ADMIN can also cancel CONFIRMED reservations.
+   * Customer cancels an eligible own reservation.
+   * Staff cancellation must go through audited staff workflows.
    */
   @Patch(':id/cancel')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @HttpCode(HttpStatus.OK)
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,

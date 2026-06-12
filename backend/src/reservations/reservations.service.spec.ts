@@ -465,38 +465,28 @@ describe("ReservationsService", () => {
       expect(result.status).toBe(ReservationStatus.CANCELLED);
     });
 
-    it("OPERATOR puede cancelar reserva CONFIRMED", async () => {
+    it("OPERATOR no puede cancelar por endpoint customer", async () => {
       const reservation = makeReservation({
         status: ReservationStatus.CONFIRMED,
       });
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
-      mockReservationsRepo.save.mockResolvedValue({
-        ...reservation,
-        status: ReservationStatus.CANCELLED,
-      });
 
-      const result = await service.cancel(
-        "res-999",
-        makeUser({ role: UserRole.OPERATOR }),
-      );
-      expect(result.status).toBe(ReservationStatus.CANCELLED);
+      await expect(
+        service.cancel("res-999", makeUser({ role: UserRole.OPERATOR })),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockReservationsRepo.findOne).not.toHaveBeenCalled();
     });
 
-    it("ADMIN puede cancelar reserva CONFIRMED", async () => {
+    it("ADMIN no puede cancelar por endpoint customer", async () => {
       const reservation = makeReservation({
         status: ReservationStatus.CONFIRMED,
       });
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
-      mockReservationsRepo.save.mockResolvedValue({
-        ...reservation,
-        status: ReservationStatus.CANCELLED,
-      });
 
-      const result = await service.cancel(
-        "res-999",
-        makeUser({ role: UserRole.ADMIN }),
-      );
-      expect(result.status).toBe(ReservationStatus.CANCELLED);
+      await expect(
+        service.cancel("res-999", makeUser({ role: UserRole.ADMIN })),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockReservationsRepo.findOne).not.toHaveBeenCalled();
     });
 
     it("USER no puede cancelar la reserva de otro — ForbiddenException", async () => {
@@ -637,35 +627,31 @@ describe("ReservationsService", () => {
       expect(result.page).toBe(1);
     });
 
-    it("OPERATOR recibe TODAS las reservas — sin filtro de userId", async () => {
+    it("OPERATOR no puede usar /reservations/my como backdoor", async () => {
       const reservations = [
         makeReservation(),
         makeReservation({ id: "res-888" }),
       ];
       mockReservationsRepo.findAndCount.mockResolvedValue([reservations, 2]);
 
-      const result = await service.findMy(
-        makeUser({ role: UserRole.OPERATOR }),
-      );
+      await expect(
+        service.findMy(makeUser({ role: UserRole.OPERATOR })),
+      ).rejects.toThrow(ForbiddenException);
 
-      expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
-        expect.not.objectContaining({ where: { userId: expect.anything() } }),
-      );
-      expect(result.total).toBe(2);
+      expect(mockReservationsRepo.findAndCount).not.toHaveBeenCalled();
     });
 
-    it("ADMIN recibe TODAS las reservas — sin filtro de userId", async () => {
+    it("ADMIN no puede usar /reservations/my como backdoor", async () => {
       mockReservationsRepo.findAndCount.mockResolvedValue([
         [makeReservation()],
         1,
       ]);
 
-      const result = await service.findMy(makeUser({ role: UserRole.ADMIN }));
+      await expect(
+        service.findMy(makeUser({ role: UserRole.ADMIN })),
+      ).rejects.toThrow(ForbiddenException);
 
-      expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
-        expect.not.objectContaining({ where: { userId: expect.anything() } }),
-      );
-      expect(result.total).toBe(1);
+      expect(mockReservationsRepo.findAndCount).not.toHaveBeenCalled();
     });
 
     it("paginación — skip y take calculados correctamente", async () => {
@@ -704,26 +690,24 @@ describe("ReservationsService", () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it("OPERATOR puede ver cualquier reserva", async () => {
+    it("OPERATOR no puede leer reservas por endpoint customer", async () => {
       const reservation = makeReservation({ userId: "otro-user" });
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
 
-      const result = await service.findById(
-        "res-999",
-        makeUser({ role: UserRole.OPERATOR }),
-      );
-      expect(result.id).toBe("res-999");
+      await expect(
+        service.findById("res-999", makeUser({ role: UserRole.OPERATOR })),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockReservationsRepo.findOne).not.toHaveBeenCalled();
     });
 
-    it("ADMIN puede ver cualquier reserva", async () => {
+    it("ADMIN no puede leer reservas por endpoint customer", async () => {
       const reservation = makeReservation({ userId: "otro-user" });
       mockReservationsRepo.findOne.mockResolvedValue(reservation);
 
-      const result = await service.findById(
-        "res-999",
-        makeUser({ role: UserRole.ADMIN }),
-      );
-      expect(result.id).toBe("res-999");
+      await expect(
+        service.findById("res-999", makeUser({ role: UserRole.ADMIN })),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockReservationsRepo.findOne).not.toHaveBeenCalled();
     });
 
     it("lanza NotFoundException si la reserva no existe", async () => {
