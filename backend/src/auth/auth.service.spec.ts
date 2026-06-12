@@ -20,6 +20,7 @@ function makeUser(overrides: Partial<User & { passwordHash?: string }> = {}): Us
     phone: null,
     role: UserRole.USER,
     isActive: true,
+    tokenVersion: 0,
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-01T00:00:00Z'),
     ...overrides,
@@ -32,6 +33,8 @@ const mockUsersService = {
   create: jest.fn(),
   findByEmailWithPassword: jest.fn(),
   findById: jest.fn(),
+  findByIdWithTokenVersion: jest.fn(),
+  incrementTokenVersion: jest.fn(),
 };
 
 const mockJwtService = {
@@ -174,11 +177,16 @@ describe('AuthService', () => {
 
   describe('refresh()', () => {
     const refreshToken = 'valid-refresh-token';
-    const payload = { sub: 'user-123', email: 'john@example.com', role: UserRole.USER };
+    const payload = {
+      sub: 'user-123',
+      email: 'john@example.com',
+      role: UserRole.USER,
+      tokenVersion: 0,
+    };
 
     it('emite nuevos tokens si el refresh token es válido', async () => {
       mockJwtService.verify.mockReturnValue(payload);
-      mockUsersService.findById.mockResolvedValue(makeUser());
+      mockUsersService.findByIdWithTokenVersion.mockResolvedValue(makeUser());
 
       const result = await service.refresh(refreshToken);
 
@@ -186,6 +194,9 @@ describe('AuthService', () => {
         secret: 'refresh-secret-test',
       });
       expect(result.accessToken).toBeDefined();
+      expect(mockUsersService.incrementTokenVersion).toHaveBeenCalledWith(
+        'user-123',
+      );
     });
 
     it('lanza UnauthorizedException si el JWT no es válido o está expirado', async () => {
@@ -198,14 +209,14 @@ describe('AuthService', () => {
 
     it('lanza UnauthorizedException si el usuario del payload no existe o está inactivo', async () => {
       mockJwtService.verify.mockReturnValue(payload);
-      mockUsersService.findById.mockResolvedValue(null);
+      mockUsersService.findByIdWithTokenVersion.mockResolvedValue(null);
 
       await expect(service.refresh(refreshToken)).rejects.toThrow(UnauthorizedException);
     });
 
     it('usa JWT_REFRESH_SECRET de ConfigService para verificar', async () => {
       mockJwtService.verify.mockReturnValue(payload);
-      mockUsersService.findById.mockResolvedValue(makeUser());
+      mockUsersService.findByIdWithTokenVersion.mockResolvedValue(makeUser());
 
       await service.refresh(refreshToken);
 
