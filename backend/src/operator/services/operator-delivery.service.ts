@@ -94,6 +94,52 @@ export class OperatorDeliveryService {
     return reservations.map(toDeliveryResponseDto);
   }
 
+  async getDeliveryDetail(
+    reservationId: string,
+  ): Promise<DeliveryResponseDto> {
+    const reservation = await this.reservationsRepo
+      .createQueryBuilder("r")
+      .leftJoinAndSelect("r.vehicle", "v")
+      .leftJoinAndSelect("r.documents", "d")
+      .select([
+        "r.id",
+        "r.customerName",
+        "r.customerPhone",
+        "r.vehicleId",
+        "r.pickupDate",
+        "r.returnDate",
+        "r.pickupLocation",
+        "r.totalDays",
+        "r.status",
+        "r.totalPriceEurCents",
+        "r.depositEurCents",
+        "v.id",
+        "v.brand",
+        "v.model",
+        "v.category",
+        "v.licensePlate",
+        "v.imageUrl",
+        "d.id",
+        "d.type",
+        "d.status",
+      ])
+      .where("r.id = :reservationId", { reservationId })
+      .andWhere("r.status IN (:...statuses)", {
+        statuses: [
+          ReservationStatus.CONFIRMED,
+          ReservationStatus.IN_PROGRESS,
+          ReservationStatus.COMPLETED,
+        ],
+      })
+      .getOne();
+
+    if (!reservation) {
+      throw new NotFoundException("Entrega no encontrada.");
+    }
+
+    return toDeliveryResponseDto(reservation);
+  }
+
   // ── Check-in ────────────────────────────────────────────────
 
   /**
@@ -219,6 +265,62 @@ export class OperatorDeliveryService {
    * Counts deliveries by status for a given date (default: today).
    * Designed to be a fast, lightweight call (no joins).
    */
+  async completeDelivery(
+    reservationId: string,
+  ): Promise<DeliveryActionResponseDto> {
+    const reservation = await this.reservationsRepo.findOne({
+      where: { id: reservationId },
+      relations: { vehicle: true },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException("Entrega no encontrada.");
+    }
+
+    if (
+      !isReservationTransitionAllowed(
+        reservation.status,
+        ReservationStatus.COMPLETED,
+      )
+    ) {
+      throw new ConflictException(
+        `No se puede completar una entrega en estado ${reservation.status}.`,
+      );
+    }
+
+    reservation.status = ReservationStatus.COMPLETED;
+    const saved = await this.reservationsRepo.save(reservation);
+
+    const otherActive = await this.reservationsRepo.count({
+      where: [
+        {
+          vehicleId: reservation.vehicleId,
+          status: ReservationStatus.IN_PROGRESS,
+        },
+        {
+          vehicleId: reservation.vehicleId,
+          status: ReservationStatus.CONFIRMED,
+        },
+      ],
+    });
+
+    if (otherActive === 0) {
+      await this.vehiclesRepo.update(
+        { id: reservation.vehicleId },
+        { status: VehicleStatus.AVAILABLE },
+      );
+    }
+
+    this.logger.log(
+      `completeDelivery: reservation ${reservationId} -> COMPLETED`,
+    );
+    this.sseService.emitDeliveryUpdate(
+      reservationId,
+      ReservationStatus.COMPLETED,
+    );
+    return toDeliveryActionResponseDto(saved);
+  }
+
   async getDeliveryStats(dateStr?: string): Promise<{
     date: string;
     total: number;

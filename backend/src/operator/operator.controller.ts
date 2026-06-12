@@ -49,6 +49,21 @@ export class OperatorController {
     const stats = await this.operatorService.getDeliveryStats(date);
     return { data: stats };
   }
+
+  /**
+   * GET /api/v1/operator/deliveries/:reservationId
+   * Stable detail endpoint for CONFIRMED, IN_PROGRESS, and COMPLETED deliveries.
+   */
+  @Get("deliveries/:reservationId")
+  async getDeliveryDetail(
+    @Param("reservationId", ParseUUIDPipe) reservationId: string,
+  ) {
+    const delivery = await this.operatorService.getDeliveryDetail(
+      reservationId,
+    );
+    return { data: delivery };
+  }
+
   /**
    * PATCH /api/v1/operator/delivery/:reservationId/checkin
    * Manual check-in without QR verification — operator override.
@@ -87,6 +102,20 @@ export class OperatorController {
    * GET /api/v1/operator/search?q=Ahmed
    * Case-insensitive search by name, phone, or reservation ID.
    */
+  /**
+   * PATCH /api/v1/operator/deliveries/:reservationId/complete
+   * Operator marks an in-progress delivery as completed.
+   */
+  @Patch("deliveries/:reservationId/complete")
+  @HttpCode(HttpStatus.OK)
+  async completeDelivery(
+    @Param("reservationId", ParseUUIDPipe) reservationId: string,
+  ) {
+    const reservation =
+      await this.operatorService.completeDelivery(reservationId);
+    return { data: reservation, message: "Entrega completada." };
+  }
+
   @Get("search")
   async search(@Query("q") query: string) {
     return this.operatorService.search(query);

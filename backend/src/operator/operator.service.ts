@@ -64,6 +64,12 @@ export class OperatorService {
     return this.deliveryService.getDeliveryStats(dateStr);
   }
 
+  async getDeliveryDetail(
+    reservationId: string,
+  ): Promise<DeliveryResponseDto> {
+    return this.deliveryService.getDeliveryDetail(reservationId);
+  }
+
   async manualCheckin(
     reservationId: string,
   ): Promise<DeliveryActionResponseDto> {
@@ -76,6 +82,12 @@ export class OperatorService {
     operatorId: string,
   ): Promise<DeliveryActionResponseDto> {
     return this.deliveryService.scanQr(reservationId, qrCodeHash, operatorId);
+  }
+
+  async completeDelivery(
+    reservationId: string,
+  ): Promise<DeliveryActionResponseDto> {
+    return this.deliveryService.completeDelivery(reservationId);
   }
 
   // â”€â”€ Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
