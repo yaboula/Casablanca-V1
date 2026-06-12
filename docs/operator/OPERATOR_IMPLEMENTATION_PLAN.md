@@ -1,0 +1,216 @@
+# Operator Implementation Plan
+
+## Planning Rules
+- This is a phased plan only.
+- No code has been changed in this audit.
+- File lists below are likely touchpoints, not exhaustive guarantees.
+
+## O1 - Operator Access And Route Foundation
+- Objective:
+  - Make role boundaries explicit across customer, operator, and admin shells.
+- User/operator problem solved:
+  - Staff should not rely on customer routes, and customers should not fall into staff flows.
+- Backend scope:
+  - Reconfirm intended semantics for `/reservations/my`, `/reservations/:id`, `/documents/:reservationId`, `/sse/reservation/:id`
+- Frontend scope:
+  - Add customer-only route guard where needed
+  - Define explicit operator/admin landing redirects after login
+  - Decide how `/dashboard` behaves for non-customer roles
+- Files likely touched:
+  - `src/lib/auth/route-guards.ts`
+  - `src/lib/auth/guards.ts`
+  - `src/features/auth/auth-redirects.ts`
+  - `src/app/(customer)/*`
+  - possibly backend controllers if policy changes
+- Risks:
+  - Breaking existing staff navigation expectations
+  - Hidden dependencies on operator/admin using customer shells
+- Validation commands:
+  - `npm run lint`
+  - `npm run build`
+  - `cd backend && npm run test -- --runInBand`
+- Expected commit message:
+  - `Harden customer and staff route boundaries`
+- Acceptance criteria:
+  - Customer-only pages block or redirect non-customer roles by policy
+  - Staff have explicit, intentional entry points
+  - Access matrix matches code
+
+## O2 - Operator Document Review Queue
+- Objective:
+  - Make document review safe under concurrency and clear under load.
+- User/operator problem solved:
+  - Two operators should not be able to race conflicting decisions.
+- Backend scope:
+  - Lock/transaction strategy for reject path
+  - Optional pagination/filtering on pending queue
+  - Tighten operator search and queue response fields
+- Frontend scope:
+  - Queue freshness strategy for multi-operator use
+  - Better conflict recovery copy
+- Files likely touched:
+  - `backend/src/operator/services/operator-document.service.ts`
+  - `backend/src/operator/operator.controller.ts`
+  - `src/features/operator/OperatorDocumentsView.tsx`
+  - `src/features/operator/OperatorDocumentReviewCard.tsx`
+- Risks:
+  - Breaking current optimistic operator expectations
+  - Presigned URL expiry during long review sessions
+- Validation commands:
+  - `cd backend && npm run test -- --runInBand`
+  - targeted concurrency/integration tests if added
+- Expected commit message:
+  - `Harden operator document review concurrency`
+- Acceptance criteria:
+  - Approve/reject races are safely resolved
+  - Queue state stays accurate for multiple operators
+  - Sensitive response fields are minimized
+
+## O3 - Delivery Dashboard And Live Updates
+- Objective:
+  - Make the operator dashboard reflect backend truth in near real time.
+- User/operator problem solved:
+  - Operators need an accurate same-day board without stale rows.
+- Backend scope:
+  - Confirm intended delivery list statuses and date window rules
+  - Optional dedicated search/filter endpoint behavior
+- Frontend scope:
+  - Replace broken SSE proxy path or implement proper streaming proxy
+  - Align metrics with backend stats payload
+  - Decide whether `IN_PROGRESS` and `COMPLETED` belong in the main board
+- Files likely touched:
+  - `src/app/api/v1/[...path]/route.ts`
+  - `src/hooks/useOperatorDeliveriesSse.ts`
+  - `src/features/operator/OperatorDashboardView.tsx`
+  - `backend/src/sse/*` if transport changes
+- Risks:
+  - Framework-level streaming proxy constraints
+  - Browser/EventSource auth behavior
+- Validation commands:
+  - `npm run lint`
+  - `npm run build`
+  - manual SSE verification in browser
+- Expected commit message:
+  - `Restore operator live delivery updates`
+- Acceptance criteria:
+  - Live updates actually stream
+  - Dashboard metrics match backend counters
+  - Status filters correspond to real dataset contents
+
+## O4 - Delivery Detail / QR Scan / Manual Check-In
+- Objective:
+  - Provide a stable handoff detail page and a real QR contract.
+- User/operator problem solved:
+  - Operators need a detail page that survives status transitions and a QR flow that can be used on the floor.
+- Backend scope:
+  - Add dedicated detail endpoint or widen current detail data contract
+  - Decide whether manual override needs stronger audit requirements
+- Frontend scope:
+  - Stop deriving detail from daily confirmed list
+  - Render a real scannable QR or explicit hash workflow on customer ticket
+  - Keep detail page usable after `IN_PROGRESS`
+- Files likely touched:
+  - `backend/src/operator/operator.controller.ts`
+  - `backend/src/operator/services/operator-delivery.service.ts`
+  - `src/features/operator/operator-service.ts`
+  - `src/app/(operator)/operator/delivery/[reservationId]/page.tsx`
+  - `src/features/operator/OperatorDeliveryDetailView.tsx`
+  - `src/features/operator/HandoffActionsPanel.tsx`
+  - `src/features/smart-ticket/SmartTicketView.tsx`
+- Risks:
+  - QR format/backward compatibility decisions
+  - Airport staff device/scanner realities
+- Validation commands:
+  - `npm run lint`
+  - `npm run build`
+  - operator handoff manual QA
+- Expected commit message:
+  - `Stabilize operator handoff detail and QR contract`
+- Acceptance criteria:
+  - Detail page loads for confirmed and in-progress reservations by design
+  - QR scan contract matches customer output
+  - Manual override is intentional and auditable
+
+## O5 - Completion Flow And Payment Capture Verification
+- Objective:
+  - Close the loop from confirmed pickup to completed rental with accurate payment semantics.
+- User/operator problem solved:
+  - Operators need confidence that “confirmed,” “captured,” and “completed” mean exactly one thing each.
+- Backend scope:
+  - Recheck capture/refund transitions, copy, and webhook safety-net behavior
+  - Decide whether additional completion-side financial handling is needed
+- Frontend scope:
+  - Align payment copy with actual authorized/captured amount
+  - Keep completion UI reachable and trustworthy
+- Files likely touched:
+  - `backend/src/reservations/pricing.service.ts`
+  - `backend/src/operator/processors/capture-stripe.processor.ts`
+  - `backend/src/stripe/webhooks.service.ts`
+  - `src/features/reservations/ConfirmationView.tsx`
+  - `src/features/payments/StripeDepositPanel.tsx`
+- Risks:
+  - Customer-facing legal/payment communication
+  - Backward compatibility with current reservations
+- Validation commands:
+  - backend payment/unit tests
+  - manual sandbox Stripe verification
+- Expected commit message:
+  - `Align payment state messaging with operator flow`
+- Acceptance criteria:
+  - UI copy matches backend reality
+  - Capture/cancel/refund semantics are documented and tested
+
+## O6 - Staff/Admin Access Boundaries
+- Objective:
+  - Make OPERATOR and ADMIN capabilities explicit and minimal.
+- User/operator problem solved:
+  - Staff should see only what they need; admins should have deliberate elevated powers.
+- Backend scope:
+  - Minimize search and reservation payloads
+  - Revisit staff visibility into customer SSE and document endpoints
+- Frontend scope:
+  - Dedicated staff/admin shells and navigation if needed
+  - Remove accidental dependence on customer pages
+- Files likely touched:
+  - `backend/src/operator/services/operator-search.service.ts`
+  - `backend/src/sse/sse.controller.ts`
+  - `src/features/auth/SessionNav.tsx`
+  - `src/app/layout.tsx`
+- Risks:
+  - Surprise regressions for existing staff workflows
+- Validation commands:
+  - lint/build/tests
+  - access matrix manual QA
+- Expected commit message:
+  - `Tighten operator and admin data boundaries`
+- Acceptance criteria:
+  - Each role has intentional UI and API surface
+  - Sensitive payloads are least-privilege
+
+## O7 - Operator QA, Security, And Concurrency Tests
+- Objective:
+  - Add evidence for the risky flows before shipping deeper operator work.
+- User/operator problem solved:
+  - Prevent regressions in the most operationally sensitive flows.
+- Backend scope:
+  - Integration tests for operator endpoints
+  - Concurrency tests for review race conditions
+  - SSE/stream tests if architecture supports them
+- Frontend scope:
+  - E2E coverage for operator dashboard, document review, handoff, completion
+- Files likely touched:
+  - `backend/test/integration/*`
+  - `backend/src/operator/**/*.spec.ts`
+  - `e2e/operator.e2e.spec.ts`
+- Risks:
+  - Test environment complexity around Stripe, BullMQ, and SSE
+- Validation commands:
+  - `npm run lint`
+  - `npm run build`
+  - `cd backend && npm run test -- --runInBand`
+  - `npm run test:e2e` or project equivalent if configured
+- Expected commit message:
+  - `Add operator flow regression coverage`
+- Acceptance criteria:
+  - Critical operator paths have executable regression coverage
+  - Concurrency/security failures are reproducible in tests
