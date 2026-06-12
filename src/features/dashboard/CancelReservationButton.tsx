@@ -15,6 +15,14 @@ export function CancelReservationButton({ reservationId }: Props) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getErrorMessage = (err: unknown): string => {
+    if (err instanceof Error && err.message.trim().length > 0) {
+      return err.message;
+    }
+
+    return "Failed to cancel reservation. Please try again.";
+  };
+
   const handleCancel = async () => {
     setIsCancelling(true);
     setError(null);
@@ -25,9 +33,9 @@ export function CancelReservationButton({ reservationId }: Props) {
       // Refresh the dashboard to show it under Cancelled
       setShowConfirm(false);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to cancel reservation:", err);
-      setError(err.message || "Failed to cancel reservation. Please try again.");
+      setError(getErrorMessage(err));
     } finally {
       setIsCancelling(false);
     }
