@@ -56,6 +56,20 @@ export type ReservationTicketApiResponse = {
   data?: unknown;
 };
 
+export type ReservationPaymentIntentRecoveryApi = {
+  reservationId?: unknown;
+  clientSecret?: unknown;
+  depositEurCents?: unknown;
+  totalDueNowEurCents?: unknown;
+  currency?: unknown;
+  depositPaymentStatus?: unknown;
+  expiresAt?: unknown;
+};
+
+export type ReservationPaymentIntentRecoveryApiResponse = {
+  data?: unknown;
+};
+
 // ---------------------------------------------------------------------------
 // Backend-driven status machine
 // ---------------------------------------------------------------------------
@@ -138,4 +152,14 @@ export type ReservationViewModel = {
 export type ReservationTicketViewModel = {
   ticketToken: string;
   expiresAt: string;
+};
+
+export type ReservationPaymentIntentRecoveryViewModel = {
+  reservationId: string;
+  clientSecret: string;
+  depositEurCents: number;
+  totalDueNowEurCents: number;
+  currency: string;
+  depositPaymentStatus: DepositStatus | null;
+  expiresAt: string | null;
 };

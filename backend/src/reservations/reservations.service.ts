@@ -19,6 +19,10 @@ import {
 import { CreateReservationDto } from "./dto/create-reservation.dto";
 import { QuoteReservationDto } from "./dto/quote-reservation.dto";
 import {
+  PaymentIntentRecoveryResponseDto,
+  toPaymentIntentRecoveryResponseDto,
+} from "./dto/payment-intent-response.dto";
+import {
   DepositRefundStatus,
   DepositStatus,
   Reservation,
@@ -579,6 +583,45 @@ export class ReservationsService {
       userId: reservation.userId,
       ticketVersion: reservation.ticketTokenVersion ?? 0,
     });
+  }
+
+  async getPaymentIntentRecovery(
+    id: string,
+    user: User,
+  ): Promise<PaymentIntentRecoveryResponseDto> {
+    this.assertCustomerOnly(user);
+
+    const reservation = await this.reservationsRepo.findOne({
+      where: { id },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException(`Reserva ${id} no encontrada.`);
+    }
+
+    if (reservation.userId !== user.id) {
+      throw new ForbiddenException("No tienes acceso a esta reserva.");
+    }
+
+    if (reservation.status !== ReservationStatus.PENDING_DEPOSIT) {
+      throw new ConflictException(
+        "El recovery de pago solo esta disponible para reservas en PENDING_DEPOSIT.",
+      );
+    }
+
+    if (reservation.depositStatus !== DepositStatus.PENDING) {
+      throw new ConflictException(
+        "El PaymentIntent ya no esta disponible para recovery en el estado actual.",
+      );
+    }
+
+    if (!reservation.stripeClientSecret) {
+      throw new ConflictException(
+        "Payment authorization could not be restored for this reservation.",
+      );
+    }
+
+    return toPaymentIntentRecoveryResponseDto(reservation);
   }
 
   private resolveReservationDates(

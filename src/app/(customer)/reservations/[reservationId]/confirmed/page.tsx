@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/route-guards";
-import { getReservationDetail } from "@/features/reservations/reservation-service";
+import {
+  getReservationDetail,
+  getReservationPaymentIntentRecovery,
+} from "@/features/reservations/reservation-service";
 import { ConfirmationView } from "@/features/reservations/ConfirmationView";
 import { ApiError } from "@/lib/api/errors";
 import { getDefaultRouteForRole } from "@/features/auth/auth-redirects";
@@ -55,6 +58,7 @@ export default async function ConfirmedPage({ params }: ConfirmedPageProps) {
   }
 
   let reservation;
+  let paymentRecovery = null;
 
   try {
     reservation = await getReservationDetail(reservationId);
@@ -77,5 +81,24 @@ export default async function ConfirmedPage({ params }: ConfirmedPageProps) {
     notFound();
   }
 
-  return <ConfirmationView reservation={reservation} />;
+  if (reservation.status === "PENDING_DEPOSIT") {
+    try {
+      paymentRecovery = await getReservationPaymentIntentRecovery(reservation.id);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.payload.kind !== "conflict") {
+          throw error;
+        }
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  return (
+    <ConfirmationView
+      reservation={reservation}
+      paymentRecovery={paymentRecovery}
+    />
+  );
 }

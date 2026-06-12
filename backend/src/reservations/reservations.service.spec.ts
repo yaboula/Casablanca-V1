@@ -909,4 +909,96 @@ describe("ReservationsService", () => {
       expect(mockQrService.issueTicketToken).not.toHaveBeenCalled();
     });
   });
+
+  describe("getPaymentIntentRecovery()", () => {
+    it("returns the minimal recovery payload for the owning customer in PENDING_DEPOSIT", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({
+          status: ReservationStatus.PENDING_DEPOSIT,
+          depositStatus: DepositStatus.PENDING,
+          totalDueNowEurCents: 1000,
+          currency: "EUR",
+        }),
+      );
+
+      const result = await service.getPaymentIntentRecovery(
+        "res-999",
+        makeUser(),
+      );
+
+      expect(result).toEqual({
+        reservationId: "res-999",
+        clientSecret: "pi_test_secret_xxx",
+        depositEurCents: DEPOSIT_EUR_CENTS,
+        totalDueNowEurCents: 1000,
+        currency: "EUR",
+        depositPaymentStatus: DepositStatus.PENDING,
+        expiresAt: null,
+      });
+      expect(result).toEqual(
+        expect.not.objectContaining({
+          stripePaymentIntentId: expect.anything(),
+          vehicle: expect.anything(),
+          user: expect.anything(),
+          qrCodeHash: expect.anything(),
+        }),
+      );
+    });
+
+    it("forbids operators from using the customer recovery endpoint", async () => {
+      await expect(
+        service.getPaymentIntentRecovery(
+          "res-999",
+          makeUser({ role: UserRole.OPERATOR }),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockReservationsRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it("forbids admins from using the customer recovery endpoint", async () => {
+      await expect(
+        service.getPaymentIntentRecovery(
+          "res-999",
+          makeUser({ role: UserRole.ADMIN }),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockReservationsRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it("forbids recovery for another customer's reservation", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({ userId: "other-user" }),
+      );
+
+      await expect(
+        service.getPaymentIntentRecovery("res-999", makeUser()),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rejects recovery when the reservation is no longer PENDING_DEPOSIT", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({ status: ReservationStatus.AWAITING_CAPTURE }),
+      );
+
+      await expect(
+        service.getPaymentIntentRecovery("res-999", makeUser()),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("rejects recovery when the payment intent cannot be restored safely", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({
+          status: ReservationStatus.PENDING_DEPOSIT,
+          depositStatus: DepositStatus.PENDING,
+          stripeClientSecret: null,
+        }),
+      );
+
+      await expect(
+        service.getPaymentIntentRecovery("res-999", makeUser()),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
 });

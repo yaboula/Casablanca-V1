@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * PaymentPanelLoader — thin client component boundary for the Stripe panel.
+ * PaymentPanelLoader - thin client component boundary for the Stripe panel.
  *
  * This client wrapper exists because `ssr: false` in next/dynamic is only
  * allowed inside Client Components. ConfirmationView is a Server Component
  * and cannot use `ssr: false` dynamic imports directly.
  *
  * Architecture:
- * - This file is "use client" — it owns the client boundary for Stripe.
+ * - This file is "use client" - it owns the client boundary for Stripe.
  * - It dynamically imports StripeDepositPanel with ssr: false.
  * - Stripe JS loads ONLY when this component mounts (payment state only).
  * - Public routes (/, /catalog, /catalog/:id) never import this file.
@@ -40,7 +40,7 @@ const StripeDepositPanel = dynamic(
         </div>
         <div className="flex items-center justify-center gap-2 px-6 pb-4 text-xs text-neutral-400">
           <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
-          Loading payment form…
+          Loading payment form...
         </div>
       </div>
     ),
@@ -82,13 +82,13 @@ export function PaymentPanelLoader({
               Payment setup unavailable
             </p>
             <p className="mt-2 text-sm leading-6 text-red-800">
-              Your reservation was created but the payment setup could not be
-              completed at this time. This is a temporary issue — your booking
-              is not lost.
+              Payment authorization could not be restored. Your booking still
+              exists, but Stripe Elements could not be rehydrated for this
+              session.
             </p>
             <p className="mt-2 text-xs text-red-700">
-              Please refresh this page or contact support with your reservation
-              reference.
+              Please return to your dashboard or contact support with your
+              reservation reference.
             </p>
             <button
               className="mt-4 inline-flex min-h-11 items-center rounded-md bg-red-800 px-5 text-sm font-bold text-white transition hover:bg-red-900"

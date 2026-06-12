@@ -23,13 +23,17 @@ import {
   Check,
   ArrowRight,
 } from "lucide-react";
-import type { ReservationViewModel } from "./types";
+import type {
+  ReservationPaymentIntentRecoveryViewModel,
+  ReservationViewModel,
+} from "./types";
 import { PaymentPanelLoader } from "@/features/payments/PaymentPanelLoader";
 import { JourneyShell } from "./JourneyShell";
 import type { JourneyStepKey } from "./JourneyShell";
 
 type ConfirmationViewProps = {
   reservation: ReservationViewModel;
+  paymentRecovery: ReservationPaymentIntentRecoveryViewModel | null;
 };
 
 // ─── Status → shell heading/subtitle config ───────────────────────────────────
@@ -137,7 +141,13 @@ function shortRef(uuid: string): string {
 
 // ─── Sub-step action panel (right column upper) ───────────────────────────────
 
-function NextAction({ reservation }: { reservation: ReservationViewModel }) {
+function NextAction({
+  reservation,
+  paymentRecovery,
+}: {
+  reservation: ReservationViewModel;
+  paymentRecovery: ReservationPaymentIntentRecoveryViewModel | null;
+}) {
   const { status } = reservation;
 
   if (status === "PENDING_DEPOSIT") {
@@ -147,7 +157,7 @@ function NextAction({ reservation }: { reservation: ReservationViewModel }) {
           Step 2A — Authorize checkout hold
         </h2>
         <PaymentPanelLoader
-          clientSecret={null}
+          clientSecret={paymentRecovery?.clientSecret ?? null}
           depositEurCents={reservation.depositEurCents}
           reservationId={reservation.id}
           totalPriceEurCents={reservation.totalPriceEurCents}
@@ -295,7 +305,10 @@ function NextStepsGuide({ status, reservationId }: { status: ReservationViewMode
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export function ConfirmationView({ reservation }: ConfirmationViewProps) {
+export function ConfirmationView({
+  reservation,
+  paymentRecovery,
+}: ConfirmationViewProps) {
   const config = getStatusConfig(reservation.status);
 
   // Nav buttons: confirmed → can go to check-in; never go back to booking form
@@ -450,7 +463,10 @@ export function ConfirmationView({ reservation }: ConfirmationViewProps) {
 
         {/* Right: action + prep guide */}
         <div className="space-y-6">
-          <NextAction reservation={reservation} />
+          <NextAction
+            reservation={reservation}
+            paymentRecovery={paymentRecovery}
+          />
           <NextStepsGuide status={reservation.status} reservationId={reservation.id} />
         </div>
       </div>

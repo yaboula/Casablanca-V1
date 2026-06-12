@@ -93,6 +93,25 @@ export class ReservationsController {
   }
 
   /**
+   * GET /api/v1/reservations/:id/payment-intent
+   * Returns the minimum Stripe Elements recovery payload for the owning
+   * customer while the reservation is still awaiting deposit authorization.
+   */
+  @Get(':id/payment-intent')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  async getPaymentIntent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ) {
+    const paymentIntent = await this.reservationsService.getPaymentIntentRecovery(
+      id,
+      user,
+    );
+    return { data: paymentIntent };
+  }
+
+  /**
    * GET /api/v1/reservations/:id
    * Returns a customer's own reservation.
    * Staff must use /operator endpoints.

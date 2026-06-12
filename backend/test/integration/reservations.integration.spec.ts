@@ -288,6 +288,63 @@ describe('Reservations - Integration', () => {
     });
   });
 
+  describe('GET /reservations/:id/payment-intent', () => {
+    it('lets the owner recover the current PaymentIntent for a PENDING_DEPOSIT reservation', async () => {
+      const vehicleId = await seedVehicle(app);
+      const { accessToken } = await registerAndLogin(app);
+      const reservation = await createReservation(app, accessToken, vehicleId);
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/reservations/${reservation.id}/payment-intent`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body.data).toEqual(
+        expect.objectContaining({
+          reservationId: reservation.id,
+          clientSecret: 'pi_test_integration_secret_xxx',
+          depositEurCents: 1000,
+          totalDueNowEurCents: 1000,
+          currency: 'EUR',
+          depositPaymentStatus: 'PENDING',
+        }),
+      );
+      expect(res.body.data).not.toHaveProperty('stripePaymentIntentId');
+      expect(res.body.data).not.toHaveProperty('vehicle');
+      expect(res.body.data).not.toHaveProperty('user');
+      expect(res.body.data).not.toHaveProperty('qrCodeHash');
+    });
+
+    it("returns 403 when another user tries to recover the reservation's PaymentIntent", async () => {
+      const vehicleId = await seedVehicle(app);
+      const owner = await registerAndLogin(app, 'pay-owner@nexus-test.com');
+      const intruder = await registerAndLogin(app, 'pay-intruder@nexus-test.com');
+
+      const reservation = await createReservation(app, owner.accessToken, vehicleId);
+
+      await request(app.getHttpServer())
+        .get(`${BASE}/reservations/${reservation.id}/payment-intent`)
+        .set('Authorization', `Bearer ${intruder.accessToken}`)
+        .expect(403);
+    });
+
+    it('returns 409 when the reservation is no longer PENDING_DEPOSIT', async () => {
+      const vehicleId = await seedVehicle(app);
+      const { accessToken } = await registerAndLogin(app, 'pay-state@nexus-test.com');
+      const reservation = await createReservation(app, accessToken, vehicleId);
+
+      await request(app.getHttpServer())
+        .patch(`${BASE}/reservations/${reservation.id}/cancel`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get(`${BASE}/reservations/${reservation.id}/payment-intent`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(409);
+    });
+  });
+
   describe('PATCH /reservations/:id/cancel', () => {
     it('allows a user to cancel their own PENDING_DEPOSIT reservation', async () => {
       const vehicleId = await seedVehicle(app);
