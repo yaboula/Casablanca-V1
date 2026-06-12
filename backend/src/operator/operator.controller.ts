@@ -14,7 +14,11 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { OperatorService } from "./operator.service";
-import { ScanQrDto, RejectDocumentDto } from "./dto/operator.dto";
+import {
+  ManualCheckinDto,
+  ScanQrDto,
+  RejectDocumentDto,
+} from "./dto/operator.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
@@ -72,8 +76,14 @@ export class OperatorController {
   @HttpCode(HttpStatus.OK)
   async manualCheckin(
     @Param("reservationId", ParseUUIDPipe) reservationId: string,
+    @Body() dto: ManualCheckinDto,
+    @CurrentUser() operator: User,
   ) {
-    const reservation = await this.operatorService.manualCheckin(reservationId);
+    const reservation = await this.operatorService.manualCheckin(
+      reservationId,
+      operator.id,
+      dto,
+    );
     return { data: reservation, message: "Check-in confirmado." };
   }
 
@@ -110,9 +120,12 @@ export class OperatorController {
   @HttpCode(HttpStatus.OK)
   async completeDelivery(
     @Param("reservationId", ParseUUIDPipe) reservationId: string,
+    @CurrentUser() operator: User,
   ) {
-    const reservation =
-      await this.operatorService.completeDelivery(reservationId);
+    const reservation = await this.operatorService.completeDelivery(
+      reservationId,
+      operator.id,
+    );
     return { data: reservation, message: "Entrega completada." };
   }
 

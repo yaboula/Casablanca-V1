@@ -218,9 +218,14 @@ export class OperatorDocumentService {
     await this.auditLogRepo.save(
       this.auditLogRepo.create({
         action: "APPROVE",
+        resourceType: "DOCUMENT",
         documentId: doc.id,
+        reservationId,
         operatorId,
+        beforeStatus: DocumentStatus.PENDING_REVIEW,
+        afterStatus: DocumentStatus.APPROVED,
         reason: null,
+        metadata: { documentType: doc.type },
       }),
     );
     if (bothApproved) {
@@ -295,9 +300,14 @@ export class OperatorDocumentService {
     await this.auditLogRepo.save(
       this.auditLogRepo.create({
         action: "REJECT",
+        resourceType: "DOCUMENT",
         documentId: doc.id,
+        reservationId: doc.reservationId,
         operatorId,
+        beforeStatus: DocumentStatus.PENDING_REVIEW,
+        afterStatus: DocumentStatus.REJECTED,
         reason,
+        metadata: { documentType: doc.type },
       }),
     );
 

@@ -17,6 +17,7 @@ import {
 } from "../../vehicles/vehicle.entity";
 import { QrService } from "../../qr/qr.service";
 import { SseService } from "../../sse/sse.service";
+import { AuditLog } from "../audit-log.entity";
 import { OperatorDeliveryService } from "./operator-delivery.service";
 
 function makeVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
@@ -88,6 +89,8 @@ describe("OperatorDeliveryService", () => {
   };
   let vehiclesRepo: { update: jest.Mock };
   let sseService: { emitDeliveryUpdate: jest.Mock };
+  let auditLogRepo: { create: jest.Mock; save: jest.Mock };
+  let qrService: { verifyHash: jest.Mock };
 
   beforeEach(async () => {
     reservationsRepo = {
@@ -98,6 +101,11 @@ describe("OperatorDeliveryService", () => {
     };
     vehiclesRepo = { update: jest.fn() };
     sseService = { emitDeliveryUpdate: jest.fn() };
+    qrService = { verifyHash: jest.fn() };
+    auditLogRepo = {
+      create: jest.fn((input) => input),
+      save: jest.fn().mockResolvedValue({}),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -111,8 +119,12 @@ describe("OperatorDeliveryService", () => {
           useValue: vehiclesRepo,
         },
         {
+          provide: getRepositoryToken(AuditLog),
+          useValue: auditLogRepo,
+        },
+        {
           provide: QrService,
-          useValue: { verifyHash: jest.fn() },
+          useValue: qrService,
         },
         {
           provide: SseService,
@@ -159,6 +171,100 @@ describe("OperatorDeliveryService", () => {
     );
   });
 
+  it("requires manual check-in reason and confirmations before mutation", async () => {
+    await expect(
+      service.manualCheckin("res-1", "operator-1", {
+        reason: "Customer phone unavailable",
+        identityConfirmed: true,
+        documentsConfirmed: false,
+      }),
+    ).rejects.toThrow("Manual check-in requiere confirmar identidad");
+
+    expect(reservationsRepo.findOne).not.toHaveBeenCalled();
+    expect(auditLogRepo.save).not.toHaveBeenCalled();
+  });
+
+  it("audits successful manual check-in with reason and confirmation metadata", async () => {
+    reservationsRepo.findOne.mockResolvedValue(
+      makeReservation({ status: ReservationStatus.CONFIRMED }),
+    );
+    reservationsRepo.save.mockImplementation(async (entity: Reservation) => ({
+      ...entity,
+    }));
+
+    await service.manualCheckin("res-1", "operator-1", {
+      reason: "Customer phone unavailable",
+      identityConfirmed: true,
+      documentsConfirmed: true,
+    });
+
+    expect(auditLogRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "MANUAL_CHECKIN",
+        resourceType: "RESERVATION",
+        reservationId: "res-1",
+        operatorId: "operator-1",
+        beforeStatus: ReservationStatus.CONFIRMED,
+        afterStatus: ReservationStatus.IN_PROGRESS,
+        reason: "Customer phone unavailable",
+        metadata: {
+          identityConfirmed: true,
+          documentsConfirmed: true,
+        },
+      }),
+    );
+  });
+
+  it("audits successful QR scan", async () => {
+    reservationsRepo.findOne.mockResolvedValue(
+      makeReservation({ status: ReservationStatus.CONFIRMED }),
+    );
+    reservationsRepo.save.mockImplementation(async (entity: Reservation) => ({
+      ...entity,
+    }));
+    qrService.verifyHash.mockReturnValue(true);
+
+    await service.scanQr("res-1", "valid-qr-hash", "operator-1");
+
+    expect(auditLogRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "QR_SCAN_SUCCESS",
+        resourceType: "RESERVATION",
+        reservationId: "res-1",
+        operatorId: "operator-1",
+        beforeStatus: ReservationStatus.CONFIRMED,
+        afterStatus: ReservationStatus.IN_PROGRESS,
+        metadata: { qrVerified: true },
+      }),
+    );
+  });
+
+  it("audits failed QR scan without exposing QR contents", async () => {
+    reservationsRepo.findOne.mockResolvedValue(
+      makeReservation({ status: ReservationStatus.CONFIRMED }),
+    );
+    qrService.verifyHash.mockReturnValue(false);
+
+    await expect(
+      service.scanQr("res-1", "invalid-qr-hash", "operator-1"),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(auditLogRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "QR_SCAN_FAILURE",
+        reservationId: "res-1",
+        operatorId: "operator-1",
+        beforeStatus: ReservationStatus.CONFIRMED,
+        afterStatus: ReservationStatus.CONFIRMED,
+        reason: "Invalid QR hash.",
+        metadata: { qrProvided: true },
+      }),
+    );
+    expect(JSON.stringify(auditLogRepo.create.mock.calls)).not.toContain(
+      "invalid-qr-hash",
+    );
+  });
+
   it("completes an in-progress delivery and returns a minimized action DTO", async () => {
     const reservation = makeReservation({
       status: ReservationStatus.IN_PROGRESS,
@@ -169,7 +275,7 @@ describe("OperatorDeliveryService", () => {
     }));
     reservationsRepo.count.mockResolvedValue(0);
 
-    const result = await service.completeDelivery("res-1");
+    const result = await service.completeDelivery("res-1", "operator-1");
 
     expect(reservationsRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ status: ReservationStatus.COMPLETED }),
@@ -182,6 +288,16 @@ describe("OperatorDeliveryService", () => {
       "res-1",
       ReservationStatus.COMPLETED,
     );
+    expect(auditLogRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "DELIVERY_COMPLETED",
+        resourceType: "RESERVATION",
+        reservationId: "res-1",
+        operatorId: "operator-1",
+        beforeStatus: ReservationStatus.IN_PROGRESS,
+        afterStatus: ReservationStatus.COMPLETED,
+      }),
+    );
     expect(result.status).toBe(ReservationStatus.COMPLETED);
     expect(JSON.stringify(result)).not.toContain("Sara Client");
     expect(JSON.stringify(result)).not.toContain("pi_sensitive");
@@ -192,8 +308,17 @@ describe("OperatorDeliveryService", () => {
       makeReservation({ status: ReservationStatus.CONFIRMED }),
     );
 
-    await expect(service.completeDelivery("res-1")).rejects.toThrow(
+    await expect(service.completeDelivery("res-1", "operator-1")).rejects.toThrow(
       ConflictException,
+    );
+    expect(auditLogRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "DELIVERY_COMPLETION_FAILED",
+        reservationId: "res-1",
+        operatorId: "operator-1",
+        beforeStatus: ReservationStatus.CONFIRMED,
+        afterStatus: ReservationStatus.CONFIRMED,
+      }),
     );
     expect(reservationsRepo.save).not.toHaveBeenCalled();
   });

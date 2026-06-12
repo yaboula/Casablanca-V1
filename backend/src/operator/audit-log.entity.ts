@@ -6,39 +6,51 @@ import {
   Index,
 } from "typeorm";
 
-export type AuditAction = "APPROVE" | "REJECT";
+export type AuditAction =
+  | "APPROVE"
+  | "REJECT"
+  | "QR_SCAN_SUCCESS"
+  | "QR_SCAN_FAILURE"
+  | "MANUAL_CHECKIN"
+  | "DELIVERY_COMPLETED"
+  | "DELIVERY_COMPLETION_FAILED";
 
-/**
- * B3.3 — Immutable audit trail for document review decisions.
- *
- * Captures every approve/reject with: who, what, when, why (for rejections).
- * A document can appear multiple times if it was rejected, re-uploaded, then approved.
- *
- * ADR-005: Separate table rather than adding columns to reservation_documents,
- * because documents can be rejected → re-uploaded → approved (full history needed).
- */
+export type AuditResourceType = "DOCUMENT" | "RESERVATION";
+
 @Entity("audit_logs")
 @Index("idx_audit_document", ["documentId"])
+@Index("idx_audit_reservation", ["reservationId"])
 @Index("idx_audit_operator", ["operatorId"])
 export class AuditLog {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  /** Action taken by the operator */
   @Column({ type: "varchar" })
   action: AuditAction;
 
-  /** FK → reservation_documents.id */
-  @Column({ name: "document_id", type: "uuid" })
-  documentId: string;
+  @Column({ name: "resource_type", type: "varchar", default: "DOCUMENT" })
+  resourceType: AuditResourceType;
 
-  /** FK → users.id (the operator who acted) */
+  @Column({ name: "document_id", type: "uuid", nullable: true })
+  documentId: string | null;
+
+  @Column({ name: "reservation_id", type: "uuid", nullable: true })
+  reservationId: string | null;
+
   @Column({ name: "operator_id", type: "uuid" })
   operatorId: string;
 
-  /** Populated only for REJECT actions */
+  @Column({ name: "before_status", type: "varchar", nullable: true })
+  beforeStatus: string | null;
+
+  @Column({ name: "after_status", type: "varchar", nullable: true })
+  afterStatus: string | null;
+
   @Column({ type: "text", nullable: true })
   reason: string | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  metadata: Record<string, unknown> | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

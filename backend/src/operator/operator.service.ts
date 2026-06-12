@@ -20,6 +20,7 @@ import {
   DocumentReviewResultDto,
   ReviewedDocumentResponseDto,
 } from "./dto/document-response.dto";
+import { ManualCheckinDto } from "./dto/operator.dto";
 import { OperatorSearchResponseDto } from "./dto/search-response.dto";
 
 /**
@@ -72,8 +73,10 @@ export class OperatorService {
 
   async manualCheckin(
     reservationId: string,
+    operatorId: string,
+    dto: ManualCheckinDto,
   ): Promise<DeliveryActionResponseDto> {
-    return this.deliveryService.manualCheckin(reservationId);
+    return this.deliveryService.manualCheckin(reservationId, operatorId, dto);
   }
 
   async scanQr(
@@ -86,8 +89,9 @@ export class OperatorService {
 
   async completeDelivery(
     reservationId: string,
+    operatorId: string,
   ): Promise<DeliveryActionResponseDto> {
-    return this.deliveryService.completeDelivery(reservationId);
+    return this.deliveryService.completeDelivery(reservationId, operatorId);
   }
 
   // â”€â”€ Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

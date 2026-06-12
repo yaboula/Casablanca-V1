@@ -1,8 +1,9 @@
 import {
-  Injectable,
-  NotFoundException,
+  BadRequestException,
   ConflictException,
+  Injectable,
   Logger,
+  NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -11,24 +12,18 @@ import {
   ReservationStatus,
 } from "../../reservations/reservation.entity";
 import { isReservationTransitionAllowed } from "../../reservations/reservation-policy";
-import { Vehicle, VehicleStatus } from "../../vehicles/vehicle.entity";
 import { QrService } from "../../qr/qr.service";
 import { SseService } from "../../sse/sse.service";
+import { Vehicle, VehicleStatus } from "../../vehicles/vehicle.entity";
+import { AuditAction, AuditLog } from "../audit-log.entity";
 import {
   DeliveryActionResponseDto,
   DeliveryResponseDto,
   toDeliveryActionResponseDto,
   toDeliveryResponseDto,
 } from "../dto/delivery-response.dto";
+import { ManualCheckinDto } from "../dto/operator.dto";
 
-/**
- * Handles all delivery-floor operations:
- * - List deliveries by date
- * - QR scan check-in
- * - Manual override check-in
- *
- * SRP: no document review, no search, no Stripe here.
- */
 @Injectable()
 export class OperatorDeliveryService {
   private readonly logger = new Logger(OperatorDeliveryService.name);
@@ -38,16 +33,12 @@ export class OperatorDeliveryService {
     private readonly reservationsRepo: Repository<Reservation>,
     @InjectRepository(Vehicle)
     private readonly vehiclesRepo: Repository<Vehicle>,
+    @InjectRepository(AuditLog)
+    private readonly auditLogRepo: Repository<AuditLog>,
     private readonly qrService: QrService,
     private readonly sseService: SseService,
   ) {}
 
-  // ── List ────────────────────────────────────────────────────
-
-  /**
-   * Returns CONFIRMED reservations for a given date (default: today).
-   * Joins vehicle + documents so the client can show doc-readiness badges.
-   */
   async getDeliveries(dateStr?: string): Promise<DeliveryResponseDto[]> {
     const date = dateStr ? new Date(dateStr) : new Date();
     const start = new Date(date);
@@ -55,32 +46,7 @@ export class OperatorDeliveryService {
     const end = new Date(date);
     end.setHours(23, 59, 59, 999);
 
-    const reservations = await this.reservationsRepo
-      .createQueryBuilder("r")
-      .leftJoinAndSelect("r.vehicle", "v")
-      .leftJoinAndSelect("r.documents", "d")
-      .select([
-        "r.id",
-        "r.customerName",
-        "r.customerPhone",
-        "r.vehicleId",
-        "r.pickupDate",
-        "r.returnDate",
-        "r.pickupLocation",
-        "r.totalDays",
-        "r.status",
-        "r.totalPriceEurCents",
-        "r.depositEurCents",
-        "v.id",
-        "v.brand",
-        "v.model",
-        "v.category",
-        "v.licensePlate",
-        "v.imageUrl",
-        "d.id",
-        "d.type",
-        "d.status",
-      ])
+    const reservations = await this.createDeliveryDetailQuery()
       .where("r.status = :status", { status: ReservationStatus.CONFIRMED })
       .andWhere("r.pickupDate >= :start", { start })
       .andWhere("r.pickupDate <= :end", { end })
@@ -88,7 +54,7 @@ export class OperatorDeliveryService {
       .getMany();
 
     this.logger.log(
-      `getDeliveries(${dateStr ?? "today"}) → ${reservations.length} results`,
+      `getDeliveries(${dateStr ?? "today"}) -> ${reservations.length} results`,
     );
 
     return reservations.map(toDeliveryResponseDto);
@@ -97,32 +63,7 @@ export class OperatorDeliveryService {
   async getDeliveryDetail(
     reservationId: string,
   ): Promise<DeliveryResponseDto> {
-    const reservation = await this.reservationsRepo
-      .createQueryBuilder("r")
-      .leftJoinAndSelect("r.vehicle", "v")
-      .leftJoinAndSelect("r.documents", "d")
-      .select([
-        "r.id",
-        "r.customerName",
-        "r.customerPhone",
-        "r.vehicleId",
-        "r.pickupDate",
-        "r.returnDate",
-        "r.pickupLocation",
-        "r.totalDays",
-        "r.status",
-        "r.totalPriceEurCents",
-        "r.depositEurCents",
-        "v.id",
-        "v.brand",
-        "v.model",
-        "v.category",
-        "v.licensePlate",
-        "v.imageUrl",
-        "d.id",
-        "d.type",
-        "d.status",
-      ])
+    const reservation = await this.createDeliveryDetailQuery()
       .where("r.id = :reservationId", { reservationId })
       .andWhere("r.status IN (:...statuses)", {
         statuses: [
@@ -140,16 +81,17 @@ export class OperatorDeliveryService {
     return toDeliveryResponseDto(reservation);
   }
 
-  // ── Check-in ────────────────────────────────────────────────
-
-  /**
-   * Manual check-in: CONFIRMED → IN_PROGRESS without QR hash verification.
-   * Operator override — e.g. customer forgot phone.
-   * Idempotent: second call returns the reservation unchanged.
-   */
   async manualCheckin(
     reservationId: string,
+    operatorId: string,
+    dto: ManualCheckinDto,
   ): Promise<DeliveryActionResponseDto> {
+    if (!dto.identityConfirmed || !dto.documentsConfirmed) {
+      throw new BadRequestException(
+        "Manual check-in requiere confirmar identidad y documentos.",
+      );
+    }
+
     const reservation = await this.reservationsRepo.findOne({
       where: { id: reservationId },
     });
@@ -159,9 +101,19 @@ export class OperatorDeliveryService {
     }
 
     if (reservation.status === ReservationStatus.IN_PROGRESS) {
-      this.logger.warn(
-        `manualCheckin: reservation ${reservationId} already IN_PROGRESS — idempotent return`,
-      );
+      await this.writeReservationAudit({
+        action: "MANUAL_CHECKIN",
+        operatorId,
+        reservationId,
+        beforeStatus: reservation.status,
+        afterStatus: reservation.status,
+        reason: dto.reason,
+        metadata: {
+          identityConfirmed: dto.identityConfirmed,
+          documentsConfirmed: dto.documentsConfirmed,
+          idempotent: true,
+        },
+      });
       return toDeliveryActionResponseDto(reservation);
     }
 
@@ -176,6 +128,7 @@ export class OperatorDeliveryService {
       );
     }
 
+    const beforeStatus = reservation.status;
     reservation.status = ReservationStatus.IN_PROGRESS;
     const saved = await this.reservationsRepo.save(reservation);
 
@@ -184,20 +137,26 @@ export class OperatorDeliveryService {
       { status: VehicleStatus.RENTED },
     );
 
-    this.logger.log(
-      `manualCheckin: reservation ${reservationId} → IN_PROGRESS`,
-    );
     this.sseService.emitDeliveryUpdate(
       reservationId,
       ReservationStatus.IN_PROGRESS,
     );
+    await this.writeReservationAudit({
+      action: "MANUAL_CHECKIN",
+      operatorId,
+      reservationId,
+      beforeStatus,
+      afterStatus: ReservationStatus.IN_PROGRESS,
+      reason: dto.reason,
+      metadata: {
+        identityConfirmed: dto.identityConfirmed,
+        documentsConfirmed: dto.documentsConfirmed,
+      },
+    });
+
     return toDeliveryActionResponseDto(saved);
   }
 
-  /**
-   * QR scan check-in: verifies hash then CONFIRMED → IN_PROGRESS.
-   * Uses timing-safe comparison to prevent enumeration attacks.
-   */
   async scanQr(
     reservationId: string,
     qrCodeHash: string,
@@ -208,7 +167,16 @@ export class OperatorDeliveryService {
     });
 
     if (!reservation) {
-      throw new NotFoundException("QR inválido o reserva no encontrada.");
+      await this.writeReservationAudit({
+        action: "QR_SCAN_FAILURE",
+        operatorId,
+        reservationId,
+        beforeStatus: null,
+        afterStatus: null,
+        reason: "Reservation not found during QR scan.",
+        metadata: { qrProvided: Boolean(qrCodeHash) },
+      });
+      throw new NotFoundException("QR invalido o reserva no encontrada.");
     }
 
     const valid = this.qrService.verifyHash(
@@ -222,11 +190,20 @@ export class OperatorDeliveryService {
       this.logger.warn(
         `scanQr: invalid hash for reservation ${reservationId} by operator ${operatorId}`,
       );
-      throw new NotFoundException("QR inválido o reserva no encontrada.");
+      await this.writeReservationAudit({
+        action: "QR_SCAN_FAILURE",
+        operatorId,
+        reservationId,
+        beforeStatus: reservation.status,
+        afterStatus: reservation.status,
+        reason: "Invalid QR hash.",
+        metadata: { qrProvided: true },
+      });
+      throw new NotFoundException("QR invalido o reserva no encontrada.");
     }
 
     if (reservation.status === ReservationStatus.IN_PROGRESS) {
-      throw new ConflictException("Este vehículo ya fue entregado.");
+      throw new ConflictException("Este vehiculo ya fue entregado.");
     }
 
     if (
@@ -240,6 +217,7 @@ export class OperatorDeliveryService {
       );
     }
 
+    const beforeStatus = reservation.status;
     reservation.status = ReservationStatus.IN_PROGRESS;
     const saved = await this.reservationsRepo.save(reservation);
 
@@ -248,25 +226,26 @@ export class OperatorDeliveryService {
       { status: VehicleStatus.RENTED },
     );
 
-    this.logger.log(
-      `scanQr: reservation ${reservationId} → IN_PROGRESS (operator: ${operatorId})`,
-    );
     this.sseService.emitDeliveryUpdate(
       reservationId,
       ReservationStatus.IN_PROGRESS,
     );
+    await this.writeReservationAudit({
+      action: "QR_SCAN_SUCCESS",
+      operatorId,
+      reservationId,
+      beforeStatus,
+      afterStatus: ReservationStatus.IN_PROGRESS,
+      reason: null,
+      metadata: { qrVerified: true },
+    });
+
     return toDeliveryActionResponseDto(saved);
   }
 
-  // ── Stats ───────────────────────────────────────────────
-
-  /**
-   * B3.6 — Quick counters for the operator dashboard widget.
-   * Counts deliveries by status for a given date (default: today).
-   * Designed to be a fast, lightweight call (no joins).
-   */
   async completeDelivery(
     reservationId: string,
+    operatorId: string,
   ): Promise<DeliveryActionResponseDto> {
     const reservation = await this.reservationsRepo.findOne({
       where: { id: reservationId },
@@ -283,11 +262,21 @@ export class OperatorDeliveryService {
         ReservationStatus.COMPLETED,
       )
     ) {
+      await this.writeReservationAudit({
+        action: "DELIVERY_COMPLETION_FAILED",
+        operatorId,
+        reservationId,
+        beforeStatus: reservation.status,
+        afterStatus: reservation.status,
+        reason: "Invalid completion transition.",
+        metadata: { attemptedStatus: ReservationStatus.COMPLETED },
+      });
       throw new ConflictException(
         `No se puede completar una entrega en estado ${reservation.status}.`,
       );
     }
 
+    const beforeStatus = reservation.status;
     reservation.status = ReservationStatus.COMPLETED;
     const saved = await this.reservationsRepo.save(reservation);
 
@@ -311,13 +300,20 @@ export class OperatorDeliveryService {
       );
     }
 
-    this.logger.log(
-      `completeDelivery: reservation ${reservationId} -> COMPLETED`,
-    );
     this.sseService.emitDeliveryUpdate(
       reservationId,
       ReservationStatus.COMPLETED,
     );
+    await this.writeReservationAudit({
+      action: "DELIVERY_COMPLETED",
+      operatorId,
+      reservationId,
+      beforeStatus,
+      afterStatus: ReservationStatus.COMPLETED,
+      reason: null,
+      metadata: { vehicleId: reservation.vehicleId },
+    });
+
     return toDeliveryActionResponseDto(saved);
   }
 
@@ -361,5 +357,58 @@ export class OperatorDeliveryService {
       inProgress: countByStatus[ReservationStatus.IN_PROGRESS] ?? 0,
       completed: countByStatus[ReservationStatus.COMPLETED] ?? 0,
     };
+  }
+
+  private createDeliveryDetailQuery() {
+    return this.reservationsRepo
+      .createQueryBuilder("r")
+      .leftJoinAndSelect("r.vehicle", "v")
+      .leftJoinAndSelect("r.documents", "d")
+      .select([
+        "r.id",
+        "r.customerName",
+        "r.customerPhone",
+        "r.vehicleId",
+        "r.pickupDate",
+        "r.returnDate",
+        "r.pickupLocation",
+        "r.totalDays",
+        "r.status",
+        "r.totalPriceEurCents",
+        "r.depositEurCents",
+        "v.id",
+        "v.brand",
+        "v.model",
+        "v.category",
+        "v.licensePlate",
+        "v.imageUrl",
+        "d.id",
+        "d.type",
+        "d.status",
+      ]);
+  }
+
+  private async writeReservationAudit(input: {
+    action: AuditAction;
+    operatorId: string;
+    reservationId: string;
+    beforeStatus: string | null;
+    afterStatus: string | null;
+    reason: string | null;
+    metadata: Record<string, unknown> | null;
+  }): Promise<void> {
+    await this.auditLogRepo.save(
+      this.auditLogRepo.create({
+        action: input.action,
+        resourceType: "RESERVATION",
+        documentId: null,
+        reservationId: input.reservationId,
+        operatorId: input.operatorId,
+        beforeStatus: input.beforeStatus,
+        afterStatus: input.afterStatus,
+        reason: input.reason,
+        metadata: input.metadata,
+      }),
+    );
   }
 }
