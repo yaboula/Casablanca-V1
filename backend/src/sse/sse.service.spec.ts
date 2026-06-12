@@ -8,11 +8,13 @@ describe("SseService", () => {
   let service: SseService;
 
   beforeEach(() => {
+    jest.useFakeTimers();
     service = new SseService();
   });
 
   afterEach(() => {
     service.onModuleDestroy();
+    jest.useRealTimers();
   });
 
   it("emits normalized customer document events without sensitive fields", async () => {
@@ -88,5 +90,26 @@ describe("SseService", () => {
       updatedAt: expect.any(String),
     });
     expect(event.data).not.toHaveProperty("documentUrl");
+  });
+
+  it("closes reservation streams after terminal status without leaving pending timers", async () => {
+    const eventPromise = firstValueFrom(
+      service.subscribeToReservation("res-5").pipe(take(1)),
+    );
+
+    service.emitReservationStatus("res-5", ReservationStatus.CONFIRMED);
+
+    const event = await eventPromise;
+    expect(event.data).toEqual({
+      type: "reservation.status.updated",
+      resourceId: "res-5",
+      status: ReservationStatus.CONFIRMED,
+      updatedAt: expect.any(String),
+    });
+
+    jest.advanceTimersByTime(2000);
+    await Promise.resolve();
+
+    expect(jest.getTimerCount()).toBe(0);
   });
 });

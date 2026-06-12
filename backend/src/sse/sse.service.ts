@@ -30,6 +30,7 @@ export class SseService implements OnModuleDestroy {
    * For MVP (single instance). Multi-instance: swap for Redis Pub/Sub.
    */
   private readonly reservationSubjects = new Map<string, Subject<SseEvent>>();
+  private readonly reservationCloseTimers = new Map<string, NodeJS.Timeout>();
 
   /** Operator chat stream — single shared stream for all operators */
   private readonly operatorChatSubject = new Subject<LegacySseEvent>();
@@ -112,10 +113,19 @@ export class SseService implements OnModuleDestroy {
       // Bug 4 fix: Close stream on terminal reservation states
       const terminalStatuses = ["CONFIRMED", "COMPLETED", "CANCELLED"];
       if (terminalStatuses.includes(status)) {
-        setTimeout(() => {
+        const existingTimer = this.reservationCloseTimers.get(reservationId);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+        }
+
+        const closeTimer = setTimeout(() => {
           subject.complete();
           this.reservationSubjects.delete(reservationId);
+          this.reservationCloseTimers.delete(reservationId);
         }, 2000); // Allow event to flush before closing
+
+        closeTimer.unref?.();
+        this.reservationCloseTimers.set(reservationId, closeTimer);
       }
     }
   }
@@ -194,6 +204,10 @@ export class SseService implements OnModuleDestroy {
   onModuleDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    for (const timer of this.reservationCloseTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.reservationCloseTimers.clear();
     for (const [id, subject] of this.reservationSubjects) {
       subject.complete();
     }
