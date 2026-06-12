@@ -30,6 +30,7 @@ import {
   AlertCircle,
   MapPin,
   CalendarDays,
+  CheckCircle2,
 } from "lucide-react";
 import { useReservationSse } from "./useReservationSse";
 import { clientFetch } from "@/lib/api/client-fetch";
@@ -90,7 +91,7 @@ function ConnectionBadge({ state }: { state: SseConnectionState }) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700">
         <Wifi aria-hidden="true" className="h-3 w-3" />
-        Live
+        Auto-updating
       </span>
     );
   }
@@ -231,34 +232,34 @@ export function WaitingRoomView({
           ? "You are ready to drive."
           : rejected
           ? "One document needs attention."
-          : "Documents under review."
+          : "Documents in review."
       }
       subtitle={
         approved
           ? "Your documents are approved and your smart ticket is active. Present the pickup pass when you meet your operator in the arrivals hall."
           : rejected
           ? "Our operator could not verify one of your uploaded documents. Please review the comments below and re-upload the file."
-          : "Our operators are verifying your documents. This usually takes under 15 minutes — you can safely leave this page or wait."
+          : "Your documents are with the operator team. This page updates automatically, and you can return from My trips at any time."
       }
-      prev={{ label: "Back to document check-in", href: `/reservations/${reservation.id}/check-in` }}
+      prev={{ label: "Review submitted documents", href: `/reservations/${reservation.id}/check-in` }}
       next={navNext}
     >
       {/* Top mini-bar for live connection status */}
-      <div className="flex items-center justify-between gap-4 border-b border-neutral-100 pb-4 mb-10 text-xs max-w-[720px] mx-auto">
+      <div className="flex items-center justify-between gap-4 border-b border-neutral-100 pb-4 mb-8 text-xs max-w-[500px] mx-auto">
         <div className="flex items-center gap-2 text-neutral-500 font-medium">
           <Clock aria-hidden="true" className="h-4 w-4" />
-          <span>Waiting Room</span>
+          <span>Status</span>
         </div>
         <div className="flex items-center gap-3">
           <ConnectionBadge state={connectionState} />
           {lastRefreshedAt && (
-            <span className="text-neutral-400 font-light">
+            <span className="text-neutral-400 font-light hidden sm:inline-block">
               Updated {formatTime(lastRefreshedAt)}
             </span>
           )}
           <button
-            aria-label="Refresh status"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-950 shadow-sm"
+            aria-label="Refresh reservation status"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-950 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
             onClick={refetch}
             type="button"
           >
@@ -267,82 +268,61 @@ export function WaitingRoomView({
         </div>
       </div>
 
-      <div className="text-center max-w-[580px] mx-auto space-y-6">
-        {/* Animated large icon badge */}
-        {approved ? (
-          <div className="w-16 h-16 mx-auto rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-            <ShieldCheck className="w-8 h-8" />
+      <div className="text-center max-w-[500px] mx-auto space-y-6">
+        {/* Document Checklist Widget */}
+        <div
+          className="text-left rounded-2xl border border-neutral-200 bg-white overflow-hidden shadow-sm"
+          role={rejected ? "alert" : "status"}
+          aria-live="polite"
+        >
+          <div className="p-4.5 bg-neutral-50/40 border-b border-neutral-100 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-neutral-500" />
+            <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Document Checklist</h3>
           </div>
-        ) : rejected ? (
-          <div className="w-16 h-16 mx-auto rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-red-500 animate-pulse">
-            <AlertCircle className="w-8 h-8" />
+          <div className="p-4.5 space-y-4">
+            {REQUIRED_DOC_TYPES.map((type) => {
+              const doc = documents.find((d) => d.type === type);
+              const name = type === "PASSPORT" ? "Passport" : "Driving Licence";
+              const statusStr = doc ? doc.status : "Missing";
+              return (
+                <div key={type} className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-neutral-700">{name}</span>
+                  {statusStr === "APPROVED" && (
+                    <span className="text-green-700 font-medium text-xs flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Approved
+                    </span>
+                  )}
+                  {statusStr === "REJECTED" && (
+                    <span className="text-red-700 font-medium text-xs flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" /> Needs re-upload
+                    </span>
+                  )}
+                  {statusStr === "PENDING_REVIEW" && (
+                    <span className="text-amber-700 font-medium text-xs flex items-center gap-1.5">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Under review
+                    </span>
+                  )}
+                  {statusStr === "Missing" && (
+                    <span className="text-neutral-500 font-medium text-xs">Missing</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <motion.div
-            animate={{ scale: [1, 1.06, 1] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-            className="w-16 h-16 mx-auto rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600"
-          >
-            <Clock className="w-8 h-8" />
-          </motion.div>
-        )}
-
-        {/* Dynamic Status badge */}
-        <div className="flex justify-center">
-          <span
-            className={`inline-flex items-center rounded-full border px-3.5 py-1 text-[9px] font-bold uppercase tracking-widest ${
-              approved
-                ? "border-green-200 bg-green-50/50 text-green-800"
-                : rejected
-                ? "border-red-200 bg-red-50/50 text-red-800"
-                : "border-amber-250 bg-amber-50/50 text-amber-800"
-            }`}
-          >
-            {approved
-              ? "Approved"
-              : rejected
-              ? "Action Required"
-              : phase === "awaiting_capture"
-              ? "Payment Processing"
-              : "Under Review"}
-          </span>
         </div>
-
-        {/* Dynamic Main Headline */}
-        <h1 className="nx-h3 font-display font-light text-neutral-900 leading-tight">
-          {approved
-            ? "You are ready to drive"
-            : rejected
-            ? "One document needs attention"
-            : "Documents under review"}
-        </h1>
-
-        {/* Dynamic Explanatory Text */}
-        <p className="nx-body text-neutral-600 font-light max-w-lg mx-auto leading-relaxed">
-          {approved
-            ? "Your documents are approved and your smart ticket is active. Present the pickup pass when you meet your operator in the arrivals hall."
-            : rejected
-            ? "Our operator could not verify one of your uploaded documents. Please review the comments below and re-upload the file."
-            : "Our operators are verifying your documents. This usually takes under 15 minutes — you can safely leave this page or wait."}
-        </p>
-
-        {/* Estimated review time strip */}
-        {!approved && !rejected && (
-          <p className="text-xs text-neutral-400 font-medium inline-flex items-center gap-1.5 justify-center">
-            <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Estimated review time &middot; under 15 minutes
-          </p>
-        )}
 
         {/* Rejection comments wrapper */}
         {rejected && rejectedDocs.length > 0 && (
-          <div className="rounded-2xl border border-red-200 bg-red-50/40 p-5 text-left space-y-2.5 max-w-[520px] mx-auto text-xs">
+          <div className="rounded-2xl border border-red-200 bg-red-50/40 p-5 text-left space-y-2.5 text-xs shadow-sm">
             <p className="font-semibold text-red-950 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
               Rejection feedback
             </p>
             {rejectedDocs.map((doc) => (
               <div key={doc.type} className="border-t border-red-100 pt-2 text-red-800 font-light leading-relaxed">
-                <span className="font-semibold">{doc.type === "PASSPORT" ? "Passport" : "Driving Licence"}:</span>{" "}
+                <span className="font-semibold">
+                  {doc.type === "PASSPORT" ? "Passport" : "Driving Licence"}:
+                </span>{" "}
                 {doc.rejectionReason || "No details provided. Please re-upload a clear and valid copy."}
               </div>
             ))}
@@ -350,7 +330,7 @@ export function WaitingRoomView({
         )}
 
         {/* Compact Trip Summary Widget */}
-        <div className="mt-8 text-left rounded-2xl border border-neutral-200 bg-white overflow-hidden shadow-sm max-w-[500px] mx-auto">
+        <div className="text-left rounded-2xl border border-neutral-200 bg-white overflow-hidden shadow-sm">
           <div className="flex items-center gap-4 p-4.5 border-b border-neutral-100 bg-neutral-50/40">
             {reservation.vehicle?.imageUrl && (
               <div className="w-20 h-14 rounded-xl overflow-hidden bg-neutral-50 border border-neutral-200/50 shrink-0 relative">
@@ -394,24 +374,56 @@ export function WaitingRoomView({
           </div>
         </div>
 
-        <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+        {/* What happens next */}
+        <div className="text-left rounded-2xl border border-neutral-200 bg-neutral-50 p-5 space-y-2 shadow-sm">
+          <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider mb-3">What happens next</h4>
+          {!approved && (
+            <p className="text-sm text-neutral-700 leading-relaxed font-light">
+              <strong className="font-medium text-neutral-900">If approved:</strong> Your smart ticket and pickup instructions unlock automatically.<br />
+              <strong className="font-medium text-neutral-900 mt-2 inline-block">If rejected:</strong> We&apos;ll show the reason and let you re-upload the document.<br />
+              <strong className="font-medium text-neutral-900 mt-2 inline-block">If still pending:</strong> You can return from My trips without losing your place.
+            </p>
+          )}
+          {approved && (
+            <p className="text-sm text-neutral-700 leading-relaxed font-light">
+              Your smart ticket is now unlocked. You can view your ticket to get your exact pickup instructions at the arrivals hall.
+            </p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
           <Link
-            className="inline-flex h-11 items-center justify-center rounded-full border border-neutral-200 bg-white px-6 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors shadow-sm"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-neutral-950 px-6 text-sm font-semibold text-white hover:bg-neutral-800 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
             href="/dashboard"
           >
             Go to dashboard
           </Link>
+          {!approved && (
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-full border border-neutral-200 bg-white px-6 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
+              href={`/reservations/${reservation.id}/check-in`}
+            >
+              Review submitted documents
+            </Link>
+          )}
         </div>
 
-        {/* Demo instructions tip */}
-        {!approved && (
-          <p className="text-[10px] text-neutral-400 font-light leading-relaxed max-w-sm mx-auto pt-6 border-t border-neutral-100">
-            Demo tip: open the{" "}
-            <Link href="/operator/documents" className="text-[#1E41FC] font-medium hover:underline">
-              Operator document review
-            </Link>{" "}
-            page to review/approve these documents and see this room update live.
-          </p>
+        {/* Internal Demo helper */}
+        {process.env.NODE_ENV === "development" && !approved && (
+          <div className="pt-6 border-t border-neutral-100">
+            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-neutral-100 mb-2">
+              <AlertTriangle className="w-3 h-3 text-neutral-500" />
+              <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Internal Demo Helper</span>
+            </div>
+            <p className="text-[10px] text-neutral-400 font-light leading-relaxed max-w-sm mx-auto">
+              Open the{" "}
+              <Link href="/operator/documents" className="text-[#1E41FC] font-medium hover:underline" target="_blank">
+                Operator review panel
+              </Link>{" "}
+              in a new tab to approve these documents and watch this room update automatically.
+            </p>
+          </div>
         )}
       </div>
     </JourneyShell>
