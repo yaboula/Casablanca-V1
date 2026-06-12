@@ -14,6 +14,12 @@ import { isReservationTransitionAllowed } from "../../reservations/reservation-p
 import { Vehicle, VehicleStatus } from "../../vehicles/vehicle.entity";
 import { QrService } from "../../qr/qr.service";
 import { SseService } from "../../sse/sse.service";
+import {
+  DeliveryActionResponseDto,
+  DeliveryResponseDto,
+  toDeliveryActionResponseDto,
+  toDeliveryResponseDto,
+} from "../dto/delivery-response.dto";
 
 /**
  * Handles all delivery-floor operations:
@@ -42,7 +48,7 @@ export class OperatorDeliveryService {
    * Returns CONFIRMED reservations for a given date (default: today).
    * Joins vehicle + documents so the client can show doc-readiness badges.
    */
-  async getDeliveries(dateStr?: string) {
+  async getDeliveries(dateStr?: string): Promise<DeliveryResponseDto[]> {
     const date = dateStr ? new Date(dateStr) : new Date();
     const start = new Date(date);
     start.setHours(0, 0, 0, 0);
@@ -53,6 +59,28 @@ export class OperatorDeliveryService {
       .createQueryBuilder("r")
       .leftJoinAndSelect("r.vehicle", "v")
       .leftJoinAndSelect("r.documents", "d")
+      .select([
+        "r.id",
+        "r.customerName",
+        "r.customerPhone",
+        "r.vehicleId",
+        "r.pickupDate",
+        "r.returnDate",
+        "r.pickupLocation",
+        "r.totalDays",
+        "r.status",
+        "r.totalPriceEurCents",
+        "r.depositEurCents",
+        "v.id",
+        "v.brand",
+        "v.model",
+        "v.category",
+        "v.licensePlate",
+        "v.imageUrl",
+        "d.id",
+        "d.type",
+        "d.status",
+      ])
       .where("r.status = :status", { status: ReservationStatus.CONFIRMED })
       .andWhere("r.pickupDate >= :start", { start })
       .andWhere("r.pickupDate <= :end", { end })
@@ -63,26 +91,7 @@ export class OperatorDeliveryService {
       `getDeliveries(${dateStr ?? "today"}) → ${reservations.length} results`,
     );
 
-    return reservations.map((r) => ({
-      id: r.id,
-      customerName: r.customerName ?? "",
-      customerPhone: r.customerPhone ?? "",
-      vehicleId: r.vehicleId,
-      vehicle: r.vehicle,
-      pickupDate: r.pickupDate,
-      returnDate: r.returnDate,
-      pickupLocation: r.pickupLocation,
-      totalDays: r.totalDays,
-      status: r.status,
-      qrCodeHash: r.qrCodeHash,
-      balanceDueEUR:
-        ((r.totalPriceEurCents ?? 0) - (r.depositEurCents ?? 0)) / 100,
-      documents: (r.documents ?? []).map((doc) => ({
-        id: doc.id,
-        type: doc.type,
-        status: doc.status,
-      })),
-    }));
+    return reservations.map(toDeliveryResponseDto);
   }
 
   // ── Check-in ────────────────────────────────────────────────
@@ -92,7 +101,9 @@ export class OperatorDeliveryService {
    * Operator override — e.g. customer forgot phone.
    * Idempotent: second call returns the reservation unchanged.
    */
-  async manualCheckin(reservationId: string): Promise<Reservation> {
+  async manualCheckin(
+    reservationId: string,
+  ): Promise<DeliveryActionResponseDto> {
     const reservation = await this.reservationsRepo.findOne({
       where: { id: reservationId },
     });
@@ -105,7 +116,7 @@ export class OperatorDeliveryService {
       this.logger.warn(
         `manualCheckin: reservation ${reservationId} already IN_PROGRESS — idempotent return`,
       );
-      return reservation;
+      return toDeliveryActionResponseDto(reservation);
     }
 
     if (
@@ -134,7 +145,7 @@ export class OperatorDeliveryService {
       reservationId,
       ReservationStatus.IN_PROGRESS,
     );
-    return saved;
+    return toDeliveryActionResponseDto(saved);
   }
 
   /**
@@ -145,7 +156,7 @@ export class OperatorDeliveryService {
     reservationId: string,
     qrCodeHash: string,
     operatorId: string,
-  ): Promise<Reservation> {
+  ): Promise<DeliveryActionResponseDto> {
     const reservation = await this.reservationsRepo.findOne({
       where: { id: reservationId },
     });
@@ -198,7 +209,7 @@ export class OperatorDeliveryService {
       reservationId,
       ReservationStatus.IN_PROGRESS,
     );
-    return saved;
+    return toDeliveryActionResponseDto(saved);
   }
 
   // ── Stats ───────────────────────────────────────────────

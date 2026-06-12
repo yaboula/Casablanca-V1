@@ -22,6 +22,13 @@ import { QrService } from "../../qr/qr.service";
 import { SseService } from "../../sse/sse.service";
 import { S3Service } from "../../s3/s3.service";
 import { AuditLog } from "../audit-log.entity";
+import {
+  DocumentReviewResultDto,
+  PendingDocumentResponseDto,
+  ReviewedDocumentResponseDto,
+  toPendingDocumentResponseDto,
+  toReviewedDocumentResponseDto,
+} from "../dto/document-response.dto";
 
 /**
  * Handles the full document review lifecycle:
@@ -56,11 +63,20 @@ export class OperatorDocumentService {
    * Returns all documents pending operator review (oldest first — FIFO fairness).
    * S3 presign calls run in parallel — no N+1 sequential await.
    */
-  async getPendingDocuments() {
+  async getPendingDocuments(): Promise<PendingDocumentResponseDto[]> {
     const docs = await this.docsRepo
       .createQueryBuilder("d")
-      .leftJoinAndSelect("d.reservation", "r")
       .leftJoinAndSelect("d.user", "u")
+      .select([
+        "d.id",
+        "d.type",
+        "d.status",
+        "d.fileKey",
+        "d.reservationId",
+        "d.createdAt",
+        "u.id",
+        "u.fullName",
+      ])
       .where("d.status = :status", { status: DocumentStatus.PENDING_REVIEW })
       .orderBy("d.createdAt", "ASC")
       .getMany();
@@ -75,17 +91,14 @@ export class OperatorDocumentService {
         const uploadedAgo = this.formatDuration(uploadedMs);
 
         const fileUrl = await this.s3Service.generatePresignedRead(doc.fileKey);
-        const user = (doc as any).user;
+        const customerName = doc.user?.fullName ?? "Cliente";
 
-        return {
-          id: doc.id,
-          type: doc.type,
-          status: doc.status,
+        return toPendingDocumentResponseDto(
+          doc,
           fileUrl,
-          reservationId: doc.reservationId,
-          customerName: user?.fullName ?? user?.email ?? "Cliente",
+          customerName,
           uploadedAgo,
-        };
+        );
       }),
     );
   }
@@ -111,10 +124,7 @@ export class OperatorDocumentService {
   async approveDocument(
     documentId: string,
     operatorId: string,
-  ): Promise<{
-    document: ReservationDocument;
-    reservationStatus: ReservationStatus;
-  }> {
+  ): Promise<DocumentReviewResultDto> {
     const { reservationId, bothApproved, doc } =
       await this.dataSource.transaction(async (manager) => {
         const document = await manager
@@ -240,7 +250,7 @@ export class OperatorDocumentService {
     }
 
     return {
-      document: doc,
+      document: toReviewedDocumentResponseDto(doc),
       reservationStatus: bothApproved
         ? ReservationStatus.AWAITING_CAPTURE
         : ReservationStatus.PENDING_DEPOSIT,
@@ -257,7 +267,7 @@ export class OperatorDocumentService {
     documentId: string,
     reason: string,
     operatorId: string,
-  ): Promise<ReservationDocument> {
+  ): Promise<ReviewedDocumentResponseDto> {
     const doc = await this.docsRepo.findOne({ where: { id: documentId } });
 
     if (!doc) {
@@ -306,7 +316,7 @@ export class OperatorDocumentService {
     this.logger.log(
       `rejectDocument: doc ${documentId} rejected by operator ${operatorId}`,
     );
-    return doc;
+    return toReviewedDocumentResponseDto(doc);
   }
 
   // ── Private helpers ─────────────────────────────────────────

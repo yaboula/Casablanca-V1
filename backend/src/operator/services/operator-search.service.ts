@@ -1,7 +1,11 @@
 import { Injectable, BadRequestException, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Brackets, Repository } from "typeorm";
 import { Reservation } from "../../reservations/reservation.entity";
+import {
+  OperatorSearchResponseDto,
+  toOperatorSearchResultDto,
+} from "../dto/search-response.dto";
 
 /**
  * Full-text search across reservations for the operator floor panel.
@@ -27,12 +31,7 @@ export class OperatorSearchService {
     query: string,
     page = 1,
     limit = 20,
-  ): Promise<{
-    data: Reservation[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  ): Promise<OperatorSearchResponseDto> {
     if (!query || query.trim().length < 2) {
       throw new BadRequestException(
         "El término de búsqueda debe tener al menos 2 caracteres.",
@@ -46,9 +45,29 @@ export class OperatorSearchService {
     const [data, total] = await this.reservationsRepo
       .createQueryBuilder("r")
       .leftJoinAndSelect("r.vehicle", "v")
-      .where("r.customerName ILIKE :q", { q })
-      .orWhere("r.customerPhone ILIKE :q", { q })
-      .orWhere("CAST(r.id AS TEXT) ILIKE :q", { q })
+      .select([
+        "r.id",
+        "r.status",
+        "r.customerName",
+        "r.customerPhone",
+        "r.pickupDate",
+        "r.returnDate",
+        "r.pickupLocation",
+        "r.createdAt",
+        "v.id",
+        "v.brand",
+        "v.model",
+        "v.category",
+        "v.licensePlate",
+        "v.imageUrl",
+      ])
+      .where(
+        new Brackets((qb) => {
+          qb.where("r.customerName ILIKE :q", { q })
+            .orWhere("r.customerPhone ILIKE :q", { q })
+            .orWhere("CAST(r.id AS TEXT) ILIKE :q", { q });
+        }),
+      )
       .orderBy("r.createdAt", "DESC")
       .skip((safePage - 1) * safeLimit)
       .take(safeLimit)
@@ -58,6 +77,11 @@ export class OperatorSearchService {
       `search("${query.trim()}") → ${total} results (page ${safePage})`,
     );
 
-    return { data, total, page: safePage, limit: safeLimit };
+    return {
+      data: data.map(toOperatorSearchResultDto),
+      total,
+      page: safePage,
+      limit: safeLimit,
+    };
   }
 }

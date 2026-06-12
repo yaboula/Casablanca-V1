@@ -89,8 +89,7 @@ export class OperatorController {
    */
   @Get("search")
   async search(@Query("q") query: string) {
-    const results = await this.operatorService.search(query);
-    return { data: results, total: results.length };
+    return this.operatorService.search(query);
   }
 
   // ── Document Review ────────────────────────────────────────

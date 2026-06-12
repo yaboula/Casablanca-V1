@@ -3,22 +3,24 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
-import {
-  Reservation,
-  ReservationStatus,
-} from "../reservations/reservation.entity";
-import {
-  ReservationDocument,
-  DocumentStatus,
-  DocumentType,
-} from "../documents/reservation-document.entity";
-import { Vehicle, VehicleStatus } from "../vehicles/vehicle.entity";
+import { Reservation } from "../reservations/reservation.entity";
+import { ReservationDocument } from "../documents/reservation-document.entity";
+import { Vehicle } from "../vehicles/vehicle.entity";
 import { QrService } from "../qr/qr.service";
 import { SseService } from "../sse/sse.service";
 import { S3Service } from "../s3/s3.service";
 import { OperatorDeliveryService } from "./services/operator-delivery.service";
 import { OperatorDocumentService } from "./services/operator-document.service";
 import { OperatorSearchService } from "./services/operator-search.service";
+import {
+  DeliveryActionResponseDto,
+  DeliveryResponseDto,
+} from "./dto/delivery-response.dto";
+import {
+  DocumentReviewResultDto,
+  ReviewedDocumentResponseDto,
+} from "./dto/document-response.dto";
+import { OperatorSearchResponseDto } from "./dto/search-response.dto";
 
 /**
  * Facade â€” delegates to the three focused sub-services.
@@ -54,7 +56,7 @@ export class OperatorService {
 
   // â”€â”€ Deliveries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  async getDeliveries(dateStr?: string) {
+  async getDeliveries(dateStr?: string): Promise<DeliveryResponseDto[]> {
     return this.deliveryService.getDeliveries(dateStr);
   }
 
@@ -62,7 +64,9 @@ export class OperatorService {
     return this.deliveryService.getDeliveryStats(dateStr);
   }
 
-  async manualCheckin(reservationId: string): Promise<Reservation> {
+  async manualCheckin(
+    reservationId: string,
+  ): Promise<DeliveryActionResponseDto> {
     return this.deliveryService.manualCheckin(reservationId);
   }
 
@@ -70,15 +74,14 @@ export class OperatorService {
     reservationId: string,
     qrCodeHash: string,
     operatorId: string,
-  ): Promise<Reservation> {
+  ): Promise<DeliveryActionResponseDto> {
     return this.deliveryService.scanQr(reservationId, qrCodeHash, operatorId);
   }
 
   // â”€â”€ Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  async search(query: string): Promise<Reservation[]> {
-    const result = await this.searchService.search(query);
-    return result.data;
+  async search(query: string): Promise<OperatorSearchResponseDto> {
+    return this.searchService.search(query);
   }
 
   // â”€â”€ Document Review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -90,10 +93,7 @@ export class OperatorService {
   async approveDocument(
     documentId: string,
     operatorId: string,
-  ): Promise<{
-    document: ReservationDocument;
-    reservationStatus: ReservationStatus;
-  }> {
+  ): Promise<DocumentReviewResultDto> {
     return this.documentService.approveDocument(documentId, operatorId);
   }
 
@@ -101,7 +101,7 @@ export class OperatorService {
     documentId: string,
     reason: string,
     operatorId: string,
-  ): Promise<ReservationDocument> {
+  ): Promise<ReviewedDocumentResponseDto> {
     return this.documentService.rejectDocument(documentId, reason, operatorId);
   }
 }
