@@ -3,7 +3,12 @@ import { Job } from 'bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Logger } from '@nestjs/common';
-import { Reservation, ReservationStatus } from '../../reservations/reservation.entity';
+import {
+  DepositRefundStatus,
+  DepositStatus,
+  Reservation,
+  ReservationStatus,
+} from '../../reservations/reservation.entity';
 import { isReservationTransitionAllowed } from '../../reservations/reservation-policy';
 import { StripeService } from '../../stripe/stripe.service';
 
@@ -75,7 +80,11 @@ export class ReservationExpiryProcessor extends WorkerHost {
       // Cancel the reservation inside the transaction
       await manager.getRepository(Reservation).update(
         { id: reservationId },
-        { status: ReservationStatus.CANCELLED },
+        {
+          status: ReservationStatus.CANCELLED,
+          depositStatus: DepositStatus.CANCELLED,
+          depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+        },
       );
 
       this.logger.log(`Reservation ${reservationId} expired and cancelled.`);

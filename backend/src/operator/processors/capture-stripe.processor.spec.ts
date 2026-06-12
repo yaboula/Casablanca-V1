@@ -1,6 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Reservation, ReservationStatus } from '../../reservations/reservation.entity';
+import {
+  DepositRefundStatus,
+  DepositStatus,
+  Reservation,
+  ReservationStatus,
+} from '../../reservations/reservation.entity';
 import { StripeService } from '../../stripe/stripe.service';
 import { SseService } from '../../sse/sse.service';
 import { CaptureStripeProcessor } from './capture-stripe.processor';
@@ -13,6 +18,8 @@ function makeReservation(
     id: 'res-123',
     status,
     stripePaymentIntentId: 'pi_test',
+    depositStatus: DepositStatus.CAPTURE_QUEUED,
+    depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
     ...overrides,
   } as Reservation;
 }
@@ -61,7 +68,11 @@ describe('CaptureStripeProcessor', () => {
     expect(mockStripeService.capturePaymentIntent).toHaveBeenCalledWith('pi_test');
     expect(mockReservationsRepo.update).toHaveBeenCalledWith(
       { id: 'res-123' },
-      { status: ReservationStatus.CONFIRMED },
+      expect.objectContaining({
+        status: ReservationStatus.CONFIRMED,
+        depositStatus: DepositStatus.CAPTURED,
+        depositRefundStatus: DepositRefundStatus.NOT_REQUESTED,
+      }),
     );
     expect(mockSseService.emitReservationStatus).toHaveBeenCalledWith(
       'res-123',
@@ -92,7 +103,11 @@ describe('CaptureStripeProcessor', () => {
 
     expect(mockReservationsRepo.update).toHaveBeenCalledWith(
       { id: 'res-123', status: ReservationStatus.AWAITING_CAPTURE },
-      { status: ReservationStatus.CANCELLED },
+      expect.objectContaining({
+        status: ReservationStatus.CANCELLED,
+        depositStatus: DepositStatus.FAILED,
+        depositLastFailureReason: 'capture failed',
+      }),
     );
     expect(mockSseService.emitReservationStatus).toHaveBeenCalledWith(
       'res-123',

@@ -10,6 +10,8 @@ import {
 } from "@nestjs/common";
 import { ReservationsService } from "./reservations.service";
 import {
+  DepositRefundStatus,
+  DepositStatus,
   Reservation,
   ReservationStatus,
   PickupLocation,
@@ -67,6 +69,14 @@ function makeReservation(overrides: Partial<Reservation> = {}): Reservation {
     pickupLocation: PickupLocation.CMN_T1,
     stripePaymentIntentId: "pi_test_abc123",
     stripeClientSecret: "pi_test_secret_xxx",
+    depositStatus: DepositStatus.PENDING,
+    depositCapturedAt: null,
+    depositLastFailureAt: null,
+    depositLastFailureReason: null,
+    depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+    depositRefundAttemptedAt: null,
+    depositRefundFailureAt: null,
+    depositRefundFailureReason: null,
     qrCodeHash: null,
     ticketTokenVersion: 0,
     ticketRevokedAt: null,
@@ -347,6 +357,7 @@ describe("ReservationsService", () => {
 
         expect(result.id).toBe("res-999");
         expect(result.stripeClientSecret).toBe("pi_test_secret_xxx");
+        expect(result.depositStatus).toBe(DepositStatus.PENDING);
       } finally {
         process.env.NODE_ENV = originalEnv;
       }
@@ -446,11 +457,13 @@ describe("ReservationsService", () => {
       mockReservationsRepo.save.mockResolvedValue({
         ...reservation,
         status: ReservationStatus.CANCELLED,
+        depositStatus: DepositStatus.CANCELLED,
       });
 
       const result = await service.cancel("res-999", makeUser());
 
       expect(result.status).toBe(ReservationStatus.CANCELLED);
+      expect(result.depositStatus).toBe(DepositStatus.CANCELLED);
       // Stripe cancel is async fire-and-forget; verify it was called
       expect(mockStripeService.cancelPaymentIntent).toHaveBeenCalledWith(
         "pi_test_abc123",
@@ -465,10 +478,62 @@ describe("ReservationsService", () => {
       mockReservationsRepo.save.mockResolvedValue({
         ...reservation,
         status: ReservationStatus.CANCELLED,
+        depositStatus: DepositStatus.CANCELLED,
       });
 
       const result = await service.cancel("res-999", makeUser());
       expect(result.status).toBe(ReservationStatus.CANCELLED);
+      expect(result.depositStatus).toBe(DepositStatus.CANCELLED);
+    });
+
+    it("owner cancela reserva CONFIRMED y registra refund exitoso", async () => {
+      const reservation = makeReservation({
+        status: ReservationStatus.CONFIRMED,
+        depositStatus: DepositStatus.CAPTURED,
+        depositRefundStatus: DepositRefundStatus.NOT_REQUESTED,
+      });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+      mockReservationsRepo.save.mockImplementation(async (value) => value);
+
+      const result = await service.cancel("res-999", makeUser());
+
+      expect(result.status).toBe(ReservationStatus.CANCELLED);
+      expect(mockStripeService.refundPaymentIntent).toHaveBeenCalledWith(
+        "pi_test_abc123",
+      );
+      expect(mockReservationsRepo.update).toHaveBeenCalledWith(
+        { id: "res-999" },
+        expect.objectContaining({
+          depositRefundStatus: DepositRefundStatus.SUCCEEDED,
+        }),
+      );
+      expect(result.depositRefundStatus).toBe(DepositRefundStatus.SUCCEEDED);
+    });
+
+    it("owner cancela reserva CONFIRMED y deja refund failure visible si Stripe falla", async () => {
+      const reservation = makeReservation({
+        status: ReservationStatus.CONFIRMED,
+        depositStatus: DepositStatus.CAPTURED,
+        depositRefundStatus: DepositRefundStatus.NOT_REQUESTED,
+      });
+      mockReservationsRepo.findOne.mockResolvedValue(reservation);
+      mockReservationsRepo.save.mockImplementation(async (value) => value);
+      mockStripeService.refundPaymentIntent.mockRejectedValueOnce(
+        new Error("refund unavailable"),
+      );
+
+      const result = await service.cancel("res-999", makeUser());
+
+      expect(result.status).toBe(ReservationStatus.CANCELLED);
+      expect(result.depositRefundStatus).toBe(DepositRefundStatus.FAILED);
+      expect(result.depositRefundFailureReason).toBe("refund unavailable");
+      expect(mockReservationsRepo.update).toHaveBeenCalledWith(
+        { id: "res-999" },
+        expect.objectContaining({
+          depositRefundStatus: DepositRefundStatus.FAILED,
+          depositRefundFailureReason: "refund unavailable",
+        }),
+      );
     });
 
     it("OPERATOR no puede cancelar por endpoint customer", async () => {
@@ -639,6 +704,8 @@ describe("ReservationsService", () => {
           qrCodeHash: expect.anything(),
           ticketTokenVersion: expect.anything(),
           ticketRevokedAt: expect.anything(),
+          stripeClientSecret: expect.anything(),
+          stripePaymentIntentId: expect.anything(),
         }),
       );
       expect(JSON.stringify(result.data)).not.toContain("raw-hash-must-not-leak");
@@ -703,6 +770,8 @@ describe("ReservationsService", () => {
           qrCodeHash: expect.anything(),
           ticketTokenVersion: expect.anything(),
           ticketRevokedAt: expect.anything(),
+          stripeClientSecret: expect.anything(),
+          stripePaymentIntentId: expect.anything(),
         }),
       );
     });
@@ -750,6 +819,7 @@ describe("ReservationsService", () => {
       mockReservationsRepo.findOne.mockResolvedValue(
         makeReservation({
           status: ReservationStatus.CONFIRMED,
+          depositStatus: DepositStatus.CAPTURED,
           ticketTokenVersion: 3,
         }),
       );
@@ -784,6 +854,7 @@ describe("ReservationsService", () => {
         makeReservation({
           userId: "other-user",
           status: ReservationStatus.CONFIRMED,
+          depositStatus: DepositStatus.CAPTURED,
         }),
       );
 
@@ -810,7 +881,24 @@ describe("ReservationsService", () => {
       mockReservationsRepo.findOne.mockResolvedValue(
         makeReservation({
           status: ReservationStatus.CONFIRMED,
+          depositStatus: DepositStatus.CAPTURED,
           ticketRevokedAt: new Date("2026-02-19T09:00:00.000Z"),
+        }),
+      );
+
+      await expect(
+        service.issueTicketToken("res-999", makeUser()),
+      ).rejects.toThrow(ConflictException);
+
+      expect(mockQrService.issueTicketToken).not.toHaveBeenCalled();
+    });
+
+    it("rejects ticket issuance when capture never succeeded", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({
+          status: ReservationStatus.CONFIRMED,
+          depositStatus: DepositStatus.FAILED,
+          depositLastFailureReason: "capture failed",
         }),
       );
 

@@ -2,7 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import Stripe from 'stripe';
-import { Reservation, ReservationStatus } from '../reservations/reservation.entity';
+import {
+  DepositRefundStatus,
+  DepositStatus,
+  Reservation,
+  ReservationStatus,
+} from '../reservations/reservation.entity';
 import { SseService } from '../sse/sse.service';
 import { StripeWebhookLog } from './entities/stripe-webhook-log.entity';
 import { WebhooksService } from './webhooks.service';
@@ -38,6 +43,8 @@ function makeReservation(
     id: 'res-123',
     stripePaymentIntentId: 'pi_test',
     status,
+    depositStatus: DepositStatus.CAPTURE_QUEUED,
+    depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
   } as Reservation;
 }
 
@@ -57,7 +64,13 @@ describe('WebhooksService', () => {
   const makeQueryRunner = (opts: {
     duplicateKey?: boolean;
     reservation?: Reservation | null;
-  }) => ({
+  }) => {
+    const reservationRepo = {
+      findOne: jest.fn().mockResolvedValue(opts.reservation ?? null),
+      update: jest.fn().mockResolvedValue({}),
+    };
+
+    return {
     connect: jest.fn().mockResolvedValue(undefined),
     startTransaction: jest.fn().mockResolvedValue(undefined),
     commitTransaction: jest.fn().mockResolvedValue(undefined),
@@ -74,11 +87,13 @@ describe('WebhooksService', () => {
       }),
       update: jest.fn().mockResolvedValue({}),
       getRepository: jest.fn().mockReturnValue({
-        findOne: jest.fn().mockResolvedValue(opts.reservation ?? null),
-        update: jest.fn().mockResolvedValue({}),
+        findOne: reservationRepo.findOne,
+        update: reservationRepo.update,
       }),
     },
-  });
+      _reservationRepo: reservationRepo,
+    };
+  };
 
   const mockDataSource = {
     createQueryRunner: jest.fn(),
@@ -128,6 +143,14 @@ describe('WebhooksService', () => {
         reservation.id,
         ReservationStatus.CONFIRMED,
       );
+      expect(qr._reservationRepo.update).toHaveBeenCalledWith(
+        { id: reservation.id },
+        expect.objectContaining({
+          status: ReservationStatus.CONFIRMED,
+          depositStatus: DepositStatus.CAPTURED,
+          depositRefundStatus: DepositRefundStatus.NOT_REQUESTED,
+        }),
+      );
       expect(qr.commitTransaction).toHaveBeenCalled();
     });
 
@@ -171,7 +194,40 @@ describe('WebhooksService', () => {
         reservation.id,
         ReservationStatus.CANCELLED,
       );
+      expect(qr._reservationRepo.update).toHaveBeenCalledWith(
+        { id: reservation.id },
+        expect.objectContaining({
+          status: ReservationStatus.CANCELLED,
+          depositStatus: DepositStatus.FAILED,
+          depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+        }),
+      );
       expect(qr.commitTransaction).toHaveBeenCalled();
+    });
+
+    it('records the Stripe failure reason when payment fails', async () => {
+      const reservation = makeReservation(ReservationStatus.PENDING_DEPOSIT);
+      const qr = makeQueryRunner({ reservation });
+      mockDataSource.createQueryRunner.mockReturnValue(qr);
+
+      await service.handleEvent(
+        makeStripeEvent('payment_intent.payment_failed', 'pi_test', {
+          data: {
+            object: {
+              id: 'pi_test',
+              object: 'payment_intent',
+              last_payment_error: { message: 'card declined' },
+            } as any,
+          },
+        }),
+      );
+
+      expect(qr._reservationRepo.update).toHaveBeenCalledWith(
+        { id: reservation.id },
+        expect.objectContaining({
+          depositLastFailureReason: 'card declined',
+        }),
+      );
     });
 
     it('does nothing if the reservation is already CONFIRMED', async () => {
@@ -202,6 +258,14 @@ describe('WebhooksService', () => {
       expect(mockSseService.emitReservationStatus).toHaveBeenCalledWith(
         reservation.id,
         ReservationStatus.CANCELLED,
+      );
+      expect(qr._reservationRepo.update).toHaveBeenCalledWith(
+        { id: reservation.id },
+        expect.objectContaining({
+          status: ReservationStatus.CANCELLED,
+          depositStatus: DepositStatus.CANCELLED,
+          depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+        }),
       );
       expect(qr.commitTransaction).toHaveBeenCalled();
     });

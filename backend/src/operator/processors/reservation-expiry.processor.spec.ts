@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { Reservation, ReservationStatus } from '../../reservations/reservation.entity';
+import {
+  DepositRefundStatus,
+  DepositStatus,
+  Reservation,
+  ReservationStatus,
+} from '../../reservations/reservation.entity';
 import { StripeService } from '../../stripe/stripe.service';
 import { ReservationExpiryProcessor } from './reservation-expiry.processor';
 
@@ -13,6 +18,8 @@ function makeReservation(
     id: 'res-123',
     status,
     stripePaymentIntentId: 'pi_test',
+    depositStatus: DepositStatus.PENDING,
+    depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
     ...overrides,
   } as Reservation;
 }
@@ -61,7 +68,11 @@ describe('ReservationExpiryProcessor', () => {
 
     expect(update).toHaveBeenCalledWith(
       { id: 'res-123' },
-      { status: ReservationStatus.CANCELLED },
+      expect.objectContaining({
+        status: ReservationStatus.CANCELLED,
+        depositStatus: DepositStatus.CANCELLED,
+        depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+      }),
     );
     expect(mockStripeService.cancelPaymentIntent).toHaveBeenCalledWith('pi_test');
   });

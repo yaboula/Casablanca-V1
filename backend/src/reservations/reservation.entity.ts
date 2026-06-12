@@ -42,6 +42,22 @@ export enum PickupLocation {
   CMN_T2 = "CMN_T2",
 }
 
+export enum DepositStatus {
+  PENDING = "PENDING",
+  CAPTURE_QUEUED = "CAPTURE_QUEUED",
+  CAPTURED = "CAPTURED",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
+}
+
+export enum DepositRefundStatus {
+  NOT_APPLICABLE = "NOT_APPLICABLE",
+  NOT_REQUESTED = "NOT_REQUESTED",
+  PENDING = "PENDING",
+  SUCCEEDED = "SUCCEEDED",
+  FAILED = "FAILED",
+}
+
 @Entity("reservations")
 export class Reservation {
   @PrimaryGeneratedColumn("uuid")
@@ -168,6 +184,60 @@ export class Reservation {
 
   @Column({ name: "stripe_client_secret", type: "varchar", nullable: true })
   stripeClientSecret: string | null;
+
+  @Column({
+    name: "deposit_status",
+    type: "varchar",
+    length: 32,
+    default: DepositStatus.PENDING,
+  })
+  depositStatus: DepositStatus;
+
+  @Column({ name: "deposit_captured_at", type: "timestamptz", nullable: true })
+  depositCapturedAt: Date | null;
+
+  @Column({
+    name: "deposit_last_failure_at",
+    type: "timestamptz",
+    nullable: true,
+  })
+  depositLastFailureAt: Date | null;
+
+  @Column({
+    name: "deposit_last_failure_reason",
+    type: "text",
+    nullable: true,
+  })
+  depositLastFailureReason: string | null;
+
+  @Column({
+    name: "deposit_refund_status",
+    type: "varchar",
+    length: 32,
+    default: DepositRefundStatus.NOT_APPLICABLE,
+  })
+  depositRefundStatus: DepositRefundStatus;
+
+  @Column({
+    name: "deposit_refund_attempted_at",
+    type: "timestamptz",
+    nullable: true,
+  })
+  depositRefundAttemptedAt: Date | null;
+
+  @Column({
+    name: "deposit_refund_failure_at",
+    type: "timestamptz",
+    nullable: true,
+  })
+  depositRefundFailureAt: Date | null;
+
+  @Column({
+    name: "deposit_refund_failure_reason",
+    type: "text",
+    nullable: true,
+  })
+  depositRefundFailureReason: string | null;
 
   // ── QR ─────────────────────────────────────────────────────
 

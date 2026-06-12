@@ -18,7 +18,12 @@ import {
 } from "./reservation-policy";
 import { CreateReservationDto } from "./dto/create-reservation.dto";
 import { QuoteReservationDto } from "./dto/quote-reservation.dto";
-import { Reservation, ReservationStatus } from "./reservation.entity";
+import {
+  DepositRefundStatus,
+  DepositStatus,
+  Reservation,
+  ReservationStatus,
+} from "./reservation.entity";
 import {
   GRACE_HOURS,
   HALF_DAY_UNTIL_HOURS,
@@ -32,7 +37,11 @@ import { Vehicle, VehicleStatus } from "../vehicles/vehicle.entity";
 
 export type CustomerReservationResponse = Omit<
   Reservation,
-  "qrCodeHash" | "ticketTokenVersion" | "ticketRevokedAt"
+  | "qrCodeHash"
+  | "ticketTokenVersion"
+  | "ticketRevokedAt"
+  | "stripeClientSecret"
+  | "stripePaymentIntentId"
 >;
 
 @Injectable()
@@ -191,6 +200,14 @@ export class ReservationsService {
         status: ReservationStatus.PENDING_DEPOSIT,
         stripePaymentIntentId: null,
         stripeClientSecret: null,
+        depositStatus: DepositStatus.PENDING,
+        depositCapturedAt: null,
+        depositLastFailureAt: null,
+        depositLastFailureReason: null,
+        depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+        depositRefundAttemptedAt: null,
+        depositRefundFailureAt: null,
+        depositRefundFailureReason: null,
         customerName: dto.customerName ?? null,
         customerPhone: dto.customerPhone ?? null,
         qrCodeHash: null,
@@ -286,9 +303,24 @@ export class ReservationsService {
         throw new ForbiddenException("No tienes acceso a esta reserva.");
       }
 
-      if (reservation.status === ReservationStatus.CONFIRMED) {
+      if (reservation.status === ReservationStatus.CANCELLED) {
+        return {
+          saved: reservation,
+          stripePaymentIntentId: reservation.stripePaymentIntentId,
+          stripeAction: null as "cancel" | "refund" | null,
+          refundAttemptedAt: null as Date | null,
+        };
+      }
+
+      if (reservation.status === ReservationStatus.IN_PROGRESS) {
         throw new BadRequestException(
-          `No se puede cancelar una reserva en estado '${reservation.status}'.`,
+          "No se puede cancelar una reserva que ya fue entregada.",
+        );
+      }
+
+      if (reservation.status === ReservationStatus.COMPLETED) {
+        throw new BadRequestException(
+          "No se puede cancelar una reserva completada.",
         );
       }
 
@@ -299,16 +331,36 @@ export class ReservationsService {
 
       const originalStatus = reservation.status;
       reservation.status = ReservationStatus.CANCELLED;
+      let stripeAction: "cancel" | "refund" | null = null;
+      let refundAttemptedAt: Date | null = null;
+
+      if (originalStatus === ReservationStatus.CONFIRMED) {
+        stripeAction = "refund";
+        refundAttemptedAt = new Date();
+        reservation.depositRefundStatus = DepositRefundStatus.PENDING;
+        reservation.depositRefundAttemptedAt = refundAttemptedAt;
+        reservation.depositRefundFailureAt = null;
+        reservation.depositRefundFailureReason = null;
+      } else {
+        stripeAction = "cancel";
+        reservation.depositStatus = DepositStatus.CANCELLED;
+        reservation.depositRefundStatus = DepositRefundStatus.NOT_APPLICABLE;
+      }
+
       const saved = await manager.getRepository(Reservation).save(reservation);
 
       return {
         saved,
-        originalStatus,
         stripePaymentIntentId: saved.stripePaymentIntentId,
+        stripeAction,
+        refundAttemptedAt,
       };
     });
 
-    if (result.stripePaymentIntentId) {
+    if (
+      result.stripeAction === "cancel" &&
+      result.stripePaymentIntentId
+    ) {
       this.stripeService
         .cancelPaymentIntent(result.stripePaymentIntentId)
         .catch((err) => {
@@ -316,6 +368,66 @@ export class ReservationsService {
             `[cancel] Stripe cancelPaymentIntent failed (non-fatal): ${err.message}`,
           );
         });
+    }
+
+    if (result.stripeAction === "refund") {
+      if (!result.stripePaymentIntentId) {
+        const failedAt = new Date();
+        const reason =
+          "No stripePaymentIntentId present for confirmed cancellation refund.";
+        await this.reservationsRepo.update(
+          { id: result.saved.id },
+          {
+            depositRefundStatus: DepositRefundStatus.FAILED,
+            depositRefundFailureAt: failedAt,
+            depositRefundFailureReason: reason,
+          },
+        );
+        result.saved.depositRefundStatus = DepositRefundStatus.FAILED;
+        result.saved.depositRefundFailureAt = failedAt;
+        result.saved.depositRefundFailureReason = reason;
+        return result.saved;
+      }
+
+      try {
+        await this.stripeService.refundPaymentIntent(result.stripePaymentIntentId);
+        await this.reservationsRepo.update(
+          { id: result.saved.id },
+          {
+            depositRefundStatus: DepositRefundStatus.SUCCEEDED,
+            depositRefundAttemptedAt:
+              result.refundAttemptedAt ?? new Date(),
+            depositRefundFailureAt: null,
+            depositRefundFailureReason: null,
+          },
+        );
+        result.saved.depositRefundStatus = DepositRefundStatus.SUCCEEDED;
+        result.saved.depositRefundAttemptedAt =
+          result.refundAttemptedAt ?? new Date();
+        result.saved.depositRefundFailureAt = null;
+        result.saved.depositRefundFailureReason = null;
+      } catch (err) {
+        const failedAt = new Date();
+        const reason = err instanceof Error ? err.message : String(err);
+        await this.reservationsRepo.update(
+          { id: result.saved.id },
+          {
+            depositRefundStatus: DepositRefundStatus.FAILED,
+            depositRefundAttemptedAt:
+              result.refundAttemptedAt ?? failedAt,
+            depositRefundFailureAt: failedAt,
+            depositRefundFailureReason: reason,
+          },
+        );
+        result.saved.depositRefundStatus = DepositRefundStatus.FAILED;
+        result.saved.depositRefundAttemptedAt =
+          result.refundAttemptedAt ?? failedAt;
+        result.saved.depositRefundFailureAt = failedAt;
+        result.saved.depositRefundFailureReason = reason;
+        this.logger.error(
+          `[cancel] Stripe refundPaymentIntent failed (non-fatal): ${reason}`,
+        );
+      }
     }
 
     return result.saved;
@@ -449,6 +561,12 @@ export class ReservationsService {
     if (reservation.status !== ReservationStatus.CONFIRMED) {
       throw new ConflictException(
         "El ticket solo esta disponible cuando la reserva esta confirmada.",
+      );
+    }
+
+    if (reservation.depositStatus !== DepositStatus.CAPTURED) {
+      throw new ConflictException(
+        "El ticket solo esta disponible cuando el deposito fue capturado.",
       );
     }
 
@@ -625,6 +743,8 @@ export class ReservationsService {
       qrCodeHash: _qrCodeHash,
       ticketTokenVersion: _ticketTokenVersion,
       ticketRevokedAt: _ticketRevokedAt,
+      stripeClientSecret: _stripeClientSecret,
+      stripePaymentIntentId: _stripePaymentIntentId,
       ...safeReservation
     } = reservation;
 

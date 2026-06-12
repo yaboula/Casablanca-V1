@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import {
+  DepositStatus,
   PickupLocation,
   Reservation,
   ReservationStatus,
@@ -49,6 +50,7 @@ function makeReservation(
     totalDays: 3,
     totalPriceEurCents: 30000,
     depositEurCents: 1000,
+    depositStatus: DepositStatus.CAPTURED,
     status: ReservationStatus.IN_PROGRESS,
     customerName: "Sara Client",
     customerPhone: "+212 612 345 678",
@@ -361,6 +363,7 @@ describe("OperatorDeliveryService", () => {
         reason: "Ticket failed reservation state validation.",
         metadata: expect.objectContaining({
           ticketRevoked: true,
+          depositCaptured: true,
           reservationStatus: ReservationStatus.CONFIRMED,
         }),
       }),

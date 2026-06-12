@@ -4,6 +4,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Logger } from "@nestjs/common";
 import {
+  DepositRefundStatus,
+  DepositStatus,
   Reservation,
   ReservationStatus,
 } from "../../reservations/reservation.entity";
@@ -97,7 +99,17 @@ export class CaptureStripeProcessor extends WorkerHost {
 
     await this.reservationsRepo.update(
       { id: reservation.id },
-      { status: ReservationStatus.CONFIRMED },
+      {
+        status: ReservationStatus.CONFIRMED,
+        depositStatus: DepositStatus.CAPTURED,
+        depositCapturedAt: new Date(),
+        depositLastFailureAt: null,
+        depositLastFailureReason: null,
+        depositRefundStatus: DepositRefundStatus.NOT_REQUESTED,
+        depositRefundAttemptedAt: null,
+        depositRefundFailureAt: null,
+        depositRefundFailureReason: null,
+      },
     );
 
     this.logger.log(
@@ -133,7 +145,12 @@ export class CaptureStripeProcessor extends WorkerHost {
     // Compensate: revert reservation to CANCELLED
     const updated = await this.reservationsRepo.update(
       { id: reservationId, status: ReservationStatus.AWAITING_CAPTURE },
-      { status: ReservationStatus.CANCELLED },
+      {
+        status: ReservationStatus.CANCELLED,
+        depositStatus: DepositStatus.FAILED,
+        depositLastFailureAt: new Date(),
+        depositLastFailureReason: error.message,
+      },
     );
 
     if (updated.affected && updated.affected > 0) {

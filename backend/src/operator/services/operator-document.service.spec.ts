@@ -9,6 +9,8 @@ import {
   ReservationDocument,
 } from "../../documents/reservation-document.entity";
 import {
+  DepositRefundStatus,
+  DepositStatus,
   PickupLocation,
   Reservation,
   ReservationStatus,
@@ -50,6 +52,8 @@ function makeReservation(
     totalDays: 2,
     totalPriceEurCents: 20000,
     depositEurCents: 1000,
+    depositStatus: DepositStatus.PENDING,
+    depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
     status: ReservationStatus.PENDING_DEPOSIT,
     qrCodeHash: null,
     ...overrides,
@@ -176,7 +180,10 @@ describe("OperatorDocumentService concurrency", () => {
     });
     expect(reservationQb.setLock).toHaveBeenCalledWith("pessimistic_write");
     expect(reservationRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ status: ReservationStatus.AWAITING_CAPTURE }),
+      expect.objectContaining({
+        status: ReservationStatus.AWAITING_CAPTURE,
+        depositStatus: DepositStatus.CAPTURE_QUEUED,
+      }),
     );
     expect(captureQueue.add).toHaveBeenCalledTimes(1);
   });

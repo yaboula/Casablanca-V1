@@ -3,7 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager } from 'typeorm';
 import Stripe from 'stripe';
 import { StripeWebhookLog } from './entities/stripe-webhook-log.entity';
-import { Reservation, ReservationStatus } from '../reservations/reservation.entity';
+import {
+  DepositRefundStatus,
+  DepositStatus,
+  Reservation,
+  ReservationStatus,
+} from '../reservations/reservation.entity';
 import { isReservationTransitionAllowed } from '../reservations/reservation-policy';
 import { SseService } from '../sse/sse.service';
 
@@ -148,7 +153,20 @@ export class WebhooksService {
     ) {
       await manager
         .getRepository(Reservation)
-        .update({ id: reservation.id }, { status: ReservationStatus.CONFIRMED });
+        .update(
+          { id: reservation.id },
+          {
+            status: ReservationStatus.CONFIRMED,
+            depositStatus: DepositStatus.CAPTURED,
+            depositCapturedAt: new Date(),
+            depositLastFailureAt: null,
+            depositLastFailureReason: null,
+            depositRefundStatus: DepositRefundStatus.NOT_REQUESTED,
+            depositRefundAttemptedAt: null,
+            depositRefundFailureAt: null,
+            depositRefundFailureReason: null,
+          },
+        );
 
       this.sseService.emitReservationStatus(
         reservation.id,
@@ -175,9 +193,20 @@ export class WebhooksService {
     if (!reservation) return;
 
     if (WEBHOOK_CANCELLATION_STATUSES.includes(reservation.status)) {
+      const failureReason =
+        pi.last_payment_error?.message ?? 'Stripe reported deposit payment failure.';
       await manager
         .getRepository(Reservation)
-        .update({ id: reservation.id }, { status: ReservationStatus.CANCELLED });
+        .update(
+          { id: reservation.id },
+          {
+            status: ReservationStatus.CANCELLED,
+            depositStatus: DepositStatus.FAILED,
+            depositLastFailureAt: new Date(),
+            depositLastFailureReason: failureReason,
+            depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+          },
+        );
 
       this.sseService.emitReservationStatus(
         reservation.id,
@@ -207,7 +236,14 @@ export class WebhooksService {
     if (WEBHOOK_CANCELLATION_STATUSES.includes(reservation.status)) {
       await manager
         .getRepository(Reservation)
-        .update({ id: reservation.id }, { status: ReservationStatus.CANCELLED });
+        .update(
+          { id: reservation.id },
+          {
+            status: ReservationStatus.CANCELLED,
+            depositStatus: DepositStatus.CANCELLED,
+            depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+          },
+        );
 
       this.sseService.emitReservationStatus(
         reservation.id,

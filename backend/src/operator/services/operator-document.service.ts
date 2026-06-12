@@ -9,6 +9,8 @@ import { Repository, DataSource } from "typeorm";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import {
+  DepositRefundStatus,
+  DepositStatus,
   Reservation,
   ReservationStatus,
 } from "../../reservations/reservation.entity";
@@ -199,6 +201,14 @@ export class OperatorDocumentService {
                 reservation.userId,
                 reservation.pickupDate,
               );
+              reservation.depositStatus = DepositStatus.CAPTURE_QUEUED;
+              reservation.depositLastFailureAt = null;
+              reservation.depositLastFailureReason = null;
+              reservation.depositRefundStatus =
+                DepositRefundStatus.NOT_APPLICABLE;
+              reservation.depositRefundAttemptedAt = null;
+              reservation.depositRefundFailureAt = null;
+              reservation.depositRefundFailureReason = null;
               await manager.getRepository(Reservation).save(reservation);
               reservationStatus = ReservationStatus.AWAITING_CAPTURE;
               captureQueued = true;

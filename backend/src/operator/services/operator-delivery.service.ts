@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import {
+  DepositStatus,
   Reservation,
   ReservationStatus,
 } from "../../reservations/reservation.entity";
@@ -211,6 +212,7 @@ export class OperatorDeliveryService {
       verified.payload.ticketVersion ===
         (reservation.ticketTokenVersion ?? 0) &&
       !reservation.ticketRevokedAt &&
+      reservation.depositStatus === DepositStatus.CAPTURED &&
       reservation.status === ReservationStatus.CONFIRMED;
 
     if (!tokenMatchesReservation) {
@@ -230,6 +232,7 @@ export class OperatorDeliveryService {
             verified.payload.ticketVersion ===
             (reservation.ticketTokenVersion ?? 0),
           ticketRevoked: Boolean(reservation.ticketRevokedAt),
+          depositCaptured: reservation.depositStatus === DepositStatus.CAPTURED,
           reservationStatus: reservation.status,
         },
       });
