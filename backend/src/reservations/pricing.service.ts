@@ -68,7 +68,7 @@ export class PricingService {
       extraBillingType = ExtraBillingType.NONE;
     } else if (extraHours <= GRACE_HOURS) {
       extraBillingType = ExtraBillingType.GRACE;
-    } else if (extraHours <= HALF_DAY_UNTIL_HOURS) {
+    } else if (extraHours < HALF_DAY_UNTIL_HOURS) {
       extraBillingType = ExtraBillingType.HALF_DAY;
       chargedDayUnitsX2 += 1;
       extraChargeEurCents = Math.ceil(dailyRateEurCents / 2);

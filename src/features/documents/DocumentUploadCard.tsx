@@ -121,6 +121,7 @@ export function DocumentUploadCard({
     pendingType?: DocumentType;
   } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Use the existing document unless we just successfully uploaded
   const [currentDoc, setCurrentDoc] = useState<DocumentViewModel | null>(
@@ -166,6 +167,41 @@ export function DocumentUploadCard({
     setUploadState("selecting");
     setProgress(0);
   }
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (isUploading) return;
+    setIsDragging(true);
+  }, [isUploading]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (isUploading) return;
+
+    const file = e.dataTransfer.files?.[0] ?? null;
+    setError(null);
+
+    if (!file) return;
+
+    if (!isAllowedMimeType(file.type)) {
+      setError({
+        message: `File type "${file.type}" is not accepted. Please upload a JPEG, PNG, or PDF.`,
+        recoverable: true,
+      });
+      setSelectedFile(null);
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadState("selecting");
+    setProgress(0);
+  }, [isUploading]);
 
   // ---------------------------------------------------------------------------
   // Upload handler
@@ -431,46 +467,70 @@ export function DocumentUploadCard({
             {/* File input */}
             <div>
               <label
-                className="mb-1.5 block text-xs font-bold text-neutral-700"
+                className="mb-2.5 block text-xs font-bold text-neutral-700 uppercase tracking-wider"
                 htmlFor={`file-input-${type}`}
               >
                 {currentDoc
                   ? `Replace ${label.toLowerCase()}`
                   : `Upload ${label.toLowerCase()}`}
               </label>
-              <p className="mb-2 text-xs text-neutral-500">
-                Accepted formats: JPEG, PNG, PDF. Max recommended: 10 MB.
-                Ensure the document is clearly readable.
-              </p>
-              <div className="flex items-start gap-3">
-                <input
-                  accept={ALLOWED_DOCUMENT_MIME_TYPES.join(",")}
-                  aria-describedby={error ? errorId : undefined}
-                  aria-labelledby={labelId}
-                  className="block flex-1 text-sm text-neutral-700 file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-neutral-300 file:bg-white file:px-4 file:py-2 file:text-xs file:font-bold file:text-neutral-950 file:transition file:hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={isUploading}
-                  id={`file-input-${type}`}
-                  onChange={handleFileChange}
-                  ref={fileInputRef}
-                  type="file"
+              <input
+                accept={ALLOWED_DOCUMENT_MIME_TYPES.join(",")}
+                aria-describedby={error ? errorId : undefined}
+                aria-labelledby={labelId}
+                className="sr-only"
+                disabled={isUploading}
+                id={`file-input-${type}`}
+                onChange={handleFileChange}
+                ref={fileInputRef}
+                type="file"
+              />
+
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => {
+                  if (!isUploading) {
+                    fileInputRef.current?.click();
+                  }
+                }}
+                className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition-all duration-300 select-none active:scale-[0.98] ${
+                  isDragging
+                    ? "border-[#1E41FC] bg-[#1E41FC]/5 scale-[0.99]"
+                    : "border-neutral-200 bg-neutral-50 hover:bg-neutral-100/70 hover:border-neutral-400"
+                } ${isUploading ? "pointer-events-none opacity-60" : ""}`}
+              >
+                <UploadCloud
+                  className={`h-9 w-9 transition-transform duration-300 ${
+                    isDragging ? "scale-110 text-[#1E41FC]" : "text-neutral-400 group-hover:text-neutral-600"
+                  }`}
                 />
-                {selectedFile && !isUploading && (
-                  <button
-                    aria-label="Remove selected file"
-                    className="mt-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-950"
-                    onClick={handleClearFile}
-                    type="button"
-                  >
-                    <X aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <span className="mt-3 text-xs font-semibold text-neutral-800">
+                  {selectedFile ? "Selected: " + selectedFile.name : `Drag & drop your ${label.toLowerCase()} here`}
+                </span>
+                <span className="text-[10px] text-neutral-400 font-light mt-1.5">
+                  {selectedFile ? "Click or drag to change" : "or click to browse files"}
+                </span>
               </div>
 
               {/* Selected file preview */}
-              {selectedFile && (
-                <p className="mt-1.5 text-xs text-neutral-500">
-                  Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                </p>
+              {selectedFile && !isUploading && (
+                <div className="mt-4 flex items-center justify-between rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3 text-xs">
+                  <div className="flex items-center gap-2 text-neutral-700 min-w-0">
+                    <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
+                    <span className="truncate font-semibold">{selectedFile.name}</span>
+                    <span className="text-neutral-400 shrink-0">({formatFileSize(selectedFile.size)})</span>
+                  </div>
+                  <button
+                    aria-label="Remove selected file"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition-all duration-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 active:scale-[0.93]"
+                    onClick={handleClearFile}
+                    type="button"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               )}
             </div>
 

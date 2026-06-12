@@ -1,0 +1,472 @@
+{
+  "cloudName": "do7czbgfp",
+  "folderPrefix": "nexus-mobility/fleet/cmn",
+  "generatedAt": "2026-06-11T12:44:34.611Z",
+  "sourceRoot": "D:\\Users\\aboul\\Desktop\\ACD\\public\\fleet\\cmn",
+  "vehicleCount": 11,
+  "assetCount": 40,
+  "vehicles": {
+    "dacia-sandero-stepway": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-sandero-stepway/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781181871/nexus-mobility/fleet/cmn/dacia-sandero-stepway/01.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 184060,
+        "format": "webp",
+        "version": 1781181871
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-sandero-stepway/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180454/nexus-mobility/fleet/cmn/dacia-sandero-stepway/02.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 229404,
+        "format": "webp",
+        "version": 1781180454
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-sandero-stepway/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180455/nexus-mobility/fleet/cmn/dacia-sandero-stepway/03.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 224196,
+        "format": "webp",
+        "version": 1781180455
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-sandero-stepway/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180456/nexus-mobility/fleet/cmn/dacia-sandero-stepway/04.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 338578,
+        "format": "webp",
+        "version": 1781180456
+      }
+    ],
+    "renault-clio-5": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/renault-clio-5/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180457/nexus-mobility/fleet/cmn/renault-clio-5/01.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 88730,
+        "format": "webp",
+        "version": 1781180457
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/renault-clio-5/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180457/nexus-mobility/fleet/cmn/renault-clio-5/02.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 66158,
+        "format": "webp",
+        "version": 1781180457
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/renault-clio-5/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781181872/nexus-mobility/fleet/cmn/renault-clio-5/03.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 64736,
+        "format": "webp",
+        "version": 1781181872
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/renault-clio-5/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180459/nexus-mobility/fleet/cmn/renault-clio-5/04.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 68568,
+        "format": "webp",
+        "version": 1781180459
+      }
+    ],
+    "fiat-500-hybrid": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/fiat-500-hybrid/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180459/nexus-mobility/fleet/cmn/fiat-500-hybrid/01.webp",
+        "width": 1567,
+        "height": 1004,
+        "bytes": 141362,
+        "format": "webp",
+        "version": 1781180459
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/fiat-500-hybrid/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180460/nexus-mobility/fleet/cmn/fiat-500-hybrid/02.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 145136,
+        "format": "webp",
+        "version": 1781180460
+      }
+    ],
+    "dacia-logan": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-logan/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180461/nexus-mobility/fleet/cmn/dacia-logan/01.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 145544,
+        "format": "webp",
+        "version": 1781180461
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-logan/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180462/nexus-mobility/fleet/cmn/dacia-logan/02.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 161480,
+        "format": "webp",
+        "version": 1781180462
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-logan/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180462/nexus-mobility/fleet/cmn/dacia-logan/03.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 149284,
+        "format": "webp",
+        "version": 1781180462
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-logan/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180463/nexus-mobility/fleet/cmn/dacia-logan/04.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 208852,
+        "format": "webp",
+        "version": 1781180463
+      }
+    ],
+    "hyundai-elantra": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/hyundai-elantra/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180464/nexus-mobility/fleet/cmn/hyundai-elantra/01.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 181718,
+        "format": "webp",
+        "version": 1781180464
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/hyundai-elantra/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180464/nexus-mobility/fleet/cmn/hyundai-elantra/02.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 204934,
+        "format": "webp",
+        "version": 1781180464
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/hyundai-elantra/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180465/nexus-mobility/fleet/cmn/hyundai-elantra/03.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 142952,
+        "format": "webp",
+        "version": 1781180465
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/hyundai-elantra/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180466/nexus-mobility/fleet/cmn/hyundai-elantra/04.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 177134,
+        "format": "webp",
+        "version": 1781180466
+      }
+    ],
+    "dacia-duster": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-duster/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180467/nexus-mobility/fleet/cmn/dacia-duster/01.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 134636,
+        "format": "webp",
+        "version": 1781180467
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-duster/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180468/nexus-mobility/fleet/cmn/dacia-duster/02.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 314628,
+        "format": "webp",
+        "version": 1781180468
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-duster/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180468/nexus-mobility/fleet/cmn/dacia-duster/03.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 165894,
+        "format": "webp",
+        "version": 1781180468
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/dacia-duster/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180469/nexus-mobility/fleet/cmn/dacia-duster/04.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 117686,
+        "format": "webp",
+        "version": 1781180469
+      }
+    ],
+    "kia-sportage": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/kia-sportage/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180470/nexus-mobility/fleet/cmn/kia-sportage/01.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 135366,
+        "format": "webp",
+        "version": 1781180470
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/kia-sportage/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180471/nexus-mobility/fleet/cmn/kia-sportage/02.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 300964,
+        "format": "webp",
+        "version": 1781180471
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/kia-sportage/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180471/nexus-mobility/fleet/cmn/kia-sportage/03.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 271078,
+        "format": "webp",
+        "version": 1781180471
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/kia-sportage/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180472/nexus-mobility/fleet/cmn/kia-sportage/04.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 332100,
+        "format": "webp",
+        "version": 1781180472
+      }
+    ],
+    "hyundai-tucson": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/hyundai-tucson/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180473/nexus-mobility/fleet/cmn/hyundai-tucson/01.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 112906,
+        "format": "webp",
+        "version": 1781180473
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/hyundai-tucson/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180474/nexus-mobility/fleet/cmn/hyundai-tucson/02.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 256324,
+        "format": "webp",
+        "version": 1781180474
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/hyundai-tucson/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180475/nexus-mobility/fleet/cmn/hyundai-tucson/03.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 217390,
+        "format": "webp",
+        "version": 1781180475
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/hyundai-tucson/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180475/nexus-mobility/fleet/cmn/hyundai-tucson/04.webp",
+        "width": 1672,
+        "height": 941,
+        "bytes": 166642,
+        "format": "webp",
+        "version": 1781180475
+      }
+    ],
+    "bmw-x1": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/bmw-x1/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180476/nexus-mobility/fleet/cmn/bmw-x1/01.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 139478,
+        "format": "webp",
+        "version": 1781180476
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/bmw-x1/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781181873/nexus-mobility/fleet/cmn/bmw-x1/02.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 196916,
+        "format": "webp",
+        "version": 1781181873
+      }
+    ],
+    "range-rover-evoque": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/range-rover-evoque/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180477/nexus-mobility/fleet/cmn/range-rover-evoque/01.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 285178,
+        "format": "webp",
+        "version": 1781180477
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/range-rover-evoque/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180478/nexus-mobility/fleet/cmn/range-rover-evoque/02.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 240632,
+        "format": "webp",
+        "version": 1781180478
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/range-rover-evoque/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180479/nexus-mobility/fleet/cmn/range-rover-evoque/03.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 180338,
+        "format": "webp",
+        "version": 1781180479
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/range-rover-evoque/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180479/nexus-mobility/fleet/cmn/range-rover-evoque/04.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 221344,
+        "format": "webp",
+        "version": 1781180479
+      }
+    ],
+    "toyota-corolla": [
+      {
+        "file": "01.webp",
+        "role": "primary",
+        "publicId": "nexus-mobility/fleet/cmn/toyota-corolla/01",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180480/nexus-mobility/fleet/cmn/toyota-corolla/01.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 114332,
+        "format": "webp",
+        "version": 1781180480
+      },
+      {
+        "file": "02.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/toyota-corolla/02",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180480/nexus-mobility/fleet/cmn/toyota-corolla/02.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 157424,
+        "format": "webp",
+        "version": 1781180480
+      },
+      {
+        "file": "03.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/toyota-corolla/03",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180481/nexus-mobility/fleet/cmn/toyota-corolla/03.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 146900,
+        "format": "webp",
+        "version": 1781180481
+      },
+      {
+        "file": "04.webp",
+        "role": "gallery",
+        "publicId": "nexus-mobility/fleet/cmn/toyota-corolla/04",
+        "secureUrl": "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180482/nexus-mobility/fleet/cmn/toyota-corolla/04.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 141306,
+        "format": "webp",
+        "version": 1781180482
+      }
+    ]
+  }
+}

@@ -460,7 +460,7 @@ export function WaitingRoomView({
                   {
                     n: 1,
                     title: "Operator reviews your documents",
-                    body: "Usually done within working hours. You will not need to do anything.",
+                    body: "Review timing depends on document clarity and queue volume.",
                   },
                   {
                     n: 2,

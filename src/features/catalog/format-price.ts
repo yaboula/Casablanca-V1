@@ -4,17 +4,29 @@ const eurFormatter = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 0,
 });
 
+const madFormatter = new Intl.NumberFormat("fr-FR", {
+  style: "currency",
+  currency: "MAD",
+  maximumFractionDigits: 0,
+});
+
+const EUR_TO_MAD_DISPLAY_RATE = 10.8;
+
 export function formatEurCents(cents: number): string {
   return eurFormatter.format(cents / 100);
 }
 
+export function formatMadFromEurCents(cents: number): string {
+  return madFormatter.format((cents / 100) * EUR_TO_MAD_DISPLAY_RATE);
+}
+
 export function formatCategory(category: string | null): string {
-  if (!category) return "Categoria no indicada";
+  if (!category) return "Category to confirm";
   return titleCaseEnum(category);
 }
 
 export function formatTransmission(transmission: string | null): string {
-  if (!transmission) return "Transmision no indicada";
+  if (!transmission) return "Transmission to confirm";
   return titleCaseEnum(transmission);
 }
 

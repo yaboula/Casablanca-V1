@@ -1,0 +1,12 @@
+
+> casablanca-v1@0.1.0 dev
+> next dev -H 0.0.0.0 -p 3600
+
+[?25h
+t.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3600
+- Network:       http://0.0.0.0:3600
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 100.7s

@@ -1,0 +1,231 @@
+{
+  "assetBasePath": "D:\\Users\\aboul\\Desktop\\ACD\\vehicle-assets-ready\\cmn",
+  "format": "webp",
+  "maxLongEdge": 1800,
+  "quality": 88,
+  "vehicles": {
+    "dacia-sandero-stepway": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\sandero-stepway\\ChatGPT Image 11 jun 2026, 01_58_30 (3).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\sandero-stepway\\ChatGPT Image 11 jun 2026, 01_58_29 (1).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\sandero-stepway\\ChatGPT Image 11 jun 2026, 01_58_29 (2).png",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\sandero-stepway\\ChatGPT Image 11 jun 2026, 01_58_30 (4).png",
+        "role": "gallery"
+      }
+    ],
+    "renault-clio-5": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\clio5\\ChatGPT Image 11 jun 2026, 01_43_31 (4).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\clio5\\ChatGPT Image 11 jun 2026, 01_43_31 (1).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\Renault-Clio-full-hybrid-E-Tech-Esprit-Alpine-Rouge-Absolu\\Renault-Clio-full-hybrid-E-Tech-Esprit-Alpine-Rouge-Absolu.jpg",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\clio5\\ChatGPT Image 11 jun 2026, 01_43_31 (2).png",
+        "role": "gallery"
+      }
+    ],
+    "fiat-500-hybrid": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\fiat500hybrid\\ChatGPT Image 11 jun 2026, 01_26_03.png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\fiat500hybrid\\ChatGPT Image 11 jun 2026, 01_26_12 (1).png",
+        "role": "gallery"
+      }
+    ],
+    "dacia-logan": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\logan\\ChatGPT Image 11 jun 2026, 01_51_05 (1).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\logan\\ChatGPT Image 11 jun 2026, 01_51_06 (4).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\logan\\ChatGPT Image 11 jun 2026, 01_51_06 (2).png",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\logan\\ChatGPT Image 11 jun 2026, 01_51_06 (3).png",
+        "role": "gallery"
+      }
+    ],
+    "hyundai-elantra": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\elantra\\ChatGPT Image 11 jun 2026, 02_10_59 (4).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\elantra\\ChatGPT Image 11 jun 2026, 02_10_58 (2).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\elantra\\ChatGPT Image 11 jun 2026, 02_10_58 (1).png",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\elantra\\ChatGPT Image 11 jun 2026, 02_10_59 (3).png",
+        "role": "gallery"
+      }
+    ],
+    "dacia-duster": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\duster\\ChatGPT Image 11 jun 2026, 02_36_52 (4).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\duster\\ChatGPT Image 11 jun 2026, 02_36_51 (1).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\duster\\ChatGPT Image 11 jun 2026, 02_36_52 (3).png",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\duster\\ChatGPT Image 11 jun 2026, 02_36_52 (2).png",
+        "role": "gallery"
+      }
+    ],
+    "kia-sportage": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\sportage\\ChatGPT Image 11 jun 2026, 02_29_56 (3).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\sportage\\ChatGPT Image 11 jun 2026, 02_29_56 (2).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\sportage\\ChatGPT Image 11 jun 2026, 02_29_56 (4).png",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\sportage\\ChatGPT Image 11 jun 2026, 02_29_56 (1).png",
+        "role": "gallery"
+      }
+    ],
+    "hyundai-tucson": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\tucson\\ChatGPT Image 11 jun 2026, 02_17_27 (1).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\tucson\\ChatGPT Image 11 jun 2026, 02_17_27 (2).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\tucson\\ChatGPT Image 11 jun 2026, 02_17_27 (4).png",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\tucson\\ChatGPT Image 11 jun 2026, 02_17_27 (3).png",
+        "role": "gallery"
+      }
+    ],
+    "bmw-x1": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\bmw\\ChatGPT Image 11 jun 2026, 13_48_57 (1).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\bmw\\ChatGPT Image 11 jun 2026, 13_48_57 (2).png",
+        "role": "gallery"
+      }
+    ],
+    "range-rover-evoque": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\evoque\\ChatGPT Image 11 jun 2026, 13_35_14 (2).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\evoque\\ChatGPT Image 11 jun 2026, 13_35_13 (1).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\evoque\\ChatGPT Image 11 jun 2026, 13_35_14 (3).png",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\evoque\\ChatGPT Image 11 jun 2026, 13_35_14 (4).png",
+        "role": "gallery"
+      }
+    ],
+    "toyota-corolla": [
+      {
+        "file": "01.webp",
+        "source": "D:\\Descargas\\corolla\\ChatGPT Image 11 jun 2026, 14_00_31 (4).png",
+        "role": "primary"
+      },
+      {
+        "file": "02.webp",
+        "source": "D:\\Descargas\\corolla\\ChatGPT Image 11 jun 2026, 14_00_30 (1).png",
+        "role": "gallery"
+      },
+      {
+        "file": "03.webp",
+        "source": "D:\\Descargas\\corolla\\ChatGPT Image 11 jun 2026, 14_00_30 (2).png",
+        "role": "gallery"
+      },
+      {
+        "file": "04.webp",
+        "source": "D:\\Descargas\\corolla\\ChatGPT Image 11 jun 2026, 14_00_31 (3).png",
+        "role": "gallery"
+      }
+    ]
+  },
+  "pending": {}
+}

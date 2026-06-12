@@ -3,10 +3,10 @@
  * Run via: npm run seed:vehicles
  *
  * Image strategy:
- * - Uses deterministic absolute URLs derived from VEHICLE_ASSET_BASE_URL.
- * - The local default points to the app's public fleet assets.
- * - Override VEHICLE_ASSET_BASE_URL in deployed environments to use the
- *   production site or CDN origin serving the same folder structure.
+ * - Uses final Cloudinary URLs for each exact-model image asset.
+ * - Preserves a deterministic fleet and gallery order for the frontend.
+ * - Retires any previous seed vehicles from the active catalog while
+ *   preserving history for vehicles that already have reservations.
  */
 import "dotenv/config";
 import { AppDataSource } from "../../config/data-source";
@@ -17,11 +17,6 @@ import {
   VehicleStatus,
 } from "../../vehicles/vehicle.entity";
 import { Reservation } from "../../reservations/reservation.entity";
-
-const ASSET_BASE_URL = (
-  process.env.VEHICLE_ASSET_BASE_URL ??
-  "http://localhost:3600/fleet/cmn"
-).replace(/\/+$/, "");
 
 const COMPACT_FEATURES = [
   "Air conditioning",
@@ -55,14 +50,69 @@ const LUXURY_FEATURES = [
   "Airport pickup",
 ] as const;
 
-const LEGACY_SEED_LICENSE_PLATES = [
-  "22145-A-1",
-  "33112-B-7",
-  "44098-C-3",
-  "55877-D-9",
-  "11904-E-2",
-  "66721-F-5",
-] as const;
+const CLOUDINARY_CMN_IMAGES = {
+  "dacia-sandero-stepway": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781181871/nexus-mobility/fleet/cmn/dacia-sandero-stepway/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180454/nexus-mobility/fleet/cmn/dacia-sandero-stepway/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180455/nexus-mobility/fleet/cmn/dacia-sandero-stepway/03.webp",
+  ],
+  "renault-clio-5": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180457/nexus-mobility/fleet/cmn/renault-clio-5/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180457/nexus-mobility/fleet/cmn/renault-clio-5/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781181872/nexus-mobility/fleet/cmn/renault-clio-5/03.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180459/nexus-mobility/fleet/cmn/renault-clio-5/04.webp",
+  ],
+  "fiat-500-hybrid": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180459/nexus-mobility/fleet/cmn/fiat-500-hybrid/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180460/nexus-mobility/fleet/cmn/fiat-500-hybrid/02.webp",
+  ],
+  "dacia-logan": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180461/nexus-mobility/fleet/cmn/dacia-logan/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180462/nexus-mobility/fleet/cmn/dacia-logan/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180462/nexus-mobility/fleet/cmn/dacia-logan/03.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180463/nexus-mobility/fleet/cmn/dacia-logan/04.webp",
+  ],
+  "hyundai-elantra": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180464/nexus-mobility/fleet/cmn/hyundai-elantra/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180464/nexus-mobility/fleet/cmn/hyundai-elantra/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180465/nexus-mobility/fleet/cmn/hyundai-elantra/03.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180466/nexus-mobility/fleet/cmn/hyundai-elantra/04.webp",
+  ],
+  "toyota-corolla": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180480/nexus-mobility/fleet/cmn/toyota-corolla/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180480/nexus-mobility/fleet/cmn/toyota-corolla/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180481/nexus-mobility/fleet/cmn/toyota-corolla/03.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180482/nexus-mobility/fleet/cmn/toyota-corolla/04.webp",
+  ],
+  "dacia-duster": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180467/nexus-mobility/fleet/cmn/dacia-duster/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180468/nexus-mobility/fleet/cmn/dacia-duster/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180468/nexus-mobility/fleet/cmn/dacia-duster/03.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180469/nexus-mobility/fleet/cmn/dacia-duster/04.webp",
+  ],
+  "kia-sportage": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180470/nexus-mobility/fleet/cmn/kia-sportage/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180471/nexus-mobility/fleet/cmn/kia-sportage/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180471/nexus-mobility/fleet/cmn/kia-sportage/03.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180472/nexus-mobility/fleet/cmn/kia-sportage/04.webp",
+  ],
+  "hyundai-tucson": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180473/nexus-mobility/fleet/cmn/hyundai-tucson/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180474/nexus-mobility/fleet/cmn/hyundai-tucson/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180475/nexus-mobility/fleet/cmn/hyundai-tucson/03.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180475/nexus-mobility/fleet/cmn/hyundai-tucson/04.webp",
+  ],
+  "bmw-x1": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180476/nexus-mobility/fleet/cmn/bmw-x1/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781181873/nexus-mobility/fleet/cmn/bmw-x1/02.webp",
+  ],
+  "range-rover-evoque": [
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180477/nexus-mobility/fleet/cmn/range-rover-evoque/01.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180478/nexus-mobility/fleet/cmn/range-rover-evoque/02.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180479/nexus-mobility/fleet/cmn/range-rover-evoque/03.webp",
+    "https://res.cloudinary.com/do7czbgfp/image/upload/v1781180479/nexus-mobility/fleet/cmn/range-rover-evoque/04.webp",
+  ],
+} as const;
 
 type SeedVehicleInput = {
   brand: string;
@@ -75,7 +125,6 @@ type SeedVehicleInput = {
   seats: number;
   luggageCount: number;
   features: string[];
-  imageFileNames?: string[];
 };
 
 const FLEET: SeedVehicleInput[] = [
@@ -90,7 +139,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 2,
     features: [...COMPACT_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Renault",
@@ -103,7 +151,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 2,
     features: [...COMPACT_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Fiat",
@@ -116,7 +163,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 4,
     luggageCount: 1,
     features: [...COMPACT_FEATURES],
-    imageFileNames: ["01.webp", "02.webp"],
   },
   {
     brand: "Dacia",
@@ -129,7 +175,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...SEDAN_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Hyundai",
@@ -142,7 +187,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...SEDAN_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Toyota",
@@ -155,7 +199,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...SEDAN_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Dacia",
@@ -168,7 +211,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 4,
     features: [...SUV_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Kia",
@@ -181,7 +223,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 4,
     features: [...SUV_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "Hyundai",
@@ -194,7 +235,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 4,
     features: [...SUV_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
   {
     brand: "BMW",
@@ -207,7 +247,6 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...LUXURY_FEATURES],
-    imageFileNames: ["01.webp", "02.webp"],
   },
   {
     brand: "Range Rover",
@@ -220,16 +259,11 @@ const FLEET: SeedVehicleInput[] = [
     seats: 5,
     luggageCount: 3,
     features: [...LUXURY_FEATURES],
-    imageFileNames: ["01.webp", "02.webp", "03.webp", "04.webp"],
   },
 ] as const;
 
-function buildImageUrls(slug: string, imageFileNames?: string[]): string[] {
-  const fileNames = imageFileNames?.length
-    ? imageFileNames
-    : ["01.webp", "02.webp", "03.webp"];
-
-  return fileNames.map((fileName) => `${ASSET_BASE_URL}/${slug}/${fileName}`);
+function getImageUrls(slug: keyof typeof CLOUDINARY_CMN_IMAGES): string[] {
+  return [...CLOUDINARY_CMN_IMAGES[slug]];
 }
 
 async function seed() {
@@ -238,7 +272,9 @@ async function seed() {
   const reservationsRepo = AppDataSource.getRepository(Reservation);
 
   const rows = FLEET.map((vehicle) => {
-    const imageUrls = buildImageUrls(vehicle.slug, vehicle.imageFileNames);
+    const imageUrls = getImageUrls(
+      vehicle.slug as keyof typeof CLOUDINARY_CMN_IMAGES,
+    );
 
     return {
       brand: vehicle.brand,
@@ -257,31 +293,7 @@ async function seed() {
   });
 
   console.log("Seeding realistic CMN fleet...");
-  console.log(`Asset base URL: ${ASSET_BASE_URL}`);
-
-  const legacyVehicles = await repo.find({
-    where: LEGACY_SEED_LICENSE_PLATES.map((licensePlate) => ({ licensePlate })),
-  });
-
-  for (const legacyVehicle of legacyVehicles) {
-    const reservationCount = await reservationsRepo.count({
-      where: { vehicleId: legacyVehicle.id },
-    });
-
-    if (reservationCount === 0) {
-      await repo.delete({ id: legacyVehicle.id });
-      console.log(`Removed legacy seed vehicle ${legacyVehicle.licensePlate}.`);
-      continue;
-    }
-
-    if (legacyVehicle.status !== VehicleStatus.INACTIVE) {
-      legacyVehicle.status = VehicleStatus.INACTIVE;
-      await repo.save(legacyVehicle);
-      console.log(
-        `Legacy vehicle ${legacyVehicle.licensePlate} retained due to reservations and marked INACTIVE.`,
-      );
-    }
-  }
+  console.log("Image source: Cloudinary exact-model assets");
 
   for (const row of rows) {
     const existing = await repo.findOne({
@@ -298,6 +310,35 @@ async function seed() {
     const created = repo.create(row);
     await repo.save(created);
     console.log(`Inserted ${row.licensePlate}.`);
+  }
+
+  const activeSeedPlates = new Set(rows.map((row) => row.licensePlate));
+  const existingVehicles = await repo.find();
+
+  for (const vehicle of existingVehicles) {
+    if (activeSeedPlates.has(vehicle.licensePlate)) {
+      continue;
+    }
+
+    const reservationCount = await reservationsRepo.count({
+      where: { vehicleId: vehicle.id },
+    });
+
+    if (reservationCount === 0) {
+      await repo.delete({ id: vehicle.id });
+      console.log(
+        `Removed obsolete fleet vehicle ${vehicle.licensePlate} (${vehicle.brand} ${vehicle.model}).`,
+      );
+      continue;
+    }
+
+    if (vehicle.status !== VehicleStatus.INACTIVE) {
+      vehicle.status = VehicleStatus.INACTIVE;
+      await repo.save(vehicle);
+      console.log(
+        `Archived obsolete fleet vehicle ${vehicle.licensePlate} (${vehicle.brand} ${vehicle.model}) because it has reservations.`,
+      );
+    }
   }
 
   console.log(`Seeded ${rows.length} vehicles.`);

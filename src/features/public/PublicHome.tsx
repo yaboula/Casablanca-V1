@@ -8,9 +8,15 @@ import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
+  BadgeCheck,
   Car,
   ChevronRight,
+  FileCheck2,
+  KeyRound,
+  MapPin,
   Plane,
+  Route,
+  ScanLine,
   ShieldCheck,
   Timer,
 } from "lucide-react";
@@ -31,7 +37,7 @@ const AccContent = AccordionContent as any;
 const EASE = [0.16, 1, 0.3, 1];
 const FLEET_SPRING = { type: "spring", stiffness: 280, damping: 28, mass: 0.9 } as const;
 const FLEET_TRANSITION = { duration: 0.55, ease: EASE } as const;
-const HERO_WORDS = ["higher", "calmer", "smoother"];
+const HERO_WORDS = ["calmer", "smoother", "clearer"];
 const HOW_IT_WORKS_STEPS = [
   {
     n: "01",
@@ -49,42 +55,73 @@ const HOW_IT_WORKS_STEPS = [
     copy: "Meet your operator at the arrival hall, sign a single digital handover, and collect your keys immediately.",
   },
 ] as const;
+const HANDOFF_MODULES = [
+  {
+    code: "BOOKING",
+    title: "Your exact car, held for you",
+    copy: "Same model, same trim. No day-of substitutions.",
+    Icon: BadgeCheck,
+  },
+  {
+    code: "VERIFY",
+    title: "Papers cleared before you land",
+    copy: "Your license and passport are verified in advance.",
+    Icon: FileCheck2,
+  },
+  {
+    code: "MEET",
+    title: "No desk. No number. No queue.",
+    copy: "Your operator is already at arrivals, holding your keys and your name.",
+    Icon: MapPin,
+  },
+  {
+    code: "KEYS",
+    title: "Prepared for faster pickup",
+    copy: "A focused inspection, a tablet signature, and a clearer key handoff.",
+    Icon: KeyRound,
+  },
+] as const;
+const HANDOFF_FRICTION = [
+  "No counter queue",
+  "No paperwork at pickup",
+  "Your exact car, confirmed",
+] as const;
 const REVIEW_ITEMS = [
   {
     quote:
-      "The exact vehicle in the catalog was the one waiting for me. That clarity made the booking feel much more serious.",
-    name: "Amine K.",
-    context: "Illustrative demo feedback",
-  },
-  {
-    quote:
-      "Uploading documents before takeoff removed the usual desk delay. Pickup felt calm instead of procedural.",
+      "Uploading my documents before arrival made the airport pickup feel much calmer. I knew what was already checked before I landed.",
     name: "Sarah M.",
-    context: "Illustrative demo feedback",
+    context: "Demo review theme",
   },
   {
     quote:
-      "I liked seeing the rate clearly before checkout. The deposit step was separate, which made the pricing easier to understand.",
+      "Choosing the exact car helped a lot. I did not want a vague category after a long flight, and the catalog made that clear.",
+    name: "Amine K.",
+    context: "Demo review theme",
+  },
+  {
+    quote:
+      "The price and deposit step were easier to understand than a normal counter conversation. Nothing felt hidden at the last moment.",
     name: "Nadia R.",
-    context: "Illustrative demo feedback",
+    context: "Demo review theme",
   },
   {
     quote:
-      "The airport handoff was straightforward. We confirmed the booking, checked the documents, and moved on quickly.",
+      "The handoff felt direct. We met the operator, confirmed the car, checked the condition, and left without searching for a desk.",
     name: "Youssef B.",
-    context: "Illustrative demo feedback",
+    context: "Demo review theme",
   },
   {
     quote:
-      "Choosing the exact car mattered to me. I did not want a generic category and the catalog made that decision easy.",
+      "For an airport arrival, the value is not just speed. It is knowing the vehicle, documents, and pickup are already organized.",
     name: "Clara T.",
-    context: "Illustrative demo feedback",
+    context: "Demo review theme",
   },
   {
     quote:
-      "This feels better for arrivals than standing at a rental counter. Less friction, less guesswork, more control.",
+      "The experience felt built around arriving tired with bags. Fewer steps, clearer instructions, and no repeated paperwork.",
     name: "David L.",
-    context: "Illustrative demo feedback",
+    context: "Demo review theme",
   },
 ] as const;
 const FAQ_ITEMS = [
@@ -244,7 +281,7 @@ export function PublicHome({
 
     const timer = window.setInterval(() => {
       setActiveReviewGroup((current) => (current + 1) % reviewGroups.length);
-    }, 7000);
+    }, 7200);
 
     return () => window.clearInterval(timer);
   }, [reviewGroups.length, reviewsPaused, shouldReduceMotion]);
@@ -282,7 +319,7 @@ export function PublicHome({
               </motion.div>
 
               <h1
-                aria-label={`Arrive at a ${HERO_WORDS[activeWord]} standard.`}
+                aria-label="Arrive at a calmer standard."
                 className="font-display text-[clamp(4.25rem,6.5vw,5.55rem)] font-light leading-[0.93] tracking-[-0.04em] text-neutral-900 [text-wrap:balance]"
               >
                 <motion.span
@@ -308,9 +345,9 @@ export function PublicHome({
                         initial={false}
                         animate={{
                           opacity: index === activeWord ? 1 : 0,
-                          filter: index === activeWord ? "blur(0px)" : "blur(8px)",
+                          y: index === activeWord ? 0 : 12,
                         }}
-                        transition={{ duration: 1.25, ease: EASE }}
+                        transition={{ duration: 0.58, ease: EASE }}
                         className="col-start-1 row-start-1 inline-block whitespace-nowrap italic font-light"
                       >
                         {word}
@@ -352,14 +389,14 @@ export function PublicHome({
                   href="/catalog"
                   className="nx-btn-primary group inline-flex items-center gap-2 rounded-full bg-[#0A0A0A] pl-8 pr-7 py-4 text-[1.05rem] font-medium text-white transition-all duration-300 hover:bg-[#1E41FC]"
                 >
-                  Reserve a vehicle
+                  Book your CMN pickup
                   <ArrowRight className="h-5 w-5 transition-transform duration-500 group-hover:translate-x-1" />
                 </Link>
                 <Link
                   href="#fleet"
                   className="nx-link inline-flex items-center gap-2 text-[1.05rem] font-semibold text-neutral-900 transition-colors duration-300 hover:text-[#1E41FC]"
                 >
-                  Explore the fleet
+                  See the live fleet
                 </Link>
               </motion.div>
 
@@ -374,9 +411,9 @@ export function PublicHome({
                   Live fleet at CMN
                 </span>
                 <span className="h-4 w-px bg-neutral-200" />
-                <span>Documents checked before arrival</span>
+                <span>Pricing stays clear before checkout</span>
                 <span className="h-4 w-px bg-neutral-200" />
-                <span>Free cancellation within 24h</span>
+                <span>Deposit authorized separately at checkout</span>
               </motion.div>
             </div>
 
@@ -430,10 +467,10 @@ export function PublicHome({
               </span>
               <div>
                 <div className="text-[0.95rem] font-semibold leading-tight text-neutral-900">
-                  Keys under ten minutes
+                  Faster terminal handoff
                 </div>
                 <div className="mt-1 text-xs text-neutral-500">
-                  Skip the lines. Digital checkout verified.
+                  Handoff prepared before you reach the curb.
                 </div>
               </div>
             </div>
@@ -446,7 +483,7 @@ export function PublicHome({
                   All-inclusive coverage
                 </div>
                 <div className="mt-1 text-xs text-neutral-500">
-                  Fully verified deposit protection and local insurance.
+                  Protection terms and deposit step shown separately before handoff.
                 </div>
               </div>
             </div>
@@ -464,7 +501,7 @@ export function PublicHome({
           onBlur={() => setFleetPaused(false)}
         >
           <div className="pointer-events-none absolute right-10 top-3 select-none">
-            <span className="block font-display text-[112px] font-extrabold leading-none text-neutral-200/55 md:text-[148px]">
+            <span aria-hidden="true" className="block font-display text-[112px] font-extrabold leading-none text-neutral-200/55 md:text-[148px]">
               {String(activeTab + 1).padStart(2, "0")}
             </span>
           </div>
@@ -503,7 +540,7 @@ export function PublicHome({
                       setActiveTab(idx);
                       setFleetPaused(true);
                     }}
-                    className={`relative overflow-hidden rounded-full border px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
+                    className={`relative min-h-11 overflow-hidden rounded-full border px-4 py-2.5 text-sm font-medium transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E41FC] ${
                       isActive
                         ? "border-neutral-950 text-white"
                         : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400 hover:text-neutral-900"
@@ -598,15 +635,18 @@ export function PublicHome({
                   <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
                     <div className="flex items-baseline">
                       <span className="font-display text-[clamp(2.35rem,2.7vw,3.2rem)] font-light leading-none text-neutral-950">
-                        {formatEurCents(activeCar?.pricePerDayEurCents ?? 0)}
+                        From {formatEurCents(activeCar?.pricePerDayEurCents ?? 0)}
                       </span>
                       <span className="ml-2 text-sm text-neutral-500">/day</span>
                     </div>
                     <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-600">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#1E41FC]" />
-                      {formatMadFromEurCents(activeCar?.pricePerDayEurCents ?? 0)} /day
+                      Approx. {formatMadFromEurCents(activeCar?.pricePerDayEurCents ?? 0)} /day
                     </div>
                   </div>
+                  <p className="text-sm leading-relaxed text-neutral-500">
+                    Final total changes with your pickup and return dates. No deposit is collected unexpectedly at the terminal.
+                  </p>
 
                   <dl className="grid grid-cols-3 gap-3 border-t border-neutral-200 pt-4">
                     <div>
@@ -647,7 +687,7 @@ export function PublicHome({
                       href={`/catalog/${activeCar?.id}`}
                       className="inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 px-6 py-3.5 text-[0.95rem] font-medium text-neutral-900 transition-all duration-300 hover:border-neutral-900 hover:bg-neutral-50 active:scale-[0.96]"
                     >
-                      Full details
+                      See full specs
                     </Link>
                   </div>
                 </motion.div>
@@ -757,36 +797,153 @@ export function PublicHome({
         </div>
       </section>
 
-      <section id="airport" className="relative border-b border-neutral-100 bg-white">
-        <div className="nx-container nx-section">
+      <section id="airport" className="relative overflow-hidden border-b border-neutral-100 bg-[#f7f5ef]">
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-neutral-200" />
+        <div className="nx-container py-24 md:py-28">
           <Reveal>
-            <div className="rounded-[2rem] border border-dashed border-neutral-300 bg-neutral-50/80 p-8 md:p-10">
-              <span className="nx-eyebrow font-medium text-neutral-500">
-                Future marketing section
-              </span>
-              <h2 className="nx-h2 mt-3 font-display font-light leading-none tracking-tight text-neutral-900">
-                Arrival story,
-                <br />
-                <span className="italic text-neutral-400">reserved for redesign.</span>
-              </h2>
-              <p className="nx-lead mt-4 max-w-3xl font-light text-neutral-600">
-                We are intentionally holding this section back for a later pass.
-                The next version should explain airport pickup, document readiness,
-                and handoff flow clearly, without implying live flight tracking,
-                operator ratings, or real-time status that this product does not
-                currently expose in the public UI.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3 text-xs font-medium text-neutral-500">
-                <span className="rounded-full border border-neutral-200 bg-white px-3 py-2">
-                  Exact vehicle selection
+            <div className="grid gap-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-center">
+              <div className="max-w-xl">
+                <span className="inline-flex rounded-full border border-neutral-300 bg-white/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-600">
+                  CMN handoff choreography
                 </span>
-                <span className="rounded-full border border-neutral-200 bg-white px-3 py-2">
-                  Document readiness before arrival
-                </span>
-                <span className="rounded-full border border-neutral-200 bg-white px-3 py-2">
-                  Airport handoff without counter friction
-                </span>
+                <h2 className="mt-5 font-display text-5xl font-light leading-none text-neutral-950 md:text-6xl">
+                  From terminal glass
+                  <br />
+                  <span className="italic text-neutral-500">to ignition.</span>
+                </h2>
+                <p className="mt-5 text-lg font-light leading-relaxed text-neutral-650">
+                  The best arrival isn&apos;t the fastest counter. It&apos;s the one where there is no counter.
+                  Everything between baggage claim and the driver&apos;s seat is already handled before you land.
+                </p>
+                <div
+                  className="mt-8 grid gap-3 sm:grid-cols-3"
+                  aria-label="Friction reduced by the Nexus airport handoff"
+                >
+                  {HANDOFF_FRICTION.map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 shadow-[0_14px_40px_-34px_rgba(10,10,10,0.22)]"
+                    >
+                      <span className="mb-2 block h-1 w-8 rounded-full bg-[#1E41FC]" aria-hidden="true" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 28, rotateX: 4 }}
+                whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0, rotateX: 0 }}
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{ duration: 0.95, ease: EASE }}
+                className="relative rounded-[2.25rem] bg-neutral-950 p-2 text-white ring-1 ring-black/10 shadow-[0_44px_120px_-74px_rgba(10,10,10,0.7)]"
+              >
+                <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#070707] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] md:p-6">
+                  <div
+                    aria-hidden="true"
+                    className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/[0.06]"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="absolute -bottom-28 left-10 h-56 w-56 rounded-full bg-[#1E41FC]/15"
+                  />
+
+                  <div className="relative flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/45">
+                        Arrival control surface
+                      </p>
+                      <h3 className="mt-2 font-display text-2xl font-light text-white">
+                        Prepared before the curb.
+                      </h3>
+                    </div>
+                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-medium text-white/75">
+                      <Route className="h-3.5 w-3.5 text-[#8EA0FF]" aria-hidden="true" />
+                      Reservation-led handoff
+                    </div>
+                  </div>
+
+                  <div className="relative mt-7">
+                    <div
+                      aria-hidden="true"
+                      className="absolute left-5 top-5 hidden h-px w-[calc(100%-2.5rem)] bg-white/15 md:block"
+                    />
+                    <ol className="relative grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+                      {HANDOFF_MODULES.map((item, idx) => {
+                        const Icon = item.Icon;
+
+                        return (
+                          <motion.li
+                            key={item.code}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
+                            whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.35 }}
+                            transition={{ duration: 0.72, delay: idx * 0.08, ease: EASE }}
+                            className="relative rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] md:p-5"
+                          >
+                            <div className="mb-5 flex items-center justify-between gap-3">
+                              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white text-neutral-950">
+                                <Icon className="h-4 w-4" aria-hidden="true" />
+                              </span>
+                              <span className="font-mono text-[10px] font-semibold tracking-[0.2em] text-white/40">
+                                {item.code}
+                              </span>
+                            </div>
+                            <h4 className="font-display text-xl font-medium leading-tight text-white">
+                              {item.title}
+                            </h4>
+                            <p className="mt-3 text-[0.95rem] leading-relaxed text-white/64">
+                              {item.copy}
+                            </p>
+                          </motion.li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+
+                  <div className="relative mt-5 grid gap-4 lg:grid-cols-[1fr_0.72fr]">
+                    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-5">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1E41FC] text-white">
+                          <ScanLine className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <div>
+                          <h4 className="font-display text-xl font-light text-white">
+                            You land. We&apos;re already ready.
+                          </h4>
+                          <p className="mt-2 text-[0.95rem] leading-relaxed text-white/64">
+                            Your vehicle is confirmed, your documents are cleared, and your operator knows your name before
+                            you walk through arrivals. Nothing to prove at the curb. Nothing to figure out.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <aside className="rounded-[1.35rem] border border-white/10 bg-[#f7f5ef] p-5 text-neutral-950">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
+                        Human handoff
+                      </p>
+                      <h4 className="mt-3 font-display text-xl font-light leading-tight">
+                        Your operator is already briefed.
+                      </h4>
+                      <ul className="mt-4 space-y-3 text-sm text-neutral-650">
+                        <li className="flex gap-3">
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#1E41FC]" aria-hidden="true" />
+                          Assigned at booking, not on the day of arrival.
+                        </li>
+                        <li className="flex gap-3">
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#1E41FC]" aria-hidden="true" />
+                          Knows your vehicle, your documents, and your name.
+                        </li>
+                        <li className="flex gap-3">
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#1E41FC]" aria-hidden="true" />
+                          Handles the inspection and key handoff personally.
+                        </li>
+                      </ul>
+                    </aside>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </Reveal>
         </div>
@@ -794,21 +951,23 @@ export function PublicHome({
 
       <section className="overflow-hidden bg-neutral-950 py-20 text-white">
         <div className="nx-container">
-          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[0.82fr_1.18fr]">
             <div className="space-y-5">
-              <span className="nx-eyebrow text-xs font-medium tracking-widest text-neutral-400">
-                Customer Reviews
-              </span>
-              <h2 className="font-display text-4xl font-light leading-none tracking-tight md:text-5xl">
-                Calm pickup,
-                <br />
-                <span className="italic text-neutral-400">clearer handoff.</span>
-              </h2>
-              <p className="text-base font-light leading-relaxed text-neutral-400">
-                Illustrative demo feedback for the current service direction:
-                document readiness before arrival, exact vehicle selection, and
-                a smoother airport pickup flow.
-              </p>
+              <Reveal>
+                <span className="nx-eyebrow text-xs font-medium tracking-widest text-neutral-400">
+                  Customer Reviews
+                </span>
+                <h2 className="font-display text-4xl font-light leading-none tracking-tight md:text-5xl">
+                  Calm pickup,
+                  <br />
+                  <span className="italic text-neutral-400">clearer handoff.</span>
+                </h2>
+                <p className="max-w-md text-base font-light leading-relaxed text-neutral-400">
+                  Realistic demo review themes for the current product direction:
+                  document readiness, exact vehicle choice, clearer pricing, and
+                  fewer airport counter steps.
+                </p>
+              </Reveal>
             </div>
 
             <div
@@ -819,21 +978,23 @@ export function PublicHome({
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={activeReviewGroup}
-                  initial={shouldReduceMotion ? false : { opacity: 0, y: 10, filter: "blur(6px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={shouldReduceMotion ? undefined : { opacity: 0, y: -6, filter: "blur(6px)" }}
-                  transition={{ duration: 0.7, ease: EASE }}
-                  className="grid grid-cols-1 gap-6 md:grid-cols-2"
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={shouldReduceMotion ? undefined : { opacity: 0, y: -10 }}
+                  transition={{ duration: 0.64, ease: EASE }}
+                  className="grid grid-cols-1 gap-5 md:grid-cols-2"
                 >
                   {visibleReviews.map((review) => (
                     <article
                       key={review.name + review.quote}
-                      className="flex h-full flex-col justify-between rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
+                      className="flex min-h-[16rem] flex-col justify-between rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                      onFocus={() => pauseReviews()}
+                      onBlur={resumeReviews}
                     >
-                      <blockquote className="text-sm italic leading-relaxed text-neutral-200">
+                      <blockquote className="text-base font-light leading-relaxed text-neutral-100">
                         <p>&ldquo;{review.quote}&rdquo;</p>
                       </blockquote>
-                      <footer className="mt-5 border-t border-neutral-800 pt-4">
+                      <footer className="mt-6 border-t border-white/10 pt-4">
                         <cite className="not-italic">
                           <span className="block text-sm font-semibold text-white">
                             {review.name}
@@ -849,11 +1010,10 @@ export function PublicHome({
               </AnimatePresence>
 
               <div className="flex items-center justify-between gap-4">
-                <p className="text-xs text-neutral-500">
-                  Demo content. These reviews illustrate likely feedback themes,
-                  not production-verified testimonials.
+                <p className="text-xs leading-relaxed text-neutral-500">
+                  Not production-verified testimonials yet.
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" aria-label="Review pairs">
                   {reviewGroups.map((_, index) => {
                     const isActive = index === activeReviewGroup;
 
@@ -869,8 +1029,8 @@ export function PublicHome({
                         }}
                         onFocus={() => pauseReviews()}
                         onBlur={resumeReviews}
-                        className={`h-2.5 rounded-full transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                          isActive ? "w-8 bg-white" : "w-2.5 bg-neutral-600 hover:bg-neutral-400"
+                        className={`h-3 rounded-full transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                          isActive ? "w-9 bg-white" : "w-3 bg-neutral-700 hover:bg-neutral-500"
                         }`}
                       />
                     );
@@ -938,7 +1098,7 @@ export function PublicHome({
             href="/catalog"
             className="nx-btn-primary inline-flex items-center gap-2 rounded-full bg-[#0A0A0A] px-6 py-3.5 text-sm font-semibold text-white transition-colors duration-300 hover:bg-[#1E41FC]"
           >
-            Browse the live fleet
+            Start your reservation
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

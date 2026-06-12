@@ -307,7 +307,7 @@ export function OperatorDashboardView({
               className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition-all ${
                 filter === f.id
                   ? "bg-neutral-900 text-white border-neutral-900"
-                  : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-450 hover:text-neutral-900"
+                  : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900"
               }`}
             >
               {f.label}

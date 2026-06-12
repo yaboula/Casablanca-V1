@@ -132,7 +132,7 @@ export function OperatorDocumentReviewCard({
       aria-label={`${docTypeLabel} document for ${doc.customerName}`}
     >
       {/* Card header */}
-      <div className="flex items-start justify-between gap-4 border-b border-neutral-105 px-6 py-4 bg-neutral-50/50">
+      <div className="flex items-start justify-between gap-4 border-b border-neutral-100 px-6 py-4 bg-neutral-50/50">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 border border-neutral-200/50">
             <FileText aria-hidden="true" className="h-5 w-5 text-neutral-600" />
@@ -153,7 +153,7 @@ export function OperatorDocumentReviewCard({
             <Clock aria-hidden="true" className="h-3 w-3" />
             Pending review
           </span>
-          <span className="text-[10px] text-neutral-450 font-light">{doc.uploadedAgo} ago</span>
+          <span className="text-[10px] text-neutral-500 font-light">{doc.uploadedAgo} ago</span>
         </div>
       </div>
 
@@ -185,13 +185,13 @@ export function OperatorDocumentReviewCard({
           <div className="flex-1 flex flex-col justify-between">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-neutral-450 font-semibold font-mono">Reservation</p>
+                <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold font-mono">Reservation</p>
                 <p className="font-mono text-sm font-semibold text-neutral-950 mt-1">
                   {doc.reservationId.toUpperCase().slice(0, 8)}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-neutral-450 font-semibold font-mono">Document type</p>
+                <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold font-mono">Document type</p>
                 <p className="text-sm font-semibold text-neutral-950 mt-1">
                   {docTypeLabel}
                 </p>
@@ -199,7 +199,7 @@ export function OperatorDocumentReviewCard({
             </div>
 
             <div className="mt-4 pt-4 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-[11px] text-neutral-450 italic">
+              <p className="text-[11px] text-neutral-500 italic">
                 Presigned review link is private &amp; time-limited.
               </p>
               <a

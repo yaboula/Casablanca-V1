@@ -34,6 +34,7 @@ import {
 import type { ReservationViewModel } from "@/features/reservations/types";
 import type { DashboardData, ReservationNextAction } from "./types";
 import { deriveNextAction } from "./types";
+import { CancelReservationButton } from "./CancelReservationButton";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -342,7 +343,7 @@ function HeroCard({ reservation }: { reservation: ReservationViewModel }) {
           </div>
 
           {cta && (
-            <div className="pt-4 border-t border-neutral-100">
+            <div className="pt-4 border-t border-neutral-100 flex items-center gap-3">
               <Link
                 href={cta.href(reservation.id)}
                 aria-label={`${cta.label} for ${reservation.vehicle?.name ?? "this vehicle"}`}
@@ -359,6 +360,11 @@ function HeroCard({ reservation }: { reservation: ReservationViewModel }) {
                 {cta.label}
                 <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
               </Link>
+
+              {/* Show cancel button only for pending payment reservations */}
+              {(reservation.status === "PENDING_DEPOSIT" || reservation.status === "AWAITING_CAPTURE") && (
+                <CancelReservationButton reservationId={reservation.id} />
+              )}
             </div>
           )}
         </div>
@@ -532,19 +538,28 @@ export function DashboardView({ userName, data }: DashboardViewProps) {
               {headerSubtitle}
             </p>
           </div>
-          {/* Book another vehicle — secondary priority when actions pending */}
-          <Link
-            className={[
-              "inline-flex h-11 items-center gap-2 rounded-full px-6 text-xs font-bold uppercase tracking-wider transition self-start mt-1",
-              hasUrgentAction
-                ? "border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 shadow-sm"
-                : "bg-neutral-950 text-white hover:bg-[#1E41FC]",
-            ].join(" ")}
-            href="/catalog"
-          >
-            <PlusCircle aria-hidden="true" className="h-4 w-4" />
-            Book another vehicle
-          </Link>
+          <div className="flex items-center gap-3 self-start mt-1">
+            <Link
+              href="/history"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-neutral-200 bg-white px-6 text-xs font-bold uppercase tracking-wider text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-50 shadow-sm"
+            >
+              Trips history
+            </Link>
+            
+            {/* Book another vehicle — secondary priority when actions pending */}
+            <Link
+              className={[
+                "inline-flex h-11 items-center gap-2 rounded-full px-6 text-xs font-bold uppercase tracking-wider transition",
+                hasUrgentAction
+                  ? "border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 shadow-sm"
+                  : "bg-neutral-950 text-white hover:bg-[#1E41FC]",
+              ].join(" ")}
+              href="/catalog"
+            >
+              <PlusCircle aria-hidden="true" className="h-4 w-4" />
+              Book another vehicle
+            </Link>
+          </div>
         </header>
 
         {/* ------------------------------------------------------------------ */}
@@ -661,30 +676,7 @@ export function DashboardView({ userName, data }: DashboardViewProps) {
             </div>
 
             {/* ---------------------------------------------------------------- */}
-            {/* Cancelled                                                         */}
-            {/* ---------------------------------------------------------------- */}
-            {cancelled.length > 0 && (
-              <Section title="Cancelled reservations">
-                <div className="space-y-3">
-                  {cancelled.map((r) => (
-                    <ReservationRow key={r.id} reservation={r} />
-                  ))}
-                </div>
-              </Section>
-            )}
-
-            {/* ---------------------------------------------------------------- */}
-            {/* Past / completed                                                  */}
-            {/* ---------------------------------------------------------------- */}
-            {completed.length > 0 && (
-              <Section title="Past trips">
-                <div className="space-y-3">
-                  {completed.map((r) => (
-                    <ReservationRow key={r.id} reservation={r} />
-                  ))}
-                </div>
-              </Section>
-            )}
+            {/* Removed bottom history link since it's in the header now */}
 
             {/* ---------------------------------------------------------------- */}
             {/* Browse fleet CTA — only when no urgent actions                    */}

@@ -96,7 +96,7 @@ export function OperatorDocumentsView({
             aria-hidden="true"
             className="h-5 w-5 text-neutral-700"
           />
-          <h2 className="text-base font-bold uppercase tracking-wider text-neutral-905">
+          <h2 className="text-base font-bold uppercase tracking-wider text-neutral-900">
             Pending review queue
           </h2>
           {documents.length > 0 && (
@@ -149,7 +149,7 @@ export function OperatorDocumentsView({
           <p className="mt-4 text-sm font-semibold text-neutral-900">
             No pending documents
           </p>
-          <p className="mt-1 text-xs text-neutral-450 font-light">
+          <p className="mt-1 text-xs text-neutral-500 font-light">
             All submitted documents have been reviewed.
           </p>
         </div>

@@ -60,10 +60,10 @@ export function OperatorDeliveryDetailView({ delivery }: OperatorDeliveryDetailV
         <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
           <div>
             <span className="nx-eyebrow text-neutral-500 font-medium">Delivery details</span>
-            <h1 className="text-3xl font-display font-light text-neutral-905 mt-2">
+            <h1 className="text-3xl font-display font-light text-neutral-900 mt-2">
               Rental delivery status
             </h1>
-            <p className="mt-1 text-xs text-neutral-450 font-mono">
+            <p className="mt-1 text-xs text-neutral-500 font-mono">
               Reservation ID: {delivery.id.toUpperCase()}
             </p>
           </div>
@@ -71,15 +71,15 @@ export function OperatorDeliveryDetailView({ delivery }: OperatorDeliveryDetailV
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider border shadow-sm ${
                 isCompleted
-                  ? "bg-neutral-55 bg-white text-neutral-550 border-neutral-200"
+                  ? "bg-white text-neutral-500 border-neutral-200"
                   : delivery.status === "IN_PROGRESS"
-                  ? "bg-green-50 text-green-750 border-green-200"
-                  : "bg-blue-50 text-blue-750 border-blue-200"
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-blue-50 text-blue-700 border-blue-200"
               }`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${
                 isCompleted
-                  ? "bg-neutral-450 bg-neutral-400"
+                  ? "bg-neutral-400"
                   : delivery.status === "IN_PROGRESS"
                   ? "bg-green-500"
                   : "bg-blue-500"
@@ -96,7 +96,7 @@ export function OperatorDeliveryDetailView({ delivery }: OperatorDeliveryDetailV
           
           {/* Customer & Trip */}
           <section className="rounded-[1.25rem] border border-neutral-200 bg-white p-6 shadow-sm hover:border-neutral-300 transition-colors duration-300">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-450 mb-5 border-b border-neutral-100 pb-3">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-5 border-b border-neutral-100 pb-3">
               Customer &amp; Trip info
             </h2>
             <div className="space-y-5">
@@ -142,7 +142,7 @@ export function OperatorDeliveryDetailView({ delivery }: OperatorDeliveryDetailV
           {/* Vehicle */}
           {delivery.vehicle && (
             <section className="rounded-[1.25rem] border border-neutral-200 bg-white p-6 shadow-sm hover:border-neutral-300 transition-colors duration-300">
-              <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-450 mb-5 border-b border-neutral-100 pb-3">
+              <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-5 border-b border-neutral-100 pb-3">
                 Vehicle Assignment
               </h2>
               <div className="flex items-center gap-4">
@@ -168,7 +168,7 @@ export function OperatorDeliveryDetailView({ delivery }: OperatorDeliveryDetailV
 
           {/* Documents Status */}
           <section className="rounded-[1.25rem] border border-neutral-200 bg-white p-6 shadow-sm hover:border-neutral-300 transition-colors duration-300">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-450 mb-5 border-b border-neutral-100 pb-3">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-5 border-b border-neutral-100 pb-3">
               Document Readiness
             </h2>
             {delivery.documents.length === 0 ? (
@@ -209,7 +209,7 @@ export function OperatorDeliveryDetailView({ delivery }: OperatorDeliveryDetailV
         {/* Sidebar Actions */}
         <div className="space-y-6">
           <section className="rounded-[1.25rem] border border-neutral-200 bg-neutral-50/50 p-6 shadow-sm">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-450 mb-5 border-b border-neutral-100 pb-3">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-5 border-b border-neutral-100 pb-3">
               Financial Summary
             </h2>
 

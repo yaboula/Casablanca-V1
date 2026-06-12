@@ -1,19 +1,39 @@
 import Link from "next/link";
+import { formatCategory } from "./format-price";
+import type { VehicleCategory } from "./types";
 
-export function CatalogEmptyState() {
+export function CatalogEmptyState({
+  activeCategory,
+}: {
+  activeCategory?: VehicleCategory | null;
+}) {
+  const title = activeCategory
+    ? `No ${formatCategory(activeCategory).toLowerCase()} vehicles available right now.`
+    : "No vehicles available right now.";
+  const body = activeCategory
+    ? "Try all vehicles or check again after new reservations are released."
+    : "The live CMN fleet is temporarily empty. Please try again shortly or contact us if you need immediate assistance.";
+
   return (
     <div
       aria-live="polite"
-      className="rounded-lg border border-dashed border-[var(--nx-line)] bg-white p-8 text-center"
+      className="rounded-[1.25rem] border border-dashed border-neutral-300 bg-[#FAFAFA] p-8 text-center"
       role="status"
     >
       <h2 className="text-xl font-black text-neutral-950">
-        No vehicles available right now.
+        {title}
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-neutral-600">
-        The fleet catalog is temporarily empty. Please try again shortly or
-        contact us if you need immediate assistance.
+        {body}
       </p>
+      {activeCategory && (
+        <Link
+          className="mt-6 inline-flex min-h-11 items-center rounded-full bg-neutral-950 px-5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[var(--nx-accent)]"
+          href="/catalog"
+        >
+          View all vehicles
+        </Link>
+      )}
     </div>
   );
 }
@@ -21,7 +41,7 @@ export function CatalogEmptyState() {
 export function CatalogErrorState({ message }: { message: string }) {
   return (
     <div
-      className="rounded-lg border border-[var(--nx-line)] bg-white p-8"
+      className="rounded-[1.25rem] border border-neutral-200 bg-white p-8 shadow-sm"
       role="alert"
     >
       <p className="text-sm font-bold uppercase tracking-[0.16em] text-neutral-500">
@@ -31,8 +51,7 @@ export function CatalogErrorState({ message }: { message: string }) {
         Fleet could not be loaded.
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-600">
-        {message} Please try refreshing the page or contact support if the
-        problem persists.
+        {message} Please try again in a moment.
       </p>
     </div>
   );
