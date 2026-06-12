@@ -244,40 +244,31 @@ export function WaitingRoomView({
       prev={{ label: "Review submitted documents", href: `/reservations/${reservation.id}/check-in` }}
       next={navNext}
     >
-      {/* Top mini-bar for live connection status */}
-      <div className="flex items-center justify-between gap-4 border-b border-neutral-100 pb-4 mb-8 text-xs max-w-[500px] mx-auto">
-        <div className="flex items-center gap-2 text-neutral-500 font-medium">
-          <Clock aria-hidden="true" className="h-4 w-4" />
-          <span>Status</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <ConnectionBadge state={connectionState} />
-          {lastRefreshedAt && (
-            <span className="text-neutral-400 font-light hidden sm:inline-block">
-              Updated {formatTime(lastRefreshedAt)}
-            </span>
-          )}
-          <button
-            aria-label="Refresh reservation status"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-950 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
-            onClick={refetch}
-            type="button"
-          >
-            <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="text-center max-w-[500px] mx-auto space-y-6">
+      <div className="text-center max-w-[500px] mx-auto space-y-6 pt-4">
         {/* Document Checklist Widget */}
         <div
           className="text-left rounded-2xl border border-neutral-200 bg-white overflow-hidden shadow-sm"
           role={rejected ? "alert" : "status"}
           aria-live="polite"
         >
-          <div className="p-4.5 bg-neutral-50/40 border-b border-neutral-100 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-neutral-500" />
-            <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Document Checklist</h3>
+          {/* Header with integrated Live Status */}
+          <div className="p-4 bg-neutral-50/40 border-b border-neutral-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-neutral-500" />
+              <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Document Checklist</h3>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <ConnectionBadge state={connectionState} />
+              <button
+                aria-label="Refresh reservation status"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-950 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
+                onClick={refetch}
+                type="button"
+              >
+                <RefreshCw aria-hidden="true" className="h-3 w-3" />
+              </button>
+            </div>
           </div>
           <div className="p-4.5 space-y-4">
             {REQUIRED_DOC_TYPES.map((type) => {
@@ -394,19 +385,11 @@ export function WaitingRoomView({
         {/* Actions */}
         <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
           <Link
-            className="inline-flex h-11 items-center justify-center rounded-full bg-neutral-950 px-6 text-sm font-semibold text-white hover:bg-neutral-800 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-neutral-200 bg-white px-6 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
             href="/dashboard"
           >
-            Go to dashboard
+            Go to My trips
           </Link>
-          {!approved && (
-            <Link
-              className="inline-flex h-11 items-center justify-center rounded-full border border-neutral-200 bg-white px-6 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
-              href={`/reservations/${reservation.id}/check-in`}
-            >
-              Review submitted documents
-            </Link>
-          )}
         </div>
 
         {/* Internal Demo helper */}
