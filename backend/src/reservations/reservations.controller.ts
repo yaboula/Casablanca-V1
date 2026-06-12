@@ -78,6 +78,21 @@ export class ReservationsController {
   }
 
   /**
+   * GET /api/v1/reservations/:id/ticket
+   * Issues a signed backend-owned ticket token for the owning customer.
+   */
+  @Get(':id/ticket')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  async issueTicket(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ) {
+    const ticket = await this.reservationsService.issueTicketToken(id, user);
+    return { data: ticket };
+  }
+
+  /**
    * GET /api/v1/reservations/:id
    * Returns a customer's own reservation.
    * Staff must use /operator endpoints.

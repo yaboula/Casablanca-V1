@@ -178,6 +178,12 @@ export class Reservation {
   @Column({ name: "qr_code_hash", type: "varchar", nullable: true })
   qrCodeHash: string | null;
 
+  @Column({ name: "ticket_token_version", type: "integer", default: 0 })
+  ticketTokenVersion: number;
+
+  @Column({ name: "ticket_revoked_at", type: "timestamptz", nullable: true })
+  ticketRevokedAt: Date | null;
+
   // ── Customer info (optional enrichment) ───────────────────
 
   @Column({

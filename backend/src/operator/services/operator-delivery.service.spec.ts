@@ -55,6 +55,8 @@ function makeReservation(
     stripePaymentIntentId: "pi_sensitive",
     stripeClientSecret: "secret_sensitive",
     qrCodeHash: "qr_sensitive",
+    ticketTokenVersion: 0,
+    ticketRevokedAt: null,
     documents: [
       {
         id: "doc-1",
@@ -90,7 +92,7 @@ describe("OperatorDeliveryService", () => {
   let vehiclesRepo: { update: jest.Mock };
   let sseService: { emitDeliveryUpdate: jest.Mock };
   let auditLogRepo: { create: jest.Mock; save: jest.Mock };
-  let qrService: { verifyHash: jest.Mock };
+  let qrService: { verifyTicketToken: jest.Mock };
 
   beforeEach(async () => {
     reservationsRepo = {
@@ -101,7 +103,7 @@ describe("OperatorDeliveryService", () => {
     };
     vehiclesRepo = { update: jest.fn() };
     sseService = { emitDeliveryUpdate: jest.fn() };
-    qrService = { verifyHash: jest.fn() };
+    qrService = { verifyTicketToken: jest.fn() };
     auditLogRepo = {
       create: jest.fn((input) => input),
       save: jest.fn().mockResolvedValue({}),
@@ -222,9 +224,18 @@ describe("OperatorDeliveryService", () => {
     reservationsRepo.save.mockImplementation(async (entity: Reservation) => ({
       ...entity,
     }));
-    qrService.verifyHash.mockReturnValue(true);
+    qrService.verifyTicketToken.mockReturnValue({
+      valid: true,
+      payload: {
+        typ: "reservation-ticket",
+        reservationId: "res-1",
+        userId: "user-1",
+        ticketVersion: 0,
+        exp: Math.floor(Date.now() / 1000) + 60,
+      },
+    });
 
-    await service.scanQr("res-1", "valid-qr-hash", "operator-1");
+    await service.scanQr("res-1", "valid-ticket-token", "operator-1");
 
     expect(auditLogRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -234,19 +245,19 @@ describe("OperatorDeliveryService", () => {
         operatorId: "operator-1",
         beforeStatus: ReservationStatus.CONFIRMED,
         afterStatus: ReservationStatus.IN_PROGRESS,
-        metadata: { qrVerified: true },
+        metadata: { ticketVerified: true },
       }),
     );
   });
 
-  it("audits failed QR scan without exposing QR contents", async () => {
-    reservationsRepo.findOne.mockResolvedValue(
-      makeReservation({ status: ReservationStatus.CONFIRMED }),
-    );
-    qrService.verifyHash.mockReturnValue(false);
+  it("audits failed ticket scan without exposing token contents", async () => {
+    qrService.verifyTicketToken.mockReturnValue({
+      valid: false,
+      reason: "BAD_SIGNATURE",
+    });
 
     await expect(
-      service.scanQr("res-1", "invalid-qr-hash", "operator-1"),
+      service.scanQr("res-1", "invalid-ticket-token", "operator-1"),
     ).rejects.toThrow(NotFoundException);
 
     expect(auditLogRepo.create).toHaveBeenCalledWith(
@@ -254,14 +265,105 @@ describe("OperatorDeliveryService", () => {
         action: "QR_SCAN_FAILURE",
         reservationId: "res-1",
         operatorId: "operator-1",
-        beforeStatus: ReservationStatus.CONFIRMED,
-        afterStatus: ReservationStatus.CONFIRMED,
-        reason: "Invalid QR hash.",
-        metadata: { qrProvided: true },
+        beforeStatus: null,
+        afterStatus: null,
+        reason: "Invalid ticket token: BAD_SIGNATURE.",
+        metadata: { tokenProvided: true },
       }),
     );
     expect(JSON.stringify(auditLogRepo.create.mock.calls)).not.toContain(
-      "invalid-qr-hash",
+      "invalid-ticket-token",
+    );
+  });
+
+  it("rejects expired ticket tokens before reservation lookup", async () => {
+    qrService.verifyTicketToken.mockReturnValue({
+      valid: false,
+      reason: "EXPIRED",
+    });
+
+    await expect(
+      service.scanQr("res-1", "expired-ticket-token", "operator-1"),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(reservationsRepo.findOne).not.toHaveBeenCalled();
+    expect(auditLogRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "QR_SCAN_FAILURE",
+        reservationId: "res-1",
+        operatorId: "operator-1",
+        reason: "Invalid ticket token: EXPIRED.",
+        metadata: { tokenProvided: true },
+      }),
+    );
+  });
+
+  it("rejects wrong-reservation ticket tokens safely", async () => {
+    qrService.verifyTicketToken.mockReturnValue({
+      valid: true,
+      payload: {
+        typ: "reservation-ticket",
+        reservationId: "res-other",
+        userId: "user-1",
+        ticketVersion: 0,
+        exp: Math.floor(Date.now() / 1000) + 60,
+      },
+    });
+
+    await expect(
+      service.scanQr("res-1", "wrong-reservation-token", "operator-1"),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(reservationsRepo.findOne).not.toHaveBeenCalled();
+    expect(auditLogRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "QR_SCAN_FAILURE",
+        reservationId: "res-1",
+        operatorId: "operator-1",
+        beforeStatus: null,
+        afterStatus: null,
+        reason: "Ticket reservation mismatch.",
+        metadata: { tokenReservationId: "res-other" },
+      }),
+    );
+  });
+
+  it("rejects revoked ticket tokens safely", async () => {
+    reservationsRepo.findOne.mockResolvedValue(
+      makeReservation({
+        status: ReservationStatus.CONFIRMED,
+        ticketRevokedAt: new Date("2026-02-19T09:00:00.000Z"),
+      }),
+    );
+    qrService.verifyTicketToken.mockReturnValue({
+      valid: true,
+      payload: {
+        typ: "reservation-ticket",
+        reservationId: "res-1",
+        userId: "user-1",
+        ticketVersion: 0,
+        exp: Math.floor(Date.now() / 1000) + 60,
+      },
+    });
+
+    await expect(
+      service.scanQr("res-1", "revoked-ticket-token", "operator-1"),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(reservationsRepo.save).not.toHaveBeenCalled();
+    expect(auditLogRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "QR_SCAN_FAILURE",
+        reservationId: "res-1",
+        operatorId: "operator-1",
+        beforeStatus: ReservationStatus.CONFIRMED,
+        afterStatus: ReservationStatus.CONFIRMED,
+        reason: "Ticket failed reservation state validation.",
+        metadata: expect.objectContaining({
+          ticketRevoked: true,
+          reservationStatus: ReservationStatus.CONFIRMED,
+        }),
+      }),
     );
   });
 

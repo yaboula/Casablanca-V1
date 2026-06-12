@@ -81,10 +81,10 @@ export class OperatorService {
 
   async scanQr(
     reservationId: string,
-    qrCodeHash: string,
+    ticketToken: string,
     operatorId: string,
   ): Promise<DeliveryActionResponseDto> {
-    return this.deliveryService.scanQr(reservationId, qrCodeHash, operatorId);
+    return this.deliveryService.scanQr(reservationId, ticketToken, operatorId);
   }
 
   async completeDelivery(

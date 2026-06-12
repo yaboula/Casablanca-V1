@@ -100,7 +100,7 @@ export class OperatorController {
   ) {
     const reservation = await this.operatorService.scanQr(
       reservationId,
-      dto.qrCodeHash,
+      dto.ticketToken,
       operator.id,
     );
     return { data: reservation, message: "Entrega confirmada." };

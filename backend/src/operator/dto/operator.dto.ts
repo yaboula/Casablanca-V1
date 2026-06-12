@@ -12,11 +12,11 @@ import {
 } from "class-validator";
 
 export class ScanQrDto {
-  /** QR code hash — must be at least 10 chars (real hashes are 64+ chars). */
+  /** Signed backend-owned ticket token. */
   @IsString()
   @IsNotEmpty()
   @MinLength(10)
-  qrCodeHash: string;
+  ticketToken: string;
 }
 
 export class RejectDocumentDto {

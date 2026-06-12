@@ -82,4 +82,52 @@ describe('QrService', () => {
       expect(service.verifyHash('abc', 'res-001', 'user-001', pickupDate)).toBe(false);
     });
   });
+
+  describe('ticket tokens', () => {
+    it('issues and verifies a signed ticket token', () => {
+      const issued = service.issueTicketToken({
+        reservationId: 'res-001',
+        userId: 'user-001',
+        ticketVersion: 2,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const result = service.verifyTicketToken(issued.ticketToken);
+
+      expect(result.valid).toBe(true);
+      expect(result.payload).toMatchObject({
+        typ: 'reservation-ticket',
+        reservationId: 'res-001',
+        userId: 'user-001',
+        ticketVersion: 2,
+      });
+    });
+
+    it('rejects tampered ticket tokens', () => {
+      const issued = service.issueTicketToken({
+        reservationId: 'res-001',
+        userId: 'user-001',
+        ticketVersion: 0,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      const [payload] = issued.ticketToken.split('.');
+      const tampered = `${payload}.tampered-signature`;
+
+      expect(service.verifyTicketToken(tampered).valid).toBe(false);
+    });
+
+    it('rejects expired ticket tokens', () => {
+      const issued = service.issueTicketToken({
+        reservationId: 'res-001',
+        userId: 'user-001',
+        ticketVersion: 0,
+        expiresAt: new Date(Date.now() - 60_000),
+      });
+
+      const result = service.verifyTicketToken(issued.ticketToken);
+
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('EXPIRED');
+    });
+  });
 });

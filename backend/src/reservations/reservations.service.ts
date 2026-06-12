@@ -30,6 +30,11 @@ import { StripeService } from "../stripe/stripe.service";
 import { User, UserRole } from "../users/user.entity";
 import { Vehicle, VehicleStatus } from "../vehicles/vehicle.entity";
 
+export type CustomerReservationResponse = Omit<
+  Reservation,
+  "qrCodeHash" | "ticketTokenVersion" | "ticketRevokedAt"
+>;
+
 @Injectable()
 export class ReservationsService {
   private readonly logger = new Logger(ReservationsService.name);
@@ -369,7 +374,7 @@ export class ReservationsService {
     user: User,
     opts: { page: number; limit: number } = { page: 1, limit: 20 },
   ): Promise<{
-    data: Reservation[];
+    data: CustomerReservationResponse[];
     total: number;
     page: number;
     limit: number;
@@ -391,10 +396,20 @@ export class ReservationsService {
       where: { userId: user.id },
     });
 
-    return { data, total, page, limit };
+    return {
+      data: data.map((reservation) =>
+        this.toCustomerReservationResponse(reservation),
+      ),
+      total,
+      page,
+      limit,
+    };
   }
 
-  async findById(id: string, user: User): Promise<Reservation> {
+  async findById(
+    id: string,
+    user: User,
+  ): Promise<CustomerReservationResponse> {
     this.assertCustomerOnly(user);
 
     const reservation = await this.reservationsRepo.findOne({
@@ -410,7 +425,42 @@ export class ReservationsService {
       throw new ForbiddenException("No tienes acceso a esta reserva.");
     }
 
-    return reservation;
+    return this.toCustomerReservationResponse(reservation);
+  }
+
+  async issueTicketToken(
+    id: string,
+    user: User,
+  ): Promise<{ ticketToken: string; expiresAt: string }> {
+    this.assertCustomerOnly(user);
+
+    const reservation = await this.reservationsRepo.findOne({
+      where: { id },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException(`Reserva ${id} no encontrada.`);
+    }
+
+    if (reservation.userId !== user.id) {
+      throw new ForbiddenException("No tienes acceso a esta reserva.");
+    }
+
+    if (reservation.status !== ReservationStatus.CONFIRMED) {
+      throw new ConflictException(
+        "El ticket solo esta disponible cuando la reserva esta confirmada.",
+      );
+    }
+
+    if (reservation.ticketRevokedAt) {
+      throw new ConflictException("El ticket de esta reserva fue revocado.");
+    }
+
+    return this.qrService.issueTicketToken({
+      reservationId: reservation.id,
+      userId: reservation.userId,
+      ticketVersion: reservation.ticketTokenVersion ?? 0,
+    });
   }
 
   private resolveReservationDates(
@@ -566,6 +616,19 @@ export class ReservationsService {
         "Este endpoint es solo para clientes. Usa los endpoints de staff/operator.",
       );
     }
+  }
+
+  private toCustomerReservationResponse(
+    reservation: Reservation,
+  ): CustomerReservationResponse {
+    const {
+      qrCodeHash: _qrCodeHash,
+      ticketTokenVersion: _ticketTokenVersion,
+      ticketRevokedAt: _ticketRevokedAt,
+      ...safeReservation
+    } = reservation;
+
+    return safeReservation as CustomerReservationResponse;
   }
 
   private isIdempotencyConflict(err: unknown): boolean {

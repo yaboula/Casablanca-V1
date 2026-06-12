@@ -159,9 +159,36 @@ export class OperatorDeliveryService {
 
   async scanQr(
     reservationId: string,
-    qrCodeHash: string,
+    ticketToken: string,
     operatorId: string,
   ): Promise<DeliveryActionResponseDto> {
+    const verified = this.qrService.verifyTicketToken(ticketToken);
+    if (!verified.valid || !verified.payload) {
+      await this.writeReservationAudit({
+        action: "QR_SCAN_FAILURE",
+        operatorId,
+        reservationId,
+        beforeStatus: null,
+        afterStatus: null,
+        reason: `Invalid ticket token: ${verified.reason ?? "UNKNOWN"}.`,
+        metadata: { tokenProvided: Boolean(ticketToken) },
+      });
+      throw new NotFoundException("Ticket invalido o reserva no encontrada.");
+    }
+
+    if (verified.payload.reservationId !== reservationId) {
+      await this.writeReservationAudit({
+        action: "QR_SCAN_FAILURE",
+        operatorId,
+        reservationId,
+        beforeStatus: null,
+        afterStatus: null,
+        reason: "Ticket reservation mismatch.",
+        metadata: { tokenReservationId: verified.payload.reservationId },
+      });
+      throw new NotFoundException("Ticket invalido o reserva no encontrada.");
+    }
+
     const reservation = await this.reservationsRepo.findOne({
       where: { id: reservationId },
     });
@@ -173,22 +200,22 @@ export class OperatorDeliveryService {
         reservationId,
         beforeStatus: null,
         afterStatus: null,
-        reason: "Reservation not found during QR scan.",
-        metadata: { qrProvided: Boolean(qrCodeHash) },
+        reason: "Reservation not found during ticket scan.",
+        metadata: { tokenProvided: true },
       });
-      throw new NotFoundException("QR invalido o reserva no encontrada.");
+      throw new NotFoundException("Ticket invalido o reserva no encontrada.");
     }
 
-    const valid = this.qrService.verifyHash(
-      qrCodeHash,
-      reservationId,
-      reservation.userId,
-      reservation.pickupDate,
-    );
+    const tokenMatchesReservation =
+      verified.payload.userId === reservation.userId &&
+      verified.payload.ticketVersion ===
+        (reservation.ticketTokenVersion ?? 0) &&
+      !reservation.ticketRevokedAt &&
+      reservation.status === ReservationStatus.CONFIRMED;
 
-    if (!valid) {
+    if (!tokenMatchesReservation) {
       this.logger.warn(
-        `scanQr: invalid hash for reservation ${reservationId} by operator ${operatorId}`,
+        `scanQr: invalid ticket for reservation ${reservationId} by operator ${operatorId}`,
       );
       await this.writeReservationAudit({
         action: "QR_SCAN_FAILURE",
@@ -196,10 +223,17 @@ export class OperatorDeliveryService {
         reservationId,
         beforeStatus: reservation.status,
         afterStatus: reservation.status,
-        reason: "Invalid QR hash.",
-        metadata: { qrProvided: true },
+        reason: "Ticket failed reservation state validation.",
+        metadata: {
+          tokenUserIdMatches: verified.payload.userId === reservation.userId,
+          tokenVersionMatches:
+            verified.payload.ticketVersion ===
+            (reservation.ticketTokenVersion ?? 0),
+          ticketRevoked: Boolean(reservation.ticketRevokedAt),
+          reservationStatus: reservation.status,
+        },
       });
-      throw new NotFoundException("QR invalido o reserva no encontrada.");
+      throw new NotFoundException("Ticket invalido o reserva no encontrada.");
     }
 
     if (reservation.status === ReservationStatus.IN_PROGRESS) {
@@ -237,7 +271,7 @@ export class OperatorDeliveryService {
       beforeStatus,
       afterStatus: ReservationStatus.IN_PROGRESS,
       reason: null,
-      metadata: { qrVerified: true },
+      metadata: { ticketVerified: true },
     });
 
     return toDeliveryActionResponseDto(saved);

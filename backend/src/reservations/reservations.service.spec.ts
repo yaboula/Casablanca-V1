@@ -68,6 +68,8 @@ function makeReservation(overrides: Partial<Reservation> = {}): Reservation {
     stripePaymentIntentId: "pi_test_abc123",
     stripeClientSecret: "pi_test_secret_xxx",
     qrCodeHash: null,
+    ticketTokenVersion: 0,
+    ticketRevokedAt: null,
     customerName: null,
     customerPhone: null,
     createdAt: new Date(),
@@ -191,6 +193,10 @@ const mockStripeService = {
 
 const mockQrService = {
   generateHash: jest.fn().mockReturnValue("mock-qr-hash-64chars"),
+  issueTicketToken: jest.fn().mockReturnValue({
+    ticketToken: "signed-ticket-token",
+    expiresAt: "2026-02-19T10:00:00.000Z",
+  }),
 };
 
 const mockExpiryQueue = {
@@ -614,7 +620,13 @@ describe("ReservationsService", () => {
 
   describe("findMy()", () => {
     it("USER recibe solo sus reservas — where tiene userId", async () => {
-      const reservations = [makeReservation()];
+      const reservations = [
+        makeReservation({
+          qrCodeHash: "raw-hash-must-not-leak",
+          ticketTokenVersion: 5,
+          ticketRevokedAt: new Date("2026-01-01T00:00:00.000Z"),
+        }),
+      ];
       mockReservationsRepo.findAndCount.mockResolvedValue([reservations, 1]);
 
       const result = await service.findMy(makeUser());
@@ -622,7 +634,14 @@ describe("ReservationsService", () => {
       expect(mockReservationsRepo.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({ where: { userId: "user-123" } }),
       );
-      expect(result.data).toEqual(reservations);
+      expect(result.data[0]).toEqual(
+        expect.not.objectContaining({
+          qrCodeHash: expect.anything(),
+          ticketTokenVersion: expect.anything(),
+          ticketRevokedAt: expect.anything(),
+        }),
+      );
+      expect(JSON.stringify(result.data)).not.toContain("raw-hash-must-not-leak");
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
     });
@@ -679,6 +698,13 @@ describe("ReservationsService", () => {
         makeUser({ id: "user-123" }),
       );
       expect(result.id).toBe("res-999");
+      expect(result).toEqual(
+        expect.not.objectContaining({
+          qrCodeHash: expect.anything(),
+          ticketTokenVersion: expect.anything(),
+          ticketRevokedAt: expect.anything(),
+        }),
+      );
     });
 
     it("USER no puede ver la reserva de otro — ForbiddenException", async () => {
@@ -716,6 +742,83 @@ describe("ReservationsService", () => {
       await expect(service.findById("no-existe", makeUser())).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe("issueTicketToken()", () => {
+    it("issues a signed ticket only for the owning customer and confirmed reservation", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({
+          status: ReservationStatus.CONFIRMED,
+          ticketTokenVersion: 3,
+        }),
+      );
+
+      const result = await service.issueTicketToken("res-999", makeUser());
+
+      expect(result).toEqual({
+        ticketToken: "signed-ticket-token",
+        expiresAt: "2026-02-19T10:00:00.000Z",
+      });
+      expect(mockQrService.issueTicketToken).toHaveBeenCalledWith({
+        reservationId: "res-999",
+        userId: "user-123",
+        ticketVersion: 3,
+      });
+    });
+
+    it("forbids operators from issuing customer tickets", async () => {
+      await expect(
+        service.issueTicketToken(
+          "res-999",
+          makeUser({ role: UserRole.OPERATOR }),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockReservationsRepo.findOne).not.toHaveBeenCalled();
+      expect(mockQrService.issueTicketToken).not.toHaveBeenCalled();
+    });
+
+    it("forbids ticket issuance for another customer's reservation", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({
+          userId: "other-user",
+          status: ReservationStatus.CONFIRMED,
+        }),
+      );
+
+      await expect(
+        service.issueTicketToken("res-999", makeUser()),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockQrService.issueTicketToken).not.toHaveBeenCalled();
+    });
+
+    it("rejects ticket issuance before the reservation is confirmed", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({ status: ReservationStatus.AWAITING_CAPTURE }),
+      );
+
+      await expect(
+        service.issueTicketToken("res-999", makeUser()),
+      ).rejects.toThrow(ConflictException);
+
+      expect(mockQrService.issueTicketToken).not.toHaveBeenCalled();
+    });
+
+    it("rejects ticket issuance after ticket revocation", async () => {
+      mockReservationsRepo.findOne.mockResolvedValue(
+        makeReservation({
+          status: ReservationStatus.CONFIRMED,
+          ticketRevokedAt: new Date("2026-02-19T09:00:00.000Z"),
+        }),
+      );
+
+      await expect(
+        service.issueTicketToken("res-999", makeUser()),
+      ).rejects.toThrow(ConflictException);
+
+      expect(mockQrService.issueTicketToken).not.toHaveBeenCalled();
     });
   });
 });
