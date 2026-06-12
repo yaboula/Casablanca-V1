@@ -86,6 +86,7 @@ describe("OperatorDocumentService concurrency", () => {
   let sseService: {
     emitDocumentStatus: jest.Mock;
     emitReservationStatus: jest.Mock;
+    emitOperatorDocumentQueueInvalidation: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -118,6 +119,7 @@ describe("OperatorDocumentService concurrency", () => {
     sseService = {
       emitDocumentStatus: jest.fn(),
       emitReservationStatus: jest.fn(),
+      emitOperatorDocumentQueueInvalidation: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -186,6 +188,9 @@ describe("OperatorDocumentService concurrency", () => {
       }),
     );
     expect(captureQueue.add).toHaveBeenCalledTimes(1);
+    expect(sseService.emitOperatorDocumentQueueInvalidation).toHaveBeenCalledWith(
+      "res-1",
+    );
   });
 
   it("does not enqueue capture again when another transaction already moved reservation", async () => {
@@ -223,6 +228,9 @@ describe("OperatorDocumentService concurrency", () => {
       "cleanup",
       { fileKey: "docs/user-1/passport.jpg", documentId: "doc-1" },
       expect.any(Object),
+    );
+    expect(sseService.emitOperatorDocumentQueueInvalidation).toHaveBeenCalledWith(
+      "res-1",
     );
   });
 

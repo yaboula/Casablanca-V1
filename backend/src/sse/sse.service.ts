@@ -3,16 +3,27 @@ import { Subject, interval, Observable, merge } from "rxjs";
 import { map, share, takeUntil } from "rxjs/operators";
 import {
   DocumentStatus,
-  DocumentType,
 } from "../documents/reservation-document.entity";
+import { ReservationStatus } from "../reservations/reservation.entity";
+import {
+  CustomerReservationSseEventDto,
+  KeepaliveSseEventDto,
+  NormalizedSseEventDto,
+  OperatorInvalidationSseEventDto,
+} from "./sse-event.dto";
 
 export interface SseEvent {
+  data: NormalizedSseEventDto;
+}
+
+export interface LegacySseEvent {
   data: Record<string, unknown>;
 }
 
 @Injectable()
 export class SseService implements OnModuleDestroy {
   private readonly logger = new Logger(SseService.name);
+  private readonly destroy$ = new Subject<void>();
 
   /**
    * In-memory map: reservationId → Subject.
@@ -21,10 +32,13 @@ export class SseService implements OnModuleDestroy {
   private readonly reservationSubjects = new Map<string, Subject<SseEvent>>();
 
   /** Operator chat stream — single shared stream for all operators */
-  private readonly operatorChatSubject = new Subject<SseEvent>();
+  private readonly operatorChatSubject = new Subject<LegacySseEvent>();
 
   /** Operator deliveries stream — emitted on check-in / scan-qr state changes */
   private readonly operatorDeliveriesSubject = new Subject<SseEvent>();
+
+  /** Operator document queue stream — emitted on review queue mutations */
+  private readonly operatorDocumentsSubject = new Subject<SseEvent>();
 
   // ── Reservation stream ───────────────────────────────────────
 
@@ -39,10 +53,13 @@ export class SseService implements OnModuleDestroy {
 
     const subject$ = this.reservationSubjects.get(reservationId)!;
     const keepalive$ = interval(15_000).pipe(
-      map(() => ({ data: { type: "ping", timestamp: Date.now() } })),
+      map(() => ({ data: this.buildKeepaliveEvent() })),
     );
 
-    return merge(subject$.asObservable(), keepalive$).pipe(share());
+    return merge(subject$.asObservable(), keepalive$).pipe(
+      takeUntil(this.destroy$),
+      share(),
+    );
   }
 
   /**
@@ -52,8 +69,6 @@ export class SseService implements OnModuleDestroy {
   emitDocumentStatus(
     reservationId: string,
     status: DocumentStatus | "AWAITING_CAPTURE",
-    rejectionReason?: string | null,
-    documentType?: DocumentType,
   ): void {
     const subject = this.reservationSubjects.get(reservationId);
 
@@ -65,13 +80,11 @@ export class SseService implements OnModuleDestroy {
     }
 
     subject.next({
-      data: {
-        type: "DOCUMENT_STATUS_UPDATE",
-        documentStatus: status,
-        documentType: documentType ?? null,
-        rejectionReason: rejectionReason ?? null,
-        timestamp: Date.now(),
-      },
+      data: this.buildCustomerReservationEvent(
+        "reservation.document.updated",
+        reservationId,
+        status,
+      ),
     });
 
     // Bug 4 fix: Do NOT close on individual doc APPROVED/REJECTED.
@@ -84,18 +97,16 @@ export class SseService implements OnModuleDestroy {
    */
   emitReservationStatus(
     reservationId: string,
-    status: string,
-    payload?: Record<string, unknown>,
+    status: ReservationStatus | "AWAITING_CAPTURE",
   ): void {
     const subject = this.reservationSubjects.get(reservationId);
     if (subject) {
       subject.next({
-        data: {
-          type: "RESERVATION_STATUS_UPDATE",
+        data: this.buildCustomerReservationEvent(
+          "reservation.status.updated",
+          reservationId,
           status,
-          ...payload,
-          timestamp: Date.now(),
-        },
+        ),
       });
 
       // Bug 4 fix: Close stream on terminal reservation states
@@ -112,11 +123,12 @@ export class SseService implements OnModuleDestroy {
   // ── Operator chat stream ─────────────────────────────────────
 
   /** Observable for the operator panel — receives all new chat messages */
-  subscribeOperatorChat(): Observable<SseEvent> {
+  subscribeOperatorChat(): Observable<LegacySseEvent | SseEvent> {
     const keepalive$ = interval(15_000).pipe(
-      map(() => ({ data: { type: "ping", timestamp: Date.now() } })),
+      map(() => ({ data: this.buildKeepaliveEvent() })),
     );
     return merge(this.operatorChatSubject.asObservable(), keepalive$).pipe(
+      takeUntil(this.destroy$),
       share(),
     );
   }
@@ -137,12 +149,12 @@ export class SseService implements OnModuleDestroy {
    */
   subscribeOperatorDeliveries(): Observable<SseEvent> {
     const keepalive$ = interval(15_000).pipe(
-      map(() => ({ data: { type: "ping", timestamp: Date.now() } })),
+      map(() => ({ data: this.buildKeepaliveEvent() })),
     );
     return merge(
       this.operatorDeliveriesSubject.asObservable(),
       keepalive$,
-    ).pipe(share());
+    ).pipe(takeUntil(this.destroy$), share());
   }
 
   /**
@@ -151,23 +163,74 @@ export class SseService implements OnModuleDestroy {
    */
   emitDeliveryUpdate(reservationId: string, newStatus: string): void {
     this.operatorDeliveriesSubject.next({
-      data: {
-        type: "DELIVERY_UPDATE",
+      data: this.buildOperatorInvalidationEvent(
+        "operator.deliveries.invalidated",
         reservationId,
-        newStatus,
-        timestamp: Date.now(),
-      },
+      ),
+    });
+  }
+
+  subscribeOperatorDocuments(): Observable<SseEvent> {
+    const keepalive$ = interval(15_000).pipe(
+      map(() => ({ data: this.buildKeepaliveEvent() })),
+    );
+    return merge(this.operatorDocumentsSubject.asObservable(), keepalive$).pipe(
+      takeUntil(this.destroy$),
+      share(),
+    );
+  }
+
+  emitOperatorDocumentQueueInvalidation(resourceId: string): void {
+    this.operatorDocumentsSubject.next({
+      data: this.buildOperatorInvalidationEvent(
+        "operator.documents.invalidated",
+        resourceId,
+      ),
     });
   }
 
   // ── Cleanup ──────────────────────────────────────────────────
 
   onModuleDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
     for (const [id, subject] of this.reservationSubjects) {
       subject.complete();
     }
     this.reservationSubjects.clear();
     this.operatorChatSubject.complete();
     this.operatorDeliveriesSubject.complete();
+    this.operatorDocumentsSubject.complete();
+  }
+
+  private buildKeepaliveEvent(): KeepaliveSseEventDto {
+    return {
+      type: "keepalive",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  private buildCustomerReservationEvent(
+    type: CustomerReservationSseEventDto["type"],
+    resourceId: string,
+    status: CustomerReservationSseEventDto["status"],
+  ): CustomerReservationSseEventDto {
+    return {
+      type,
+      resourceId,
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  private buildOperatorInvalidationEvent(
+    type: OperatorInvalidationSseEventDto["type"],
+    resourceId: string,
+  ): OperatorInvalidationSseEventDto {
+    return {
+      type,
+      resourceId,
+      updatedAt: new Date().toISOString(),
+    };
   }
 }

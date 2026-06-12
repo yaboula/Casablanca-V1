@@ -40,28 +40,28 @@ export class SseController {
     @Param("id", ParseUUIDPipe) reservationId: string,
     @CurrentUser() user: User,
   ): Promise<Observable<MessageEvent>> {
-    // Bug 9 fix: Ownership check — users can only subscribe to their own reservations
-    if (user.role === UserRole.USER) {
-      const reservation = await this.reservationsRepo.findOne({
-        where: { id: reservationId },
-        select: ["id", "userId"],
-      });
+    if (user.role !== UserRole.USER) {
+      throw new ForbiddenException(
+        "Staff must use staff/operator SSE streams.",
+      );
+    }
 
-      if (!reservation) {
-        throw new NotFoundException("Reserva no encontrada.");
-      }
+    const reservation = await this.reservationsRepo.findOne({
+      where: { id: reservationId },
+      select: ["id", "userId"],
+    });
 
-      if (reservation.userId !== user.id) {
-        throw new ForbiddenException("No tienes acceso a esta reserva.");
-      }
+    if (!reservation) {
+      throw new NotFoundException("Reserva no encontrada.");
+    }
+
+    if (reservation.userId !== user.id) {
+      throw new ForbiddenException("No tienes acceso a esta reserva.");
     }
 
     return this.sseService.subscribeToReservation(reservationId).pipe(
       map((sseEvent) => ({
-        data: JSON.stringify({
-          ...sseEvent.data,
-          reservationId,
-        }),
+        data: JSON.stringify(sseEvent.data),
       })),
     );
   }
@@ -95,6 +95,17 @@ export class SseController {
   @Roles(UserRole.OPERATOR, UserRole.ADMIN)
   subscribeOperatorDeliveries(): Observable<MessageEvent> {
     return this.sseService.subscribeOperatorDeliveries().pipe(
+      map((sseEvent) => ({
+        data: JSON.stringify(sseEvent.data),
+      })),
+    );
+  }
+
+  @Sse("operator/documents")
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.OPERATOR, UserRole.ADMIN)
+  subscribeOperatorDocuments(): Observable<MessageEvent> {
+    return this.sseService.subscribeOperatorDocuments().pipe(
       map((sseEvent) => ({
         data: JSON.stringify(sseEvent.data),
       })),

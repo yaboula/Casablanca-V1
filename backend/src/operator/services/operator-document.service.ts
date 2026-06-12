@@ -235,9 +235,8 @@ export class OperatorDocumentService {
     this.sseService.emitDocumentStatus(
       reservationId,
       DocumentStatus.APPROVED,
-      null,
-      doc.type,
     );
+    this.sseService.emitOperatorDocumentQueueInvalidation(reservationId);
     // B3.4: Write immutable audit log entry
     await this.auditLogRepo.save(
       this.auditLogRepo.create({
@@ -321,9 +320,8 @@ export class OperatorDocumentService {
     this.sseService.emitDocumentStatus(
       doc.reservationId,
       DocumentStatus.REJECTED,
-      reason,
-      doc.type,
     );
+    this.sseService.emitOperatorDocumentQueueInvalidation(doc.reservationId);
 
     // B3.4: Write immutable audit log entry
     await this.auditLogRepo.save(
