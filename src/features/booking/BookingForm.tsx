@@ -32,11 +32,16 @@ import {
 } from "./booking-schema";
 import { BookingDateRangePicker } from "./booking-date-range-picker";
 import { InternationalPhoneInput } from "./international-phone-input";
-import { PICKUP_LOCATIONS, type PickupLocation } from "./types";
+import {
+  PICKUP_LOCATIONS,
+  type PickupLocation,
+  type QuoteViewModel,
+} from "./types";
 
 export type BookingFormProps = {
   vehicleId: string;
   pricePerDayEurCents: number;
+  quote?: QuoteViewModel | null;
   onDraftChange?: (values: {
     pickupDate: string;
     returnDate: string;
@@ -100,7 +105,9 @@ const inputBase =
   "w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition-all duration-300 focus:border-[#1E41FC] focus:ring-2 focus:ring-[#1E41FC]/10 aria-invalid:border-red-500";
 
 export function BookingForm({
+  vehicleId,
   pricePerDayEurCents,
+  quote = null,
   onDraftChange,
   onSubmitReady,
   isSubmitting = false,
@@ -195,7 +202,9 @@ export function BookingForm({
         <SectionHeading icon={CalendarDays} title="Trip dates" />
         <BookingDateRangePicker
           basePricePerDayEurCents={pricePerDayEurCents}
+          vehicleId={vehicleId}
           pickupDate={pickupDate}
+          quotePricing={quote?.pricing ?? null}
           returnDate={returnDate}
           onChange={updateDateRange}
           pickupError={errors.pickupDate?.message}

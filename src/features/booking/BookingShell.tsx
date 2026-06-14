@@ -232,6 +232,7 @@ export function BookingShell({ vehicle }: BookingShellProps) {
             onDraftChange={handleDraftChange}
             onSubmitReady={handleSubmitReady}
             pricePerDayEurCents={vehicle.pricePerDayEurCents}
+            quote={quote}
             submitError={submitError}
             vehicleId={vehicle.id}
           />

@@ -153,3 +153,34 @@ export type QuoteViewModel = {
     pricingPolicyVersion: string;
   };
 };
+
+export type VehicleAvailabilityDayStatus =
+  | "AVAILABLE"
+  | "PARTIAL"
+  | "UNAVAILABLE";
+
+export type VehicleAvailabilityCalendar = {
+  vehicleId: string;
+  from: string;
+  to: string;
+  timezone: "UTC";
+  operationalBufferHours: number;
+  pendingDepositHoldMinutes: number;
+  policy: {
+    graceHours: number;
+    halfDayUntilHours: number;
+    pricingPolicyVersion: string;
+  };
+  basePricePerDayEurCents: number;
+  days: {
+    date: string;
+    status: VehicleAvailabilityDayStatus;
+    pricePerDayEurCents: number;
+  }[];
+  blockedIntervals: {
+    startAt: string;
+    endAt: string;
+    bufferedEndAt: string;
+    status: ReservationStatus;
+  }[];
+};

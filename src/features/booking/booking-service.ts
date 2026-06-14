@@ -18,7 +18,12 @@
 
 import { clientFetch } from "@/lib/api/client-fetch";
 import { normalizeApiError, type ApiErrorPayload } from "@/lib/api/errors";
-import type { ReservationCreateDto, QuoteReservationDto, QuoteViewModel } from "./types";
+import type {
+  ReservationCreateDto,
+  QuoteReservationDto,
+  QuoteViewModel,
+  VehicleAvailabilityCalendar,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -144,4 +149,19 @@ export async function quoteReservation(
   } catch (error) {
     return { ok: false, error: normalizeApiError(error) };
   }
+}
+
+export async function getVehicleAvailabilityCalendar(
+  vehicleId: string,
+  from: string,
+  to: string,
+  signal?: AbortSignal,
+): Promise<VehicleAvailabilityCalendar> {
+  const params = new URLSearchParams({ from, to });
+  const response = await clientFetch<{ data: VehicleAvailabilityCalendar }>(
+    `/vehicles/${encodeURIComponent(vehicleId)}/availability-calendar?${params.toString()}`,
+    { signal },
+  );
+
+  return response.data;
 }

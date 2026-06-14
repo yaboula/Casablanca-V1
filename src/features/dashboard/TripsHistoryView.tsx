@@ -188,15 +188,16 @@ function HistoryCard({ reservation, type }: { reservation: ReservationViewModel;
           </div>
         </div>
 
-        {/* Invoice Action (Mock) */}
+        {/* Invoice Action */}
         {!isCancelled && (
           <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center justify-end">
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-50"
-              onClick={() => alert("Downloading receipt is coming soon in the next MVP phase.")}
+              aria-disabled="true"
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-xs font-bold text-neutral-400"
+              type="button"
             >
               <Download className="h-3.5 w-3.5" />
-              Receipt
+              Receipt soon
             </button>
           </div>
         )}
