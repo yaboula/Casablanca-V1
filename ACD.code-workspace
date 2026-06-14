@@ -51,6 +51,7 @@
         "username": "nexus",
       },
     ],
+    "powershell.cwd": "ACD (Frontend)",
   },
   "extensions": {
     "recommendations": [

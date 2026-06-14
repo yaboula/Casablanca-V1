@@ -101,6 +101,8 @@ STRIPE_WEBHOOK_SECRET=whsec_replace_with_real_secret
 AWS_ACCESS_KEY_ID=replace_with_real_key
 AWS_SECRET_ACCESS_KEY=replace_with_real_secret
 AWS_REGION=eu-west-3
+# Optional for S3-compatible providers such as Cloudflare R2
+# AWS_S3_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 AWS_S3_BUCKET=nexus-documents
 QR_SIGNING_SECRET=replace_with_at_least_32_chars
 FRONTEND_URL=http://localhost:3600
@@ -109,16 +111,51 @@ OPERATOR_WHATSAPP=212600000000
 
 ## Demo Mode / Payment Bypass
 
-For local demos, the frontend can use a payment/document bypass:
+For local demos, the frontend can use a payment bypass:
 
 ```bash
 NEXT_PUBLIC_BYPASS_PAYMENT=true
 BYPASS_PAYMENT=true
 ```
 
-When enabled, development-only API routes under `/api/dev/*` may bypass Stripe/S3 and write directly to the local database. These routes are for local development and demos only. They are guarded so they are unavailable in production.
+When enabled, development-only API routes under `/api/dev/*` may bypass Stripe and write directly to the local database. These routes are for local development and demos only. They are guarded so they are unavailable in production.
 
-For a production-like flow, disable the bypass flags and provide valid Stripe and S3 credentials.
+Document upload/storage is controlled separately by the backend `BYPASS_S3` flag:
+
+- `BYPASS_STRIPE=true` with `BYPASS_S3=false`:
+  payment stays in bypass, but document upload remains real through S3
+- `BYPASS_S3=true`:
+  document upload uses the authenticated local dev-storage fallback instead of S3
+
+For a production-like document flow with local payment bypass, keep Stripe bypass enabled only on the payment side and set `BYPASS_S3=false` with valid AWS S3 credentials.
+
+### Cloudflare R2 with Stripe bypass
+
+If you want real document upload/storage while keeping `BYPASS_STRIPE=true`, configure the backend with:
+
+```bash
+BYPASS_STRIPE=true
+BYPASS_S3=false
+AWS_ACCESS_KEY_ID=<R2_ACCESS_KEY_ID>
+AWS_SECRET_ACCESS_KEY=<R2_SECRET_ACCESS_KEY>
+AWS_REGION=auto
+AWS_S3_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+AWS_S3_BUCKET=<YOUR_BUCKET_NAME>
+```
+
+For browser uploads with presigned `PUT` URLs, configure bucket CORS in R2 to allow your frontend origin and the `Content-Type` header. Example for local development:
+
+```json
+[
+  {
+    "AllowedOrigins": ["http://localhost:3600", "http://127.0.0.1:3600"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
 
 Recommended local MVP demo path:
 
@@ -182,7 +219,7 @@ What the smoke proves:
 What is intentionally demo-only:
 
 - payment uses the guarded local demo bypass instead of a real Stripe capture
-- document upload uses backend `BYPASS_S3=true` in the e2e environment, so the flow is exercised without real S3 credentials
+- document upload uses backend `BYPASS_S3=true` only in the e2e environment, so the flow is exercised without real S3 credentials
 
 ## Scripts
 
