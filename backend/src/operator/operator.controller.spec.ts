@@ -1,7 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { OperatorController } from "./operator.controller";
 import { OperatorService } from "./operator.service";
-import { PickupLocation, ReservationStatus } from "../reservations/reservation.entity";
+import {
+  DeskCollectionMethod,
+  PickupLocation,
+  ReservationStatus,
+} from "../reservations/reservation.entity";
 import { UserRole } from "../users/user.entity";
 
 describe("OperatorController", () => {
@@ -10,6 +14,9 @@ describe("OperatorController", () => {
     getDeliveryDetail: jest.Mock;
     manualCheckin: jest.Mock;
     scanQr: jest.Mock;
+    resolveTicketCase: jest.Mock;
+    confirmHandoff: jest.Mock;
+    recordDeskCollection: jest.Mock;
     completeDelivery: jest.Mock;
     search: jest.Mock;
     getPendingDocuments: jest.Mock;
@@ -28,8 +35,26 @@ describe("OperatorController", () => {
         pickupLocation: PickupLocation.CMN_T1,
       }),
       scanQr: jest.fn().mockResolvedValue({
+        reservationId: "res-1",
+        status: ReservationStatus.CONFIRMED,
+        ticketValid: true,
+        publicStatus: ReservationStatus.CONFIRMED,
+      }),
+      resolveTicketCase: jest.fn().mockResolvedValue({
+        reservationId: "res-1",
+        status: ReservationStatus.CONFIRMED,
+        ticketValid: true,
+        publicStatus: ReservationStatus.CONFIRMED,
+      }),
+      confirmHandoff: jest.fn().mockResolvedValue({
         id: "res-1",
         status: ReservationStatus.IN_PROGRESS,
+        vehicleId: "vehicle-1",
+        pickupLocation: PickupLocation.CMN_T1,
+      }),
+      recordDeskCollection: jest.fn().mockResolvedValue({
+        id: "res-1",
+        status: ReservationStatus.CONFIRMED,
         vehicleId: "vehicle-1",
         pickupLocation: PickupLocation.CMN_T1,
       }),
@@ -77,6 +102,7 @@ describe("OperatorController", () => {
       "res-1",
       {
         reason: "Identity checked at desk",
+        manualCode: "C1160845",
         identityConfirmed: true,
         documentsConfirmed: true,
       },
@@ -88,6 +114,7 @@ describe("OperatorController", () => {
       "operator-1",
       {
         reason: "Identity checked at desk",
+        manualCode: "C1160845",
         identityConfirmed: true,
         documentsConfirmed: true,
       },
@@ -116,7 +143,65 @@ describe("OperatorController", () => {
       "operator-1",
     );
     expect(JSON.stringify(result)).not.toContain("signed-ticket-token");
+    expect(result.message).toBe("Ticket vinculado al case.");
+  });
+
+  it("resolves signed tickets to operator cases without exposing token material", async () => {
+    const result = await controller.resolveTicketCase(
+      { ticketToken: "signed-ticket-token" },
+      { id: "operator-1", role: UserRole.OPERATOR } as any,
+    );
+
+    expect(operatorService.resolveTicketCase).toHaveBeenCalledWith(
+      "signed-ticket-token",
+      "operator-1",
+    );
+    expect(result).toEqual({
+      data: {
+        reservationId: "res-1",
+        status: ReservationStatus.CONFIRMED,
+        ticketValid: true,
+        publicStatus: ReservationStatus.CONFIRMED,
+      },
+      message: "Case encontrado.",
+    });
+    expect(JSON.stringify(result)).not.toContain("signed-ticket-token");
+  });
+
+  it("delegates explicit handoff confirmation separately from ticket scan", async () => {
+    const result = await controller.confirmHandoff(
+      "res-1",
+      { identityConfirmed: true, documentsConfirmed: true },
+      { id: "operator-1", role: UserRole.OPERATOR } as any,
+    );
+
+    expect(operatorService.confirmHandoff).toHaveBeenCalledWith(
+      "res-1",
+      "operator-1",
+      { identityConfirmed: true, documentsConfirmed: true },
+    );
     expect(result.message).toBe("Entrega confirmada.");
+  });
+
+  it("records desk collection with method and receipt reference", async () => {
+    const result = await controller.recordDeskCollection(
+      "res-1",
+      {
+        method: DeskCollectionMethod.CASH,
+        receiptReference: "CASH-001",
+      },
+      { id: "operator-1", role: UserRole.OPERATOR } as any,
+    );
+
+    expect(operatorService.recordDeskCollection).toHaveBeenCalledWith(
+      "res-1",
+      "operator-1",
+      {
+        method: DeskCollectionMethod.CASH,
+        receiptReference: "CASH-001",
+      },
+    );
+    expect(result.message).toBe("Cobro registrado.");
   });
 
   it("passes search through as minimized operator search DTOs", async () => {

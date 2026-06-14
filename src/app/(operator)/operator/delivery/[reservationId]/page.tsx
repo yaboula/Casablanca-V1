@@ -12,18 +12,20 @@ export const metadata: Metadata = {
 };
 
 type OperatorDeliveryPageProps = {
-  params: {
+  params: Promise<{
     reservationId: string;
-  };
+  }>;
 };
 
 export default async function OperatorDeliveryPage({
   params,
 }: OperatorDeliveryPageProps) {
+  const { reservationId } = await params;
+
   // 1. Enforce OPERATOR or ADMIN role
   const result = await requireRouteRole(
     ["OPERATOR", "ADMIN"],
-    `/operator/delivery/${params.reservationId}`,
+    `/operator/delivery/${reservationId}`,
   );
 
   if (result.forbidden) {
@@ -47,7 +49,7 @@ export default async function OperatorDeliveryPage({
   // 2. Fetch delivery detail
   let delivery;
   try {
-    delivery = await getDeliveryDetail(params.reservationId);
+    delivery = await getDeliveryDetail(reservationId);
   } catch (error) {
     // Let the error boundary catch major failures
     throw error;

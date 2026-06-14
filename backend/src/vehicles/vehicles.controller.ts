@@ -86,6 +86,48 @@ export class VehiclesController {
    * GET /api/v1/vehicles/:id
    * Public - returns vehicle detail regardless of availability.
    */
+  @Get(':id/availability-calendar')
+  async getAvailabilityCalendar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('from') fromStr?: string,
+    @Query('to') toStr?: string,
+  ) {
+    if (!fromStr || !toStr) {
+      throw new BadRequestException('from and to are required as YYYY-MM-DD.');
+    }
+
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(fromStr) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(toStr)
+    ) {
+      throw new BadRequestException('from and to must use YYYY-MM-DD.');
+    }
+
+    const from = new Date(`${fromStr}T00:00:00.000Z`);
+    const to = new Date(`${toStr}T00:00:00.000Z`);
+
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+      throw new BadRequestException('from and to must be valid dates.');
+    }
+
+    if (to < from) {
+      throw new BadRequestException('to must be on or after from.');
+    }
+
+    const maxRangeDays = 370;
+    if (to.getTime() - from.getTime() > maxRangeDays * 24 * 60 * 60 * 1000) {
+      throw new BadRequestException('Availability range cannot exceed 370 days.');
+    }
+
+    const calendar = await this.vehiclesService.getAvailabilityCalendar({
+      vehicleId: id,
+      from,
+      to,
+    });
+
+    return { data: calendar };
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const vehicle = await this.vehiclesService.findOne(id);

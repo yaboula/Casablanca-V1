@@ -12,7 +12,9 @@ import { Queue } from "bullmq";
 import { v4 as uuidv4 } from "uuid";
 import { DataSource, Repository } from "typeorm";
 import {
-  BLOCKING_RESERVATION_STATUSES,
+  NON_PENDING_BLOCKING_RESERVATION_STATUSES,
+  OPERATIONAL_TURNAROUND_BUFFER_HOURS,
+  PENDING_DEPOSIT_HOLD_MINUTES,
   getAllowedReservationTransitions,
   isReservationTransitionAllowed,
 } from "./reservation-policy";
@@ -167,11 +169,30 @@ export class ReservationsService {
         .getRepository(Reservation)
         .createQueryBuilder("r")
         .where("r.vehicleId = :vehicleId", { vehicleId: dto.vehicleId })
-        .andWhere("r.status IN (:...statuses)", {
-          statuses: BLOCKING_RESERVATION_STATUSES,
+        .andWhere(
+          `(
+            (r.status = :pendingStatus AND r."created_at" >= :pendingHoldCutoff)
+            OR r.status IN (:...nonPendingBlockingStatuses)
+          )`,
+          {
+            pendingStatus: ReservationStatus.PENDING_DEPOSIT,
+            pendingHoldCutoff: getPendingDepositHoldCutoff(),
+            nonPendingBlockingStatuses: NON_PENDING_BLOCKING_RESERVATION_STATUSES,
+          },
+        )
+        .andWhere("r.\"pickup_date\" < :returnDateWithBuffer", {
+          returnDateWithBuffer: addHours(
+            returnDate,
+            OPERATIONAL_TURNAROUND_BUFFER_HOURS,
+          ),
         })
-        .andWhere("r.pickupDate < :returnDate", { returnDate })
-        .andWhere("r.returnDate > :pickupDate", { pickupDate })
+        .andWhere(
+          `r."return_date" + (:turnaroundBufferHours * INTERVAL '1 hour') > :pickupDate`,
+          {
+            pickupDate,
+            turnaroundBufferHours: OPERATIONAL_TURNAROUND_BUFFER_HOURS,
+          },
+        )
         .getCount();
 
       if (overlapping > 0) {
@@ -668,11 +689,30 @@ export class ReservationsService {
     return this.reservationsRepo
       .createQueryBuilder("r")
       .where("r.vehicleId = :vehicleId", { vehicleId })
-      .andWhere("r.status IN (:...statuses)", {
-        statuses: BLOCKING_RESERVATION_STATUSES,
+      .andWhere(
+        `(
+          (r.status = :pendingStatus AND r."created_at" >= :pendingHoldCutoff)
+          OR r.status IN (:...nonPendingBlockingStatuses)
+        )`,
+        {
+          pendingStatus: ReservationStatus.PENDING_DEPOSIT,
+          pendingHoldCutoff: getPendingDepositHoldCutoff(),
+          nonPendingBlockingStatuses: NON_PENDING_BLOCKING_RESERVATION_STATUSES,
+        },
+      )
+      .andWhere("r.\"pickup_date\" < :returnAtWithBuffer", {
+        returnAtWithBuffer: addHours(
+          returnAt,
+          OPERATIONAL_TURNAROUND_BUFFER_HOURS,
+        ),
       })
-      .andWhere("r.pickupDate < :returnAt", { returnAt })
-      .andWhere("r.returnDate > :pickupAt", { pickupAt })
+      .andWhere(
+        `r."return_date" + (:turnaroundBufferHours * INTERVAL '1 hour') > :pickupAt`,
+        {
+          pickupAt,
+          turnaroundBufferHours: OPERATIONAL_TURNAROUND_BUFFER_HOURS,
+        },
+      )
       .getCount();
   }
 
@@ -802,4 +842,12 @@ export class ReservationsService {
       (err as { code?: string }).code === "23505"
     );
   }
+}
+
+function addHours(date: Date, hours: number): Date {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
+function getPendingDepositHoldCutoff(): Date {
+  return new Date(Date.now() - PENDING_DEPOSIT_HOLD_MINUTES * 60 * 1000);
 }

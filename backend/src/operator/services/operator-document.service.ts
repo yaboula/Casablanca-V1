@@ -69,6 +69,7 @@ export class OperatorDocumentService {
     const docs = await this.docsRepo
       .createQueryBuilder("d")
       .leftJoinAndSelect("d.user", "u")
+      .innerJoin("d.reservation", "r")
       .select([
         "d.id",
         "d.type",
@@ -80,6 +81,14 @@ export class OperatorDocumentService {
         "u.fullName",
       ])
       .where("d.status = :status", { status: DocumentStatus.PENDING_REVIEW })
+      .andWhere("r.status IN (:...reservationStatuses)", {
+        reservationStatuses: [
+          ReservationStatus.PENDING_DEPOSIT,
+          ReservationStatus.AWAITING_CAPTURE,
+          ReservationStatus.CONFIRMED,
+          ReservationStatus.IN_PROGRESS,
+        ],
+      })
       .orderBy("d.createdAt", "ASC")
       .getMany();
 
@@ -92,7 +101,9 @@ export class OperatorDocumentService {
         const uploadedMs = now - new Date(doc.createdAt).getTime();
         const uploadedAgo = this.formatDuration(uploadedMs);
 
-        const fileUrl = await this.s3Service.generatePresignedRead(doc.fileKey);
+        const fileUrl = this.s3Service.isBypassStorageEnabled()
+          ? `/api/v1/documents/file/${doc.id}`
+          : await this.s3Service.generatePresignedRead(doc.fileKey);
         const customerName = doc.user?.fullName ?? "Cliente";
 
         return toPendingDocumentResponseDto(

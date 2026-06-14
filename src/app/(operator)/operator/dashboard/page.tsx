@@ -58,11 +58,14 @@ export default async function OperatorDashboardPage() {
   } catch {
     deliveries = [];
     stats = {
-      date: new Date().toISOString().split("T")[0],
+      date: "",
       total: 0,
+      pendingDeposit: 0,
+      awaitingCapture: 0,
       confirmed: 0,
       inProgress: 0,
       completed: 0,
+      cancelled: 0,
     };
   }
 

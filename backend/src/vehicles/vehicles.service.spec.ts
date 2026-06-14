@@ -2,6 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { VehiclesService, FindAvailableQuery } from './vehicles.service';
+import {
+  DepositRefundStatus,
+  DepositStatus,
+  PickupLocation,
+  Reservation,
+  ReservationStatus,
+} from '../reservations/reservation.entity';
 import { Vehicle, VehicleCategory, VehicleStatus } from './vehicle.entity';
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -36,6 +43,18 @@ const mockVehiclesRepo = {
   createQueryBuilder: jest.fn().mockReturnValue(mockQbChain),
 };
 
+const mockReservationQbChain = {
+  select: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  andWhere: jest.fn().mockReturnThis(),
+  orderBy: jest.fn().mockReturnThis(),
+  getMany: jest.fn(),
+};
+
+const mockReservationsRepo = {
+  createQueryBuilder: jest.fn().mockReturnValue(mockReservationQbChain),
+};
+
 // ─── Test Suite ───────────────────────────────────────────────────────────────
 
 describe('VehiclesService', () => {
@@ -49,6 +68,10 @@ describe('VehiclesService', () => {
       providers: [
         VehiclesService,
         { provide: getRepositoryToken(Vehicle), useValue: mockVehiclesRepo },
+        {
+          provide: getRepositoryToken(Reservation),
+          useValue: mockReservationsRepo,
+        },
       ],
     }).compile();
 
@@ -75,6 +98,8 @@ describe('VehiclesService', () => {
         { status: VehicleStatus.AVAILABLE },
       );
       expect(mockQbChain.andWhere).toHaveBeenCalled(); // subquery de fechas
+      expect(mockQbChain.andWhere.mock.calls[0][0]).toContain('created_at');
+      expect(mockQbChain.andWhere.mock.calls[0][0]).toContain('INTERVAL');
       expect(result).toEqual(vehicles);
     });
 
@@ -138,4 +163,111 @@ describe('VehiclesService', () => {
       expect(result).toHaveLength(2);
     });
   });
+
+  describe('getAvailabilityCalendar()', () => {
+    it('returns sanitized calendar days and blocked intervals with buffer', async () => {
+      mockVehiclesRepo.findOne.mockResolvedValue(makeVehicle());
+      mockReservationQbChain.getMany.mockResolvedValue([
+        makeReservation({
+          pickupDate: new Date('2027-07-10T10:00:00.000Z'),
+          returnDate: new Date('2027-07-10T14:00:00.000Z'),
+          status: ReservationStatus.CONFIRMED,
+        }),
+      ]);
+
+      const result = await service.getAvailabilityCalendar({
+        vehicleId: 'vehicle-abc',
+        from: new Date('2027-07-10T00:00:00.000Z'),
+        to: new Date('2027-07-10T00:00:00.000Z'),
+      });
+
+      expect(result.vehicleId).toBe('vehicle-abc');
+      expect(result.operationalBufferHours).toBe(4);
+      expect(result.pendingDepositHoldMinutes).toBe(15);
+      expect(result.days).toEqual([
+        {
+          date: '2027-07-10',
+          status: 'PARTIAL',
+          pricePerDayEurCents: 5000,
+        },
+      ]);
+      expect(result.blockedIntervals).toEqual([
+        {
+          startAt: '2027-07-10T10:00:00.000Z',
+          endAt: '2027-07-10T14:00:00.000Z',
+          bufferedEndAt: '2027-07-10T18:00:00.000Z',
+          status: ReservationStatus.CONFIRMED,
+        },
+      ]);
+      expect(JSON.stringify(result)).not.toContain('customer');
+      expect(JSON.stringify(result)).not.toContain('stripe');
+    });
+
+    it('marks fully blocked service days as unavailable', async () => {
+      mockVehiclesRepo.findOne.mockResolvedValue(makeVehicle());
+      mockReservationQbChain.getMany.mockResolvedValue([
+        makeReservation({
+          pickupDate: new Date('2027-07-10T00:00:00.000Z'),
+          returnDate: new Date('2027-07-10T20:00:00.000Z'),
+          status: ReservationStatus.IN_PROGRESS,
+        }),
+      ]);
+
+      const result = await service.getAvailabilityCalendar({
+        vehicleId: 'vehicle-abc',
+        from: new Date('2027-07-10T00:00:00.000Z'),
+        to: new Date('2027-07-10T00:00:00.000Z'),
+      });
+
+      expect(result.days[0].status).toBe('UNAVAILABLE');
+    });
+  });
 });
+
+function makeReservation(overrides: Partial<Reservation> = {}): Reservation {
+  return {
+    id: 'reservation-abc',
+    userId: 'user-abc',
+    vehicleId: 'vehicle-abc',
+    pickupDate: new Date('2027-07-10T10:00:00.000Z'),
+    returnDate: new Date('2027-07-10T14:00:00.000Z'),
+    totalDays: 1,
+    totalPriceEurCents: 5000,
+    depositEurCents: 1000,
+    dailyRateEurCentsSnapshot: 5000,
+    subtotalEurCents: 5000,
+    totalDueNowEurCents: 1000,
+    chargedDayUnitsX2: 2,
+    fullDays: 1,
+    extraHours: 0,
+    extraBillingType: 'NONE' as any,
+    pricingPolicyVersion: 'test',
+    currency: 'EUR',
+    pickupLocation: PickupLocation.CMN_T1,
+    status: ReservationStatus.CONFIRMED,
+    stripePaymentIntentId: null,
+    stripeClientSecret: null,
+    depositStatus: DepositStatus.CAPTURED,
+    depositCapturedAt: null,
+    depositLastFailureAt: null,
+    depositLastFailureReason: null,
+    depositRefundStatus: DepositRefundStatus.NOT_APPLICABLE,
+    depositRefundAttemptedAt: null,
+    depositRefundFailureAt: null,
+    depositRefundFailureReason: null,
+    deskCollectionStatus: 'PENDING' as any,
+    deskCollectionMethod: null,
+    deskCollectionReference: null,
+    deskCollectionReceivedAt: null,
+    deskCollectionAmountEurCents: null,
+    qrCodeHash: null,
+    ticketTokenVersion: 0,
+    ticketRevokedAt: null,
+    customerName: null,
+    customerPhone: null,
+    idempotencyKey: null,
+    createdAt: new Date('2027-07-01T00:00:00.000Z'),
+    updatedAt: new Date('2027-07-01T00:00:00.000Z'),
+    ...overrides,
+  } as Reservation;
+}

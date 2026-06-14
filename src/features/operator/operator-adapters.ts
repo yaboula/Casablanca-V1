@@ -43,6 +43,10 @@ function adaptDeliveryDocument(raw: unknown): DeliveryDocumentSummary | null {
         ? d.type
         : "PASSPORT",
     status: typeof d.status === "string" ? d.status : "PENDING_REVIEW",
+    fileUrl: typeof d.fileUrl === "string" ? d.fileUrl : null,
+    rejectionReason:
+      typeof d.rejectionReason === "string" ? d.rejectionReason : null,
+    uploadedAt: typeof d.uploadedAt === "string" ? d.uploadedAt : null,
   };
 }
 
@@ -71,6 +75,40 @@ export function adaptDelivery(raw: unknown): DeliveryViewModel | null {
     totalDays: typeof d.totalDays === "number" ? d.totalDays : 0,
     status: typeof d.status === "string" ? d.status : "CONFIRMED",
     balanceDueEUR: typeof d.balanceDueEUR === "number" ? d.balanceDueEUR : 0,
+    depositStatus:
+      d.depositStatus === "PENDING" ||
+      d.depositStatus === "CAPTURE_QUEUED" ||
+      d.depositStatus === "CAPTURED" ||
+      d.depositStatus === "FAILED" ||
+      d.depositStatus === "CANCELLED"
+        ? d.depositStatus
+        : "PENDING",
+    currency: typeof d.currency === "string" ? d.currency : "EUR",
+    deskCollectionStatus:
+      d.deskCollectionStatus === "NOT_REQUIRED" ||
+      d.deskCollectionStatus === "PENDING" ||
+      d.deskCollectionStatus === "RECEIVED"
+        ? d.deskCollectionStatus
+        : "PENDING",
+    deskCollectionMethod:
+      d.deskCollectionMethod === "CASH" ||
+      d.deskCollectionMethod === "TPE" ||
+      d.deskCollectionMethod === "BANK_TRANSFER" ||
+      d.deskCollectionMethod === "OTHER"
+        ? d.deskCollectionMethod
+        : null,
+    deskCollectionReference:
+      typeof d.deskCollectionReference === "string"
+        ? d.deskCollectionReference
+        : null,
+    deskCollectionReceivedAmountEUR:
+      typeof d.deskCollectionReceivedAmountEUR === "number"
+        ? d.deskCollectionReceivedAmountEUR
+        : null,
+    deskCollectionReceivedAt:
+      typeof d.deskCollectionReceivedAt === "string"
+        ? d.deskCollectionReceivedAt
+        : null,
     documents,
   };
 }
@@ -93,11 +131,16 @@ export function adaptDeliveryStats(raw: DeliveryStatsApiResponse): DeliveryStats
     ? (raw.data as Record<string, unknown>)
     : {};
   return {
-    date: typeof d.date === "string" ? d.date : new Date().toISOString().split("T")[0],
+    date: typeof d.date === "string" ? d.date : "",
     total: typeof d.total === "number" ? d.total : 0,
+    pendingDeposit:
+      typeof d.pendingDeposit === "number" ? d.pendingDeposit : 0,
+    awaitingCapture:
+      typeof d.awaitingCapture === "number" ? d.awaitingCapture : 0,
     confirmed: typeof d.confirmed === "number" ? d.confirmed : 0,
     inProgress: typeof d.inProgress === "number" ? d.inProgress : 0,
     completed: typeof d.completed === "number" ? d.completed : 0,
+    cancelled: typeof d.cancelled === "number" ? d.cancelled : 0,
   };
 }
 

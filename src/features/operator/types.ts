@@ -19,6 +19,9 @@ export type DeliveryDocumentSummary = {
   id: string;
   type: "PASSPORT" | "DRIVING_LICENSE";
   status: string; // "PENDING_REVIEW" | "APPROVED" | "REJECTED"
+  fileUrl: string | null;
+  rejectionReason: string | null;
+  uploadedAt: string | null;
 };
 
 export type DeliveryVehicle = {
@@ -46,6 +49,18 @@ export type DeliveryViewModel = {
   totalDays: number;
   status: string;
   balanceDueEUR: number;
+  depositStatus:
+    | "PENDING"
+    | "CAPTURE_QUEUED"
+    | "CAPTURED"
+    | "FAILED"
+    | "CANCELLED";
+  currency: string;
+  deskCollectionStatus: "NOT_REQUIRED" | "PENDING" | "RECEIVED";
+  deskCollectionMethod: "CASH" | "TPE" | "BANK_TRANSFER" | "OTHER" | null;
+  deskCollectionReference: string | null;
+  deskCollectionReceivedAmountEUR: number | null;
+  deskCollectionReceivedAt: string | null;
   documents: DeliveryDocumentSummary[];
 };
 
@@ -59,9 +74,12 @@ export type DeliveryViewModel = {
 export type DeliveryStats = {
   date: string;
   total: number;
+  pendingDeposit?: number;
+  awaitingCapture?: number;
   confirmed: number;
   inProgress: number;
   completed: number;
+  cancelled?: number;
 };
 
 // ---------------------------------------------------------------------------

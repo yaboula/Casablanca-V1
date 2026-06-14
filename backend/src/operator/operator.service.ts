@@ -15,12 +15,17 @@ import { OperatorSearchService } from "./services/operator-search.service";
 import {
   DeliveryActionResponseDto,
   DeliveryResponseDto,
+  TicketCaseResolutionDto,
 } from "./dto/delivery-response.dto";
 import {
   DocumentReviewResultDto,
   ReviewedDocumentResponseDto,
 } from "./dto/document-response.dto";
-import { ManualCheckinDto } from "./dto/operator.dto";
+import {
+  ConfirmHandoffDto,
+  ManualCheckinDto,
+  RecordDeskCollectionDto,
+} from "./dto/operator.dto";
 import { OperatorSearchResponseDto } from "./dto/search-response.dto";
 
 /**
@@ -83,8 +88,35 @@ export class OperatorService {
     reservationId: string,
     ticketToken: string,
     operatorId: string,
-  ): Promise<DeliveryActionResponseDto> {
+  ): Promise<TicketCaseResolutionDto> {
     return this.deliveryService.scanQr(reservationId, ticketToken, operatorId);
+  }
+
+  async resolveTicketCase(
+    ticketToken: string,
+    operatorId: string,
+  ): Promise<TicketCaseResolutionDto> {
+    return this.deliveryService.resolveTicketCase(ticketToken, operatorId);
+  }
+
+  async confirmHandoff(
+    reservationId: string,
+    operatorId: string,
+    dto: ConfirmHandoffDto,
+  ): Promise<DeliveryActionResponseDto> {
+    return this.deliveryService.confirmHandoff(reservationId, operatorId, dto);
+  }
+
+  async recordDeskCollection(
+    reservationId: string,
+    operatorId: string,
+    dto: RecordDeskCollectionDto,
+  ): Promise<DeliveryActionResponseDto> {
+    return this.deliveryService.recordDeskCollection(
+      reservationId,
+      operatorId,
+      dto,
+    );
   }
 
   async completeDelivery(

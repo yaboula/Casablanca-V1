@@ -1,42 +1,10 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import type { CurrentUser } from "@/lib/auth/types";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getDefaultRouteForRole } from "./auth-redirects";
 import { LogoutButton } from "./LogoutButton";
 
-export function SessionNav() {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetch("/api/auth/session", { credentials: "same-origin" })
-      .then(async (response) => {
-        if (!response.ok) return null;
-        const payload = await response.json();
-        return payload?.user ?? null;
-      })
-      .then((nextUser) => {
-        if (isMounted) setUser(nextUser);
-      })
-      .catch(() => {
-        if (isMounted) setUser(null);
-      })
-      .finally(() => {
-        if (isMounted) setHasLoaded(true);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  if (!hasLoaded) {
-    return <span className="text-xs font-medium text-neutral-400">Session</span>;
-  }
+export async function SessionNav() {
+  const user = await getCurrentUser();
 
   if (!user) {
     return (

@@ -293,15 +293,22 @@ describe("ReservationsService", () => {
 
     it("marks overlapping active reservations as unavailable", async () => {
       mockVehiclesRepo.findOne.mockResolvedValue(makeVehicle());
+      const andWhere = jest.fn().mockReturnThis();
       mockReservationsRepo.createQueryBuilder.mockReturnValue({
         where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
+        andWhere,
         getCount: jest.fn().mockResolvedValue(1),
       });
 
       const result = await service.quote(quoteDto);
 
       expect(result.available).toBe(false);
+      expect(andWhere.mock.calls.map((call) => call[0]).join("\n")).toContain(
+        "created_at",
+      );
+      expect(andWhere.mock.calls.map((call) => call[0]).join("\n")).toContain(
+        "INTERVAL",
+      );
       expect(mockStripeService.createPaymentIntent).not.toHaveBeenCalled();
     });
   });

@@ -15,7 +15,9 @@ import {
 } from "@nestjs/common";
 import { OperatorService } from "./operator.service";
 import {
+  ConfirmHandoffDto,
   ManualCheckinDto,
+  RecordDeskCollectionDto,
   ScanQrDto,
   RejectDocumentDto,
 } from "./dto/operator.dto";
@@ -36,7 +38,8 @@ export class OperatorController {
 
   /**
    * GET /api/v1/operator/deliveries?date=2026-02-19
-   * Returns CONFIRMED reservations for the given date (default: today).
+   * Returns the full minimized operator case ledger. The date is used only as
+   * the business-day anchor for ordering and dashboard classification.
    */
   @Get("deliveries")
   async getDeliveries(@Query("date") date?: string) {
@@ -103,7 +106,50 @@ export class OperatorController {
       dto.ticketToken,
       operator.id,
     );
+    return { data: reservation, message: "Ticket vinculado al case." };
+  }
+
+  @Post("tickets/resolve")
+  @HttpCode(HttpStatus.OK)
+  async resolveTicketCase(
+    @Body() dto: ScanQrDto,
+    @CurrentUser() operator: User,
+  ) {
+    const resolution = await this.operatorService.resolveTicketCase(
+      dto.ticketToken,
+      operator.id,
+    );
+    return { data: resolution, message: "Case encontrado." };
+  }
+
+  @Patch("delivery/:reservationId/handoff")
+  @HttpCode(HttpStatus.OK)
+  async confirmHandoff(
+    @Param("reservationId", ParseUUIDPipe) reservationId: string,
+    @Body() dto: ConfirmHandoffDto,
+    @CurrentUser() operator: User,
+  ) {
+    const reservation = await this.operatorService.confirmHandoff(
+      reservationId,
+      operator.id,
+      dto,
+    );
     return { data: reservation, message: "Entrega confirmada." };
+  }
+
+  @Patch("delivery/:reservationId/collection")
+  @HttpCode(HttpStatus.OK)
+  async recordDeskCollection(
+    @Param("reservationId", ParseUUIDPipe) reservationId: string,
+    @Body() dto: RecordDeskCollectionDto,
+    @CurrentUser() operator: User,
+  ) {
+    const reservation = await this.operatorService.recordDeskCollection(
+      reservationId,
+      operator.id,
+      dto,
+    );
+    return { data: reservation, message: "Cobro registrado." };
   }
 
   // ── Search ─────────────────────────────────────────────────

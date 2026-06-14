@@ -58,6 +58,19 @@ export enum DepositRefundStatus {
   FAILED = "FAILED",
 }
 
+export enum DeskCollectionStatus {
+  NOT_REQUIRED = "NOT_REQUIRED",
+  PENDING = "PENDING",
+  RECEIVED = "RECEIVED",
+}
+
+export enum DeskCollectionMethod {
+  CASH = "CASH",
+  TPE = "TPE",
+  BANK_TRANSFER = "BANK_TRANSFER",
+  OTHER = "OTHER",
+}
+
 @Entity("reservations")
 export class Reservation {
   @PrimaryGeneratedColumn("uuid")
@@ -245,6 +258,44 @@ export class Reservation {
    * HMAC-SHA256 hash — set when status transitions to CONFIRMED.
    * Required for QR code verification at check-in.
    */
+  @Column({
+    name: "desk_collection_status",
+    type: "varchar",
+    length: 32,
+    default: DeskCollectionStatus.PENDING,
+  })
+  deskCollectionStatus: DeskCollectionStatus;
+
+  @Column({
+    name: "desk_collection_method",
+    type: "varchar",
+    length: 32,
+    nullable: true,
+  })
+  deskCollectionMethod: DeskCollectionMethod | null;
+
+  @Column({
+    name: "desk_collection_reference",
+    type: "varchar",
+    length: 120,
+    nullable: true,
+  })
+  deskCollectionReference: string | null;
+
+  @Column({
+    name: "desk_collection_received_at",
+    type: "timestamptz",
+    nullable: true,
+  })
+  deskCollectionReceivedAt: Date | null;
+
+  @Column({
+    name: "desk_collection_amount_eur_cents",
+    type: "integer",
+    nullable: true,
+  })
+  deskCollectionAmountEurCents: number | null;
+
   @Column({ name: "qr_code_hash", type: "varchar", nullable: true })
   qrCodeHash: string | null;
 
