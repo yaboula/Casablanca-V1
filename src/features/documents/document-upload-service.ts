@@ -49,6 +49,60 @@ export type UploadResult =
       pendingType?: DocumentType;
     };
 
+async function uploadFileToBypassStorage(
+  reservationId: string,
+  type: DocumentType,
+  fileKey: string,
+  file: File,
+  mimeType: DocumentMimeType,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  const base64 = await fileToBase64(file, onProgress);
+
+  await clientFetch<unknown>("/documents/dev-upload", {
+    method: "POST",
+    body: {
+      reservationId,
+      type,
+      fileKey,
+      mimeType,
+      base64,
+    },
+  });
+}
+
+function fileToBase64(
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(Math.max(5, Math.round((event.loaded / event.total) * 90)));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(new Error("Could not read the selected file."));
+    };
+
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Could not encode the selected file."));
+        return;
+      }
+
+      const commaIndex = result.indexOf(",");
+      resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Step 1: Presign
 // ---------------------------------------------------------------------------
@@ -181,14 +235,15 @@ export async function uploadDocument(
   // ---------------------------------------------------------------------------
   try {
     if (presign.uploadUrl === "bypass") {
-      // Simulate an upload delay for UX
-      if (onProgress) {
-        onProgress(25);
-        await new Promise((r) => setTimeout(r, 400));
-        onProgress(75);
-        await new Promise((r) => setTimeout(r, 400));
-        onProgress(100);
-      }
+      await uploadFileToBypassStorage(
+        reservationId,
+        type,
+        presign.fileKey,
+        file,
+        mimeType,
+        onProgress,
+      );
+      onProgress?.(100);
     } else {
       await uploadFileToS3(presign.uploadUrl, file, mimeType, onProgress);
     }

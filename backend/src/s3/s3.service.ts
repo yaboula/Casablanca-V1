@@ -1,5 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { mkdir, readFile, rm, writeFile } from "fs/promises";
+import { dirname, extname, join, normalize } from "path";
+import { tmpdir } from "os";
 import {
   S3Client,
   PutObjectCommand,
@@ -15,11 +18,15 @@ export class S3Service {
   private readonly bucket: string;
   private readonly uploadExpiry: number;
   private readonly readExpiry = 300; // 5 minutes for download URLs
+  private readonly devStorageRoot: string;
+  private readonly endpoint?: string;
   private readonly logger = new Logger(S3Service.name);
 
   constructor(private readonly config: ConfigService) {
+    this.endpoint = this.config.get<string>("AWS_S3_ENDPOINT")?.trim() || undefined;
     this.s3 = new S3Client({
       region: this.config.get<string>("AWS_REGION", "eu-west-3"),
+      ...(this.endpoint ? { endpoint: this.endpoint } : {}),
       credentials: {
         accessKeyId: this.config.get<string>("AWS_ACCESS_KEY_ID")!,
         secretAccessKey: this.config.get<string>("AWS_SECRET_ACCESS_KEY")!,
@@ -29,6 +36,9 @@ export class S3Service {
     this.uploadExpiry = Number(
       this.config.get<string>("AWS_S3_PRESIGN_EXPIRES_SECONDS", "900"),
     );
+    // In Docker the app directory is mounted read-only, so dev bypass storage
+    // must live in a writable temp location.
+    this.devStorageRoot = join(tmpdir(), "nexus-dev-document-storage");
   }
 
   /**
@@ -36,7 +46,8 @@ export class S3Service {
    * The fileKey encodes userId/reservationId/type to prevent path traversal.
    *
    * When BYPASS_S3=true (dev mode), returns uploadUrl='bypass' to signal the
-   * frontend to skip the actual S3 PUT and call /documents/confirm directly.
+   * frontend to skip the actual S3 PUT and use the authenticated local dev
+   * storage fallback instead.
    */
   async generatePresignedUpload(
     userId: string,
@@ -47,11 +58,8 @@ export class S3Service {
     const ext = S3Service.mimeToExtension(mimeType);
     const fileKey = `docs/${userId}/${reservationId}/${type}-${Date.now()}.${ext}`;
 
-    // Dev bypass: skip real S3 presigning
-    if (
-      process.env.BYPASS_S3 === "true" ||
-      process.env.BYPASS_STRIPE === "true"
-    ) {
+    // Dev bypass: skip real S3 presigning only when document storage bypass is enabled.
+    if (this.isBypassStorageEnabled()) {
       return { uploadUrl: "bypass", fileKey, expiresIn: 900 };
     }
 
@@ -84,11 +92,8 @@ export class S3Service {
    * Never returns the raw file key.
    */
   async generatePresignedRead(fileKey: string): Promise<string> {
-    // Dev bypass: return a placeholder instead of a real S3 signed URL
-    if (
-      process.env.BYPASS_S3 === "true" ||
-      process.env.BYPASS_STRIPE === "true"
-    ) {
+    // Dev bypass: customer/operator document reads go through the authenticated local endpoint.
+    if (this.isBypassStorageEnabled()) {
       return "https://via.placeholder.com/400x300?text=Dev+Doc";
     }
     const command = new GetObjectCommand({
@@ -102,10 +107,9 @@ export class S3Service {
    * Deletes an S3 object — used by document-cleanup BullMQ job.
    */
   async deleteObject(fileKey: string): Promise<void> {
-    if (
-      process.env.BYPASS_S3 === "true" ||
-      process.env.BYPASS_STRIPE === "true"
-    ) {
+    if (this.isBypassStorageEnabled()) {
+      const filePath = this.resolveDevStoragePath(fileKey);
+      await rm(filePath, { force: true });
       return;
     }
 
@@ -117,5 +121,62 @@ export class S3Service {
       this.logger.error(`Failed to delete S3 object ${fileKey}`, err);
       throw err;
     }
+  }
+
+  isBypassStorageEnabled(): boolean {
+    return process.env.BYPASS_S3 === "true";
+  }
+
+  async saveBypassObject(
+    fileKey: string,
+    bytes: Buffer,
+  ): Promise<{ size: number; contentType: string }> {
+    if (!this.isBypassStorageEnabled()) {
+      throw new Error("Bypass document storage is not enabled.");
+    }
+
+    const filePath = this.resolveDevStoragePath(fileKey);
+    await mkdir(dirname(filePath), { recursive: true });
+    await writeFile(filePath, bytes);
+
+    return {
+      size: bytes.byteLength,
+      contentType: this.getContentTypeForFileKey(fileKey),
+    };
+  }
+
+  async readBypassObject(
+    fileKey: string,
+  ): Promise<{ bytes: Buffer; contentType: string }> {
+    if (!this.isBypassStorageEnabled()) {
+      throw new Error("Bypass document storage is not enabled.");
+    }
+
+    const filePath = this.resolveDevStoragePath(fileKey);
+    const bytes = await readFile(filePath);
+
+    return {
+      bytes,
+      contentType: this.getContentTypeForFileKey(fileKey),
+    };
+  }
+
+  private resolveDevStoragePath(fileKey: string): string {
+    const normalizedKey = normalize(fileKey).replace(/^(\.\.(\/|\\|$))+/, "");
+    return join(this.devStorageRoot, normalizedKey);
+  }
+
+  private getContentTypeForFileKey(fileKey: string): string {
+    const extension = extname(fileKey).toLowerCase();
+    if (extension === ".jpg" || extension === ".jpeg") {
+      return "image/jpeg";
+    }
+    if (extension === ".png") {
+      return "image/png";
+    }
+    if (extension === ".pdf") {
+      return "application/pdf";
+    }
+    return "application/octet-stream";
   }
 }

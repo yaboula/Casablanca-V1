@@ -134,17 +134,23 @@ async function readRequestBody(req: NextRequest): Promise<BodyInit | null> {
 }
 
 async function proxyResponse(response: Response): Promise<NextResponse> {
-  if (response.status === 204) {
-    return new NextResponse(null, { status: 204 });
+  if (response.status === 204 || response.status === 205 || response.status === 304) {
+    return new NextResponse(null, { status: response.status });
   }
 
-  const payload = await response.text();
+  const payload = await response.arrayBuffer();
+  const headers = new Headers();
+  const contentType = response.headers.get("content-type");
+  const contentDisposition = response.headers.get("content-disposition");
+  const cacheControl = response.headers.get("cache-control");
+
+  if (contentType) headers.set("Content-Type", contentType);
+  if (contentDisposition) headers.set("Content-Disposition", contentDisposition);
+  if (cacheControl) headers.set("Cache-Control", cacheControl);
+
   return new NextResponse(payload, {
     status: response.status,
-    headers: {
-      "Content-Type":
-        response.headers.get("content-type") ?? "application/json",
-    },
+    headers,
   });
 }
 

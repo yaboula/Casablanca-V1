@@ -8,10 +8,13 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { PresignDocumentDto } from './dto/presign-document.dto';
 import { ConfirmDocumentDto } from './dto/confirm-document.dto';
+import { DevUploadDocumentDto } from './dto/dev-upload-document.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
@@ -48,6 +51,33 @@ export class DocumentsController {
   ) {
     const doc = await this.documentsService.confirm(dto, user);
     return { data: doc };
+  }
+
+  @Post('dev-upload')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async devUpload(
+    @Body() dto: DevUploadDocumentDto,
+    @CurrentUser() user: User,
+  ) {
+    await this.documentsService.uploadBypassDocument(dto, user);
+  }
+
+  @Get('file/:documentId')
+  async openDocumentFile(
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { file, contentType, contentLength } =
+      await this.documentsService.openDocumentFile(documentId, user);
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', 'inline');
+    if (contentLength) {
+      res.setHeader('Content-Length', String(contentLength));
+    }
+
+    return file;
   }
 
   /**

@@ -98,6 +98,15 @@ describe('DocumentsService', () => {
       expiresIn: 900,
     }),
     generatePresignedRead: jest.fn().mockResolvedValue('https://read.test'),
+    isBypassStorageEnabled: jest.fn().mockReturnValue(false),
+    saveBypassObject: jest.fn().mockResolvedValue({
+      size: 128,
+      contentType: 'image/jpeg',
+    }),
+    readBypassObject: jest.fn().mockResolvedValue({
+      bytes: Buffer.from('test'),
+      contentType: 'image/jpeg',
+    }),
   };
 
   const mockOrphanUploadCleanupQueue = {
@@ -251,6 +260,17 @@ describe('DocumentsService', () => {
       await expect(
         service.findByReservation('missing', makeUser()),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('uses authenticated local file URLs when bypass storage is enabled', async () => {
+      mockS3Service.isBypassStorageEnabled.mockReturnValue(true);
+      mockReservationsRepo.findOne.mockResolvedValue(makeReservation());
+      mockDocsRepo.find.mockResolvedValue([makeDocument({ id: 'doc-999' })]);
+
+      const result = await service.findByReservation('res-123', makeUser());
+
+      expect(result[0].fileUrl).toBe('/api/v1/documents/file/doc-999');
+      expect(mockS3Service.generatePresignedRead).not.toHaveBeenCalled();
     });
   });
 });
