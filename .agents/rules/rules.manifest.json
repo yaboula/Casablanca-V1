@@ -1,0 +1,98 @@
+{
+  "version": "1.0",
+  "source_agents_manifest": ".agents/agents/agents.manifest.json",
+  "source_skills_manifest": ".agents/skills/manifest.json",
+  "rules": [
+    {
+      "id": "global-operating-rules",
+      "file": ".agents/rules/global-operating-rules.md",
+      "applies_to": ["all-agents"],
+      "severity": "required",
+      "summary": "Core operating constraints for all agents: minimal activation, bounded scope, mandatory handoffs, QA gate."
+    },
+    {
+      "id": "skill-loading-policy",
+      "file": ".agents/rules/skill-loading-policy.md",
+      "applies_to": ["all-agents"],
+      "severity": "required",
+      "summary": "Rules for loading default, on-demand, blocked, and needs-review skills. No loading outside manifest."
+    },
+    {
+      "id": "agent-boundaries",
+      "file": ".agents/rules/agent-boundaries.md",
+      "applies_to": ["all-agents", "pm-orchestrator"],
+      "severity": "required",
+      "summary": "Hard responsibility boundaries for each agent. Prevents scope creep and cross-contamination."
+    },
+    {
+      "id": "dependency-installation-policy",
+      "file": ".agents/rules/dependency-installation-policy.md",
+      "applies_to": ["all-agents"],
+      "severity": "blocking",
+      "summary": "No npm/pnpm/bun/npx installation without explicit user approval. Wrappers are references, not install grants."
+    },
+    {
+      "id": "security-trust-policy",
+      "file": ".agents/rules/security-trust-policy.md",
+      "applies_to": ["trust-agent", "backend-agent", "data-agent", "ops-agent", "all-agents"],
+      "severity": "blocking",
+      "summary": "Trust Agent mandatory when auth, payments, PII, secrets, or permissions are touched."
+    },
+    {
+      "id": "data-integrity-policy",
+      "file": ".agents/rules/data-integrity-policy.md",
+      "applies_to": ["data-agent", "backend-agent", "trust-agent"],
+      "severity": "blocking",
+      "summary": "Data Agent mandatory for schema/migration changes. No destructive migrations without plan. No ORM mixing."
+    },
+    {
+      "id": "ui-design-system-policy",
+      "file": ".agents/rules/ui-design-system-policy.md",
+      "applies_to": ["ui-design-system-agent", "frontend-agent", "ux-agent"],
+      "severity": "required",
+      "summary": "UI Agent mandatory for complex visual changes. No multiple taste skills simultaneously. No arbitrary tokens."
+    },
+    {
+      "id": "qa-gates-policy",
+      "file": ".agents/rules/qa-gates-policy.md",
+      "applies_to": ["qa-agent", "pm-orchestrator", "all-agents"],
+      "severity": "blocking",
+      "summary": "QA Agent must sign off before any implementation task is closed. Non-negotiable gate."
+    },
+    {
+      "id": "conflict-matrix-policy",
+      "file": ".agents/rules/conflict-matrix-policy.md",
+      "applies_to": ["all-agents", "pm-orchestrator"],
+      "severity": "blocking",
+      "summary": "Conflicting tools/skills cannot be loaded simultaneously. Drizzle/Prisma, AuthJS/BetterAuth, tRPC/Fastify, etc."
+    },
+    {
+      "id": "task-packet-contract",
+      "file": ".agents/rules/task-packet-contract.md",
+      "applies_to": ["pm-orchestrator", "all-agents"],
+      "severity": "required",
+      "summary": "Standard structure every task packet must follow before an agent begins work."
+    },
+    {
+      "id": "handoff-contract",
+      "file": ".agents/rules/handoff-contract.md",
+      "applies_to": ["all-agents"],
+      "severity": "required",
+      "summary": "Standard structure every agent must return in its handoff summary before closing a task."
+    },
+    {
+      "id": "escalation-policy",
+      "file": ".agents/rules/escalation-policy.md",
+      "applies_to": ["all-agents", "pm-orchestrator"],
+      "severity": "required",
+      "summary": "Defines when and to whom agents must escalate. PM Orchestrator is always the top-level escalation path."
+    },
+    {
+      "id": "git-change-control-policy",
+      "file": ".agents/rules/git-change-control-policy.md",
+      "applies_to": ["workflow-agent", "all-agents"],
+      "severity": "required",
+      "summary": "Git changes must be scoped, logical, clean. No temp scripts in root. No unrelated file modifications."
+    }
+  ]
+}
