@@ -1,0 +1,16 @@
+{
+  "name": "openfga",
+  "category": "auth-permissions",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official openfga documentation",
+  "official_docs": "https://openfga.dev/docs",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Auth-permissions Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Automated checks do not cover all openfga requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

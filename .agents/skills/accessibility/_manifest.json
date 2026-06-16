@@ -1,0 +1,37 @@
+{
+  "category": "accessibility",
+  "skills": [
+    {
+      "name": "axe-core",
+      "category": "accessibility",
+      "priority": "P1",
+      "type": "tool-reference",
+      "status": "generated-wrapper",
+      "source": "generated locally from official axe-core documentation",
+      "official_docs": "https://github.com/dequelabs/axe-core",
+      "install_method": "manual-per-project",
+      "recommended_agent": "Accessibility Agent",
+      "load_policy": "on-demand",
+      "risks": [
+        "Automated checks do not cover all axe-core requirements",
+        "Do not install into package.json without explicit project-level approval"
+      ]
+    },
+    {
+      "name": "wcag-22",
+      "category": "accessibility",
+      "priority": "P1",
+      "type": "reference-skill",
+      "status": "generated-wrapper",
+      "source": "generated locally from official wcag-22 documentation",
+      "official_docs": "https://www.w3.org/TR/WCAG22/",
+      "install_method": "none",
+      "recommended_agent": "Accessibility Agent",
+      "load_policy": "default",
+      "risks": [
+        "Automated checks do not cover all wcag-22 requirements",
+        "Do not install into package.json without explicit project-level approval"
+      ]
+    }
+  ]
+}

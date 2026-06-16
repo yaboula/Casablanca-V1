@@ -1,0 +1,16 @@
+{
+  "name": "github-templates",
+  "category": "git-workflow",
+  "priority": "P1",
+  "type": "reference-skill",
+  "status": "generated-wrapper",
+  "source": "generated locally from official github-templates documentation",
+  "official_docs": "https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests",
+  "install_method": "none",
+  "recommended_agent": "Git-workflow Agent",
+  "load_policy": "default",
+  "risks": [
+    "Automated checks do not cover all github-templates requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

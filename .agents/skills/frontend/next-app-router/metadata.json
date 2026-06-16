@@ -1,0 +1,16 @@
+{
+  "name": "next-app-router",
+  "category": "frontend",
+  "priority": "P1",
+  "type": "reference-skill",
+  "status": "generated-wrapper",
+  "source": "generated locally from official next-app-router documentation",
+  "official_docs": "https://nextjs.org/docs/app",
+  "install_method": "none",
+  "recommended_agent": "Frontend Agent",
+  "load_policy": "default",
+  "risks": [
+    "Automated checks do not cover all next-app-router requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

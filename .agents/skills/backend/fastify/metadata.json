@@ -1,0 +1,20 @@
+{
+  "name": "fastify",
+  "category": "backend",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official fastify documentation",
+  "official_docs": "https://fastify.dev/docs/latest/",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Backend Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Do not mix with trpc as a default unless the project explicitly chooses both",
+    "Automated checks do not cover all fastify requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ],
+  "conflicts_with": [
+    "trpc"
+  ]
+}

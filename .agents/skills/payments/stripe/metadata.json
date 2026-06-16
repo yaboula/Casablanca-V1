@@ -1,0 +1,16 @@
+{
+  "name": "stripe",
+  "category": "payments",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official stripe documentation",
+  "official_docs": "https://stripe.com/docs",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Payments Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Automated checks do not cover all stripe requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

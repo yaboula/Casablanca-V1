@@ -1,0 +1,20 @@
+{
+  "name": "authjs",
+  "category": "auth-permissions",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official authjs documentation",
+  "official_docs": "https://authjs.dev/reference",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Auth-permissions Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Do not mix with better-auth as a default unless the project explicitly chooses both",
+    "Automated checks do not cover all authjs requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ],
+  "conflicts_with": [
+    "better-auth"
+  ]
+}

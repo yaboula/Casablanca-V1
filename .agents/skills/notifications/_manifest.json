@@ -1,0 +1,37 @@
+{
+  "category": "notifications",
+  "skills": [
+    {
+      "name": "novu",
+      "category": "notifications",
+      "priority": "P1",
+      "type": "tool-reference",
+      "status": "generated-wrapper",
+      "source": "generated locally from official novu documentation",
+      "official_docs": "https://docs.novu.co/",
+      "install_method": "manual-per-project",
+      "recommended_agent": "Notifications Agent",
+      "load_policy": "on-demand",
+      "risks": [
+        "Automated checks do not cover all novu requirements",
+        "Do not install into package.json without explicit project-level approval"
+      ]
+    },
+    {
+      "name": "resend",
+      "category": "notifications",
+      "priority": "P1",
+      "type": "tool-reference",
+      "status": "generated-wrapper",
+      "source": "generated locally from official resend documentation",
+      "official_docs": "https://resend.com/docs",
+      "install_method": "manual-per-project",
+      "recommended_agent": "Notifications Agent",
+      "load_policy": "on-demand",
+      "risks": [
+        "Automated checks do not cover all resend requirements",
+        "Do not install into package.json without explicit project-level approval"
+      ]
+    }
+  ]
+}

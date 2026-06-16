@@ -1,0 +1,16 @@
+{
+  "name": "core-web-vitals",
+  "category": "performance",
+  "priority": "P1",
+  "type": "reference-skill",
+  "status": "generated-wrapper",
+  "source": "generated locally from official core-web-vitals documentation",
+  "official_docs": "https://web.dev/explore/learn-core-web-vitals",
+  "install_method": "none",
+  "recommended_agent": "Performance Agent",
+  "load_policy": "default",
+  "risks": [
+    "Automated checks do not cover all core-web-vitals requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

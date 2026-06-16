@@ -1,0 +1,6 @@
+{
+  "name": "sentry-agent-skills",
+  "category": "observability",
+  "status": "blocked",
+  "reason": "blocked by existing global wildcard rule in agents.toml"
+}

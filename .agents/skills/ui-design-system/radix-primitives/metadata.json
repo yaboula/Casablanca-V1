@@ -1,0 +1,16 @@
+{
+  "name": "radix-primitives",
+  "category": "ui-design-system",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official radix-primitives documentation",
+  "official_docs": "https://www.radix-ui.com/primitives/docs/overview/introduction",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Ui-design-system Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Automated checks do not cover all radix-primitives requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

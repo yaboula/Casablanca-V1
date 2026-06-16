@@ -1,0 +1,16 @@
+{
+  "name": "axe-core",
+  "category": "accessibility",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official axe-core documentation",
+  "official_docs": "https://github.com/dequelabs/axe-core",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Accessibility Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Automated checks do not cover all axe-core requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

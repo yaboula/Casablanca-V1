@@ -1,0 +1,20 @@
+{
+  "name": "ui-ux-pro-max",
+  "category": "ui-design-system",
+  "priority": "P1",
+  "type": "reference-skill",
+  "status": "needs-review",
+  "source": "generated locally from official ui-ux-pro-max documentation",
+  "official_docs": "UI UX Pro Max Standards",
+  "install_method": "none",
+  "recommended_agent": "Ui-design-system Agent",
+  "load_policy": "default",
+  "risks": [
+    "Do not mix with open-design as a default unless the project explicitly chooses both",
+    "Automated checks do not cover all ui-ux-pro-max requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ],
+  "conflicts_with": [
+    "open-design"
+  ]
+}

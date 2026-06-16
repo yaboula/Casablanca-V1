@@ -1,0 +1,37 @@
+{
+  "category": "security",
+  "skills": [
+    {
+      "name": "owasp-cheat-sheets",
+      "category": "security",
+      "priority": "P1",
+      "type": "reference-skill",
+      "status": "generated-wrapper",
+      "source": "generated locally from official owasp-cheat-sheets documentation",
+      "official_docs": "https://cheatsheetseries.owasp.org/",
+      "install_method": "none",
+      "recommended_agent": "Security Agent",
+      "load_policy": "default",
+      "risks": [
+        "Automated checks do not cover all owasp-cheat-sheets requirements",
+        "Do not install into package.json without explicit project-level approval"
+      ]
+    },
+    {
+      "name": "owasp-zap",
+      "category": "security",
+      "priority": "P1",
+      "type": "tool-reference",
+      "status": "generated-wrapper",
+      "source": "generated locally from official owasp-zap documentation",
+      "official_docs": "https://www.zaproxy.org/docs/",
+      "install_method": "manual-per-project",
+      "recommended_agent": "Security Agent",
+      "load_policy": "on-demand",
+      "risks": [
+        "Automated checks do not cover all owasp-zap requirements",
+        "Do not install into package.json without explicit project-level approval"
+      ]
+    }
+  ]
+}

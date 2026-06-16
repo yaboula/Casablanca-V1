@@ -1,0 +1,20 @@
+{
+  "name": "react-admin",
+  "category": "admin-tools",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official react-admin documentation",
+  "official_docs": "https://marmelab.com/react-admin/Readme.html",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Admin-tools Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Do not mix with refine-core as a default unless the project explicitly chooses both",
+    "Automated checks do not cover all react-admin requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ],
+  "conflicts_with": [
+    "refine-core"
+  ]
+}

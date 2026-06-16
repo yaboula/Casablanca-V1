@@ -1,0 +1,16 @@
+{
+  "name": "docusaurus",
+  "category": "documentation",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official docusaurus documentation",
+  "official_docs": "https://docusaurus.io/docs",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Documentation Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Automated checks do not cover all docusaurus requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

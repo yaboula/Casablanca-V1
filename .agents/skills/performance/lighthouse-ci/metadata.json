@@ -1,0 +1,16 @@
+{
+  "name": "lighthouse-ci",
+  "category": "performance",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official lighthouse-ci documentation",
+  "official_docs": "https://github.com/GoogleChrome/lighthouse-ci",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Performance Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Automated checks do not cover all lighthouse-ci requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

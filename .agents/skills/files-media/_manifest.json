@@ -1,0 +1,37 @@
+{
+  "category": "files-media",
+  "skills": [
+    {
+      "name": "cloudinary",
+      "category": "files-media",
+      "priority": "P1",
+      "type": "tool-reference",
+      "status": "generated-wrapper",
+      "source": "generated locally from official cloudinary documentation",
+      "official_docs": "https://cloudinary.com/documentation",
+      "install_method": "manual-per-project",
+      "recommended_agent": "Files-media Agent",
+      "load_policy": "on-demand",
+      "risks": [
+        "Automated checks do not cover all cloudinary requirements",
+        "Do not install into package.json without explicit project-level approval"
+      ]
+    },
+    {
+      "name": "uploadthing",
+      "category": "files-media",
+      "priority": "P1",
+      "type": "tool-reference",
+      "status": "generated-wrapper",
+      "source": "generated locally from official uploadthing documentation",
+      "official_docs": "https://docs.uploadthing.com/",
+      "install_method": "manual-per-project",
+      "recommended_agent": "Files-media Agent",
+      "load_policy": "on-demand",
+      "risks": [
+        "Automated checks do not cover all uploadthing requirements",
+        "Do not install into package.json without explicit project-level approval"
+      ]
+    }
+  ]
+}

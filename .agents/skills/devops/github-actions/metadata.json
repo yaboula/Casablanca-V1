@@ -1,0 +1,16 @@
+{
+  "name": "github-actions",
+  "category": "devops",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official github-actions documentation",
+  "official_docs": "https://docs.github.com/en/actions",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Devops Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Automated checks do not cover all github-actions requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}

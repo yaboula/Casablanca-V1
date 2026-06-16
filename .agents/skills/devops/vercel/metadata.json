@@ -1,0 +1,16 @@
+{
+  "name": "vercel",
+  "category": "devops",
+  "priority": "P1",
+  "type": "tool-reference",
+  "status": "generated-wrapper",
+  "source": "generated locally from official vercel documentation",
+  "official_docs": "https://vercel.com/docs",
+  "install_method": "manual-per-project",
+  "recommended_agent": "Devops Agent",
+  "load_policy": "on-demand",
+  "risks": [
+    "Automated checks do not cover all vercel requirements",
+    "Do not install into package.json without explicit project-level approval"
+  ]
+}
