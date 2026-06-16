@@ -1,0 +1,149 @@
+{
+  "version": "1.0",
+  "source_skills_manifest": ".agents/skills/manifest.json",
+  "conflict_matrix_ref": ".agents/skills/manifest.json#Conflict matrix",
+  "load_policy_default": "specialist-only",
+  "agents": [
+    {
+      "id": "pm-orchestrator",
+      "name": "PM Orchestrator",
+      "file": ".agents/agents/pm-orchestrator.md",
+      "default_skills": ["to-prd", "to-issues"],
+      "on_demand_skills": ["handoff", "skill-creator"],
+      "forbidden_skills": [],
+      "escalates_to": [],
+      "load_policy": "always"
+    },
+    {
+      "id": "product-agent",
+      "name": "Product Agent",
+      "file": ".agents/agents/product-agent.md",
+      "default_skills": ["to-prd", "to-issues"],
+      "on_demand_skills": ["skill-creator"],
+      "forbidden_skills": [],
+      "escalates_to": ["pm-orchestrator", "ux-agent"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "ux-agent",
+      "name": "UX Agent",
+      "file": ".agents/agents/ux-agent.md",
+      "default_skills": ["frontend-design", "nng-heuristics"],
+      "on_demand_skills": ["axe-core", "wcag-22"],
+      "forbidden_skills": [],
+      "escalates_to": ["pm-orchestrator", "ui-design-system-agent", "qa-agent"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "ui-design-system-agent",
+      "name": "UI / Design System Agent",
+      "file": ".agents/agents/ui-design-system-agent.md",
+      "default_skills": ["design-taste-frontend"],
+      "on_demand_skills": [
+        "shadcn-ui",
+        "radix-primitives",
+        "open-design",
+        "ui-ux-pro-max",
+        "minimalist-ui",
+        "high-end-visual-design",
+        "brandkit",
+        "image-to-code",
+        "imagegen-frontend-web",
+        "imagegen-frontend-mobile",
+        "stitch-design-taste",
+        "gpt-taste",
+        "industrial-brutalist-ui",
+        "redesign-existing-projects"
+      ],
+      "forbidden_skills": [],
+      "conflict_notes": "Never load open-design and ui-ux-pro-max simultaneously",
+      "escalates_to": ["pm-orchestrator", "ux-agent", "qa-agent"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "frontend-agent",
+      "name": "Frontend Agent",
+      "file": ".agents/agents/frontend-agent.md",
+      "default_skills": ["next-app-router", "tanstack-query"],
+      "on_demand_skills": ["playwright-cli", "storybook", "mcp-protocol"],
+      "forbidden_skills": [],
+      "escalates_to": ["pm-orchestrator", "ui-design-system-agent", "backend-agent", "qa-agent"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "backend-agent",
+      "name": "Backend Agent",
+      "file": ".agents/agents/backend-agent.md",
+      "default_skills": ["openapi-contract", "trpc"],
+      "on_demand_skills": ["fastify", "openapi-integration"],
+      "forbidden_skills": [],
+      "conflict_notes": "Do not load trpc and fastify as primary simultaneously",
+      "escalates_to": ["pm-orchestrator", "data-agent", "trust-agent", "qa-agent"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "data-agent",
+      "name": "Data Agent",
+      "file": ".agents/agents/data-agent.md",
+      "default_skills": ["drizzle-orm"],
+      "on_demand_skills": ["prisma-orm"],
+      "forbidden_skills": [],
+      "conflict_notes": "drizzle-orm and prisma-orm conflict — never load both as default",
+      "escalates_to": ["pm-orchestrator", "backend-agent", "trust-agent"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "trust-agent",
+      "name": "Trust Agent",
+      "file": ".agents/agents/trust-agent.md",
+      "default_skills": ["authjs", "openfga", "owasp-cheat-sheets", "stripe"],
+      "on_demand_skills": ["better-auth", "owasp-zap"],
+      "forbidden_skills": [],
+      "conflict_notes": "authjs and better-auth conflict — choose one per project",
+      "escalates_to": ["pm-orchestrator"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "qa-agent",
+      "name": "QA Agent",
+      "file": ".agents/agents/qa-agent.md",
+      "default_skills": ["playwright-testing", "tdd", "review", "axe-core"],
+      "on_demand_skills": ["vitest", "storybook", "lighthouse-ci", "wcag-22"],
+      "forbidden_skills": [],
+      "escalates_to": ["pm-orchestrator", "trust-agent"],
+      "load_policy": "required-before-close"
+    },
+    {
+      "id": "ops-agent",
+      "name": "Ops Agent",
+      "file": ".agents/agents/ops-agent.md",
+      "default_skills": ["github-actions", "vercel", "opentelemetry"],
+      "on_demand_skills": ["sentry-agent-skills"],
+      "forbidden_skills": [],
+      "notes": "sentry-agent-skills is currently blocked — do not activate unless unblocked",
+      "escalates_to": ["pm-orchestrator", "trust-agent"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "docs-agent",
+      "name": "Docs Agent",
+      "file": ".agents/agents/docs-agent.md",
+      "default_skills": ["doc-coauthoring", "docusaurus"],
+      "on_demand_skills": ["handoff"],
+      "forbidden_skills": [],
+      "escalates_to": ["pm-orchestrator"],
+      "load_policy": "specialist-only"
+    },
+    {
+      "id": "workflow-agent",
+      "name": "Workflow Agent",
+      "file": ".agents/agents/workflow-agent.md",
+      "default_skills": ["changesets", "github-templates", "full-output-enforcement"],
+      "on_demand_skills": ["semantic-release", "handoff"],
+      "forbidden_skills": [],
+      "conflict_notes": "changesets and semantic-release conflict — choose one per project",
+      "escalates_to": ["pm-orchestrator", "ops-agent"],
+      "load_policy": "specialist-only"
+    }
+  ]
+}
