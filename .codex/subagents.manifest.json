@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "status": "active",
+  "canonical_system": ".agents/system.manifest.json",
+  "codex_config": ".codex/config.toml",
+  "root_role": "PM Orchestrator",
+  "subagents": [
+    {
+      "name": "code_mapper_agent",
+      "file": ".codex/agents/code-mapper-agent.toml",
+      "mode": "read-only",
+      "purpose": "Map relevant files and code paths"
+    },
+    {
+      "name": "ux_agent",
+      "file": ".codex/agents/ux-agent.toml",
+      "mode": "read-only",
+      "purpose": "UX review"
+    },
+    {
+      "name": "ui_design_system_agent",
+      "file": ".codex/agents/ui-design-system-agent.toml",
+      "mode": "read-only",
+      "purpose": "UI/design-system review"
+    },
+    {
+      "name": "frontend_agent",
+      "file": ".codex/agents/frontend-agent.toml",
+      "mode": "read-only",
+      "purpose": "Frontend architecture review"
+    },
+    {
+      "name": "qa_agent",
+      "file": ".codex/agents/qa-agent.toml",
+      "mode": "read-only",
+      "purpose": "QA validation and closure recommendation"
+    }
+  ],
+  "rules": [
+    "Subagents must be explicitly spawned",
+    "Subagents are read-only in v1",
+    "Root Codex session remains PM Orchestrator",
+    "Do not run write-heavy parallel implementation in v1",
+    "Each subagent must return a handoff summary"
+  ]
+}
