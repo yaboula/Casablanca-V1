@@ -1,0 +1,148 @@
+{
+  "version": "1.0",
+  "source_agents_manifest": ".agents/agents/agents.manifest.json",
+  "source_rules_manifest": ".agents/rules/rules.manifest.json",
+  "source_skills_manifest": ".agents/skills/manifest.json",
+  "workflows": [
+    {
+      "id": "workflow-operating-standard",
+      "file": ".agents/workflows/workflow-operating-standard.md",
+      "purpose": "Global principles governing all workflows",
+      "required_agents": ["pm-orchestrator"],
+      "optional_agents": [],
+      "required_rules": ["global-operating-rules", "skill-loading-policy", "qa-gates-policy"],
+      "risk_level": "low",
+      "requires_qa": false
+    },
+    {
+      "id": "task-intake-workflow",
+      "file": ".agents/workflows/task-intake-workflow.md",
+      "purpose": "Convert a raw user request into a structured task packet",
+      "required_agents": ["pm-orchestrator"],
+      "optional_agents": ["product-agent"],
+      "required_rules": ["global-operating-rules", "task-packet-contract", "agent-boundaries"],
+      "risk_level": "low",
+      "requires_qa": false
+    },
+    {
+      "id": "agent-routing-workflow",
+      "file": ".agents/workflows/agent-routing-workflow.md",
+      "purpose": "Select the minimum necessary agents for a given task",
+      "required_agents": ["pm-orchestrator"],
+      "optional_agents": [],
+      "required_rules": ["global-operating-rules", "agent-boundaries", "conflict-matrix-policy"],
+      "risk_level": "low",
+      "requires_qa": false
+    },
+    {
+      "id": "feature-development-workflow",
+      "file": ".agents/workflows/feature-development-workflow.md",
+      "purpose": "Execute a full feature from request to validated handoff",
+      "required_agents": ["pm-orchestrator", "product-agent", "qa-agent"],
+      "optional_agents": ["ux-agent", "ui-design-system-agent", "frontend-agent", "backend-agent", "data-agent", "trust-agent", "docs-agent", "workflow-agent"],
+      "required_rules": ["global-operating-rules", "task-packet-contract", "handoff-contract", "qa-gates-policy", "agent-boundaries"],
+      "risk_level": "medium",
+      "requires_qa": true
+    },
+    {
+      "id": "ui-change-workflow",
+      "file": ".agents/workflows/ui-change-workflow.md",
+      "purpose": "Handle visual, layout, component and design-system changes",
+      "required_agents": ["pm-orchestrator", "ui-design-system-agent", "frontend-agent", "qa-agent"],
+      "optional_agents": ["ux-agent"],
+      "required_rules": ["global-operating-rules", "ui-design-system-policy", "qa-gates-policy", "conflict-matrix-policy"],
+      "risk_level": "low",
+      "requires_qa": true
+    },
+    {
+      "id": "backend-api-workflow",
+      "file": ".agents/workflows/backend-api-workflow.md",
+      "purpose": "Handle backend API, validation, service logic and API contracts",
+      "required_agents": ["pm-orchestrator", "backend-agent", "qa-agent"],
+      "optional_agents": ["data-agent", "trust-agent", "frontend-agent"],
+      "required_rules": ["global-operating-rules", "security-trust-policy", "data-integrity-policy", "conflict-matrix-policy", "qa-gates-policy"],
+      "risk_level": "medium",
+      "requires_qa": true
+    },
+    {
+      "id": "data-change-workflow",
+      "file": ".agents/workflows/data-change-workflow.md",
+      "purpose": "Handle schema, migrations, indexes, transactions and data integrity",
+      "required_agents": ["pm-orchestrator", "data-agent", "backend-agent", "qa-agent"],
+      "optional_agents": ["trust-agent", "ops-agent"],
+      "required_rules": ["global-operating-rules", "data-integrity-policy", "conflict-matrix-policy", "qa-gates-policy"],
+      "risk_level": "high",
+      "requires_qa": true
+    },
+    {
+      "id": "trust-sensitive-change-workflow",
+      "file": ".agents/workflows/trust-sensitive-change-workflow.md",
+      "purpose": "Handle auth, permissions, security, payments, secrets, PII, webhooks and sensitive admin actions",
+      "required_agents": ["pm-orchestrator", "trust-agent", "qa-agent"],
+      "optional_agents": ["backend-agent", "data-agent", "ops-agent", "docs-agent"],
+      "required_rules": ["global-operating-rules", "security-trust-policy", "data-integrity-policy", "dependency-installation-policy", "qa-gates-policy"],
+      "risk_level": "critical",
+      "requires_qa": true
+    },
+    {
+      "id": "bugfix-debugging-workflow",
+      "file": ".agents/workflows/bugfix-debugging-workflow.md",
+      "purpose": "Diagnose and fix a bug without scope creep",
+      "required_agents": ["pm-orchestrator", "qa-agent"],
+      "optional_agents": ["frontend-agent", "backend-agent", "data-agent", "trust-agent", "ops-agent"],
+      "required_rules": ["global-operating-rules", "agent-boundaries", "security-trust-policy", "qa-gates-policy"],
+      "risk_level": "medium",
+      "requires_qa": true
+    },
+    {
+      "id": "qa-validation-workflow",
+      "file": ".agents/workflows/qa-validation-workflow.md",
+      "purpose": "Validate changes before closure — the mandatory QA gate",
+      "required_agents": ["qa-agent"],
+      "optional_agents": ["pm-orchestrator"],
+      "required_rules": ["qa-gates-policy", "handoff-contract"],
+      "risk_level": "low",
+      "requires_qa": true
+    },
+    {
+      "id": "documentation-update-workflow",
+      "file": ".agents/workflows/documentation-update-workflow.md",
+      "purpose": "Update docs, ADRs, READMEs, handoff docs or project knowledge",
+      "required_agents": ["docs-agent"],
+      "optional_agents": ["pm-orchestrator", "workflow-agent", "product-agent"],
+      "required_rules": ["global-operating-rules", "handoff-contract"],
+      "risk_level": "low",
+      "requires_qa": false
+    },
+    {
+      "id": "dependency-proposal-workflow",
+      "file": ".agents/workflows/dependency-proposal-workflow.md",
+      "purpose": "Evaluate and formally propose dependency installation without installing anything",
+      "required_agents": ["pm-orchestrator", "workflow-agent"],
+      "optional_agents": ["trust-agent", "ops-agent", "qa-agent"],
+      "required_rules": ["dependency-installation-policy", "conflict-matrix-policy", "security-trust-policy"],
+      "risk_level": "medium",
+      "requires_qa": false
+    },
+    {
+      "id": "release-readiness-workflow",
+      "file": ".agents/workflows/release-readiness-workflow.md",
+      "purpose": "Validate readiness before release and deployment",
+      "required_agents": ["pm-orchestrator", "qa-agent", "ops-agent", "workflow-agent"],
+      "optional_agents": ["trust-agent", "data-agent", "docs-agent"],
+      "required_rules": ["global-operating-rules", "qa-gates-policy", "git-change-control-policy", "security-trust-policy"],
+      "risk_level": "high",
+      "requires_qa": true
+    },
+    {
+      "id": "workflow-retrospective",
+      "file": ".agents/workflows/workflow-retrospective.md",
+      "purpose": "Review completed work and identify improvements to routing, rules, skills or agents",
+      "required_agents": ["pm-orchestrator", "workflow-agent"],
+      "optional_agents": ["qa-agent", "docs-agent"],
+      "required_rules": ["global-operating-rules", "handoff-contract"],
+      "risk_level": "low",
+      "requires_qa": false
+    }
+  ]
+}
