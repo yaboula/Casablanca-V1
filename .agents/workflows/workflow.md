@@ -9,7 +9,9 @@ v1.0-mvp-smoke-stable
 
 Never work directly on main.
 
-Before starting any task:
+Before starting any task or slice:
+
+0. **CRITICAL MANDATORY RULE**: You MUST review your plan and the code against **ALL 12 Project Master References** (Product Vision, Actor Boundary, UX Usability, Cognitive Load, Accessibility, Enterprise Design System, Forms/Payment UX, Financial Risk, Access Control, Frontend Architecture, Technical Stack, and Build Readiness). Do not execute until you have verified the slice against these 12 criteria.
 
 1. Run:
    git status
