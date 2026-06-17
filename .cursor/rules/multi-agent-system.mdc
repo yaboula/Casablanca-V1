@@ -1,0 +1,23 @@
+---
+description: Multi-agent workspace operating system
+alwaysApply: true
+---
+
+# Multi-Agent Workspace Adapter
+
+This repository uses `.agents/` as the canonical multi-agent operating system.
+
+Before non-trivial work:
+1. Read `.agents/system.manifest.json`.
+2. Read `.agents/activation-guide.md`.
+3. Use PM Orchestrator.
+4. Create a Task Packet.
+5. Follow the selected workflow.
+6. Respect blocking rules.
+7. Require QA before closing implementation work.
+8. Produce a Handoff Summary.
+
+Do not activate all agents by default.
+Do not load all skills by default.
+Do not install dependencies without explicit approval.
+Do not modify `.agents/skills/`, `.agents/agents/`, `.agents/rules/` or `.agents/workflows/` during normal task execution.

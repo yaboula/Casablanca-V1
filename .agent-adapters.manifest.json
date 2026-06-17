@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "status": "active",
+  "canonical_system": ".agents/system.manifest.json",
+  "adapters": [
+    {
+      "tool": "universal",
+      "file": "AGENTS.md",
+      "type": "root-context-file",
+      "purpose": "Universal entrypoint for coding agents"
+    },
+    {
+      "tool": "codex",
+      "file": "AGENTS.md",
+      "type": "native-context-file",
+      "purpose": "Codex project instructions"
+    },
+    {
+      "tool": "claude-code",
+      "file": "CLAUDE.md",
+      "type": "import-shim",
+      "purpose": "Imports AGENTS.md and adds Claude-specific guidance"
+    },
+    {
+      "tool": "cursor",
+      "file": ".cursor/rules/multi-agent-system.mdc",
+      "type": "project-rule",
+      "purpose": "Cursor rule pointing to .agents/"
+    },
+    {
+      "tool": "gemini-cli",
+      "file": ".gemini/settings.json",
+      "type": "context-config",
+      "purpose": "Configures AGENTS.md and GEMINI.md as context files"
+    },
+    {
+      "tool": "gemini-cli",
+      "file": "GEMINI.md",
+      "type": "context-shim",
+      "purpose": "Gemini-specific pointer to AGENTS.md"
+    },
+    {
+      "tool": "antigravity",
+      "file": ".antigravity/README.md",
+      "type": "human-agent-guide",
+      "purpose": "Guidance for Antigravity artifact-based workflows"
+    }
+  ],
+  "rules": [
+    "Adapters must not duplicate .agents/ content",
+    "Adapters must remain short",
+    "Adapters must not install dependencies",
+    "Adapters must not modify app code",
+    "Adapters must point to canonical .agents/ entrypoints"
+  ]
+}
